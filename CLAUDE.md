@@ -84,6 +84,11 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-22 — Hotfix: added `middleware.ts`.** The next-intl scaffold was missing the required
+  root `middleware.ts`, so `/` returned a 404 (no route matched — only `/en` and `/ar` existed).
+  Added it; `/` now redirects to a locale and all routes return 200. Build green. Pushed.
+  - **Note for future runs:** `middleware.ts` is mandatory for next-intl locale routing — never delete it.
+
 - **2026-06-22 — Phase 1 complete + shipped.** Built the full bilingual portal: config, engine,
   i18n, all components, all pages, MEC catalog (7 departments × 4 modules), savings module, EN/AR
   messages. `git init` → committed → pushed to `origin/main`
