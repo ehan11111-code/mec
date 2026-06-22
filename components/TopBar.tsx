@@ -5,6 +5,7 @@ import { useRouter } from '@/i18n/navigation'
 import { clearSession, getSession } from '@/lib/auth'
 import { LocaleToggle } from './LocaleToggle'
 import { ThemeToggle } from './ThemeToggle'
+import { NotificationBell } from './NotificationBell'
 import { LogOut, ChevronRight } from 'lucide-react'
 import { getFirmState } from '@/lib/mock/data'
 export function TopBar({ breadcrumbs }: { breadcrumbs: { label: string; href?: string }[] }) {
@@ -24,7 +25,7 @@ export function TopBar({ breadcrumbs }: { breadcrumbs: { label: string; href?: s
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-success animate-pulse" aria-hidden />
             <span className="text-xs text-text-soft">{email}</span><span className="text-xs text-muted">·</span><span className="text-xs text-muted">{firm.clientName}</span>
           </div>
-          <ThemeToggle /><LocaleToggle />
+          <NotificationBell /><ThemeToggle /><LocaleToggle />
           <button type="button" onClick={() => { clearSession(); router.replace('/login') }} className="inline-flex items-center justify-center h-9 w-9 rounded-full border border-border bg-surface hover:bg-surface-elev transition-colors" aria-label={locale === 'ar' ? 'تسجيل الخروج' : 'Sign out'}>
             <LogOut className="h-4 w-4 text-text-soft" strokeWidth={1.6} />
           </button>

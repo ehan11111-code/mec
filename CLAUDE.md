@@ -84,6 +84,17 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-22 — Real client data + inbox + visual upgrade.** Imported **112 real MEC clients** from
+  `DATA/بيانات العملاء.xlsx` → `lib/data/clients.ts` (regen via `node DATA/_gen.js`). Added a
+  **dataset layer** (`lib/data/dataset.ts`: clients, SKUs, deterministic orders/payments + aggregates),
+  two new pages **Orders** and **Clients (CRM)** with search/filter, tables and charts, an inbox
+  **NotificationBell** dropdown in the TopBar (unread badge), and new visual components (Sparkline,
+  BarChartPanel, DonutStat, StatusBadge, StatCard). Enriched the Control Center with real business
+  KPIs + orders-by-status + top-clients. Wrote **`DATA.md`** intake contract. Build green (23 routes).
+  - **Note:** client revenue/risk/orders/city are deterministic placeholders until a real orders/sales
+    export arrives — see `DATA.md`. Sending orders data makes them real automatically.
+  - **Next:** import an orders/SKU sheet when provided; then Phase 2 (Documents & Intake).
+
 - **2026-06-22 — Hotfix: added `middleware.ts`.** The next-intl scaffold was missing the required
   root `middleware.ts`, so `/` returned a 404 (no route matched — only `/en` and `/ar` existed).
   Added it; `/` now redirects to a locale and all routes return 200. Build green. Pushed.
