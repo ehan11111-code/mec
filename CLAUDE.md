@@ -84,10 +84,12 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
-- **2026-06-22 — Phase 1 complete (initial scaffold).** Built the full bilingual portal: config,
-  engine, i18n, all components, all pages, MEC catalog (7 departments × 4 modules), savings module,
-  EN/AR messages. Status: deterministic-mock demo of the whole surface.
-  - **Next:** wire the local repo to the `mec` GitHub remote and push (one-time), confirm Vercel
-    deploy, then begin **Phase 2 (Documents & Intake)** — start with the extracted-data review screen
-    for the `documents` department.
-  - **Build:** run `npm install` then `npm run build` and confirm zero type errors before first push.
+- **2026-06-22 — Phase 1 complete + shipped.** Built the full bilingual portal: config, engine,
+  i18n, all components, all pages, MEC catalog (7 departments × 4 modules), savings module, EN/AR
+  messages. `git init` → committed → pushed to `origin/main`
+  (`https://github.com/ehan11111-code/mec.git`). Status: deterministic-mock demo of the whole surface,
+  live on GitHub.
+  - **Build:** `npm run build` passes with **zero type errors / zero warnings** (19 routes generated).
+  - **Next:** connect the GitHub repo to Vercel (one-time, in vercel.com — no env vars needed), then
+    begin **Phase 2 (Documents & Intake)** — start with the extracted-data review screen for the
+    `documents` department. Run `/mec-build` to advance.
