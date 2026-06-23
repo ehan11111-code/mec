@@ -8,9 +8,17 @@ export type Risk = {
   summary: string
   citation?: { source?: string; url?: string; date?: string }
 }
+export type PriceDriver = { summary: string; citation?: { source?: string; url?: string; date?: string } }
+export type PriceOutlook = {
+  direction: 'up' | 'down' | 'stable'
+  change_pct: number; low_pct: number; high_pct: number
+  confidence: 'low' | 'medium' | 'high'
+  drivers: PriceDriver[]
+}
 export type SupplyIntel = {
   supplier: string; commodity: string; country: string
   recommendation: string; forecast_window: string
+  price_outlook?: PriceOutlook | null
   risks: Risk[]; generated_at: string
 }
 export type WhatsappMsg = {

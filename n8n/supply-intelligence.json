@@ -2,9 +2,7 @@
   "name": "MEC · Supply-Market Intelligence (external · every 12h)",
   "nodes": [
     {
-      "parameters": {
-        "rule": { "interval": [ { "field": "hours", "hoursInterval": 12 } ] }
-      },
+      "parameters": { "rule": { "interval": [ { "field": "hours", "hoursInterval": 12 } ] } },
       "id": "schedule",
       "name": "Every 12h",
       "type": "n8n-nodes-base.scheduleTrigger",
@@ -13,34 +11,14 @@
     },
     {
       "parameters": {
-        "jsCode": "// Suppliers + sourcing countries to monitor. Edit freely (commodity → countries).\nreturn [\n  { json: { supplier: 'Brazil beef suppliers', commodity: 'beef', country: 'Brazil', q: 'Brazil beef export OR cattle OR port' } },\n  { json: { supplier: 'India buffalo meat', commodity: 'beef', country: 'India', q: 'India buffalo meat export ban OR price' } },\n  { json: { supplier: 'Brazil/Ukraine chicken', commodity: 'chicken', country: 'Brazil', q: 'Brazil chicken poultry export avian flu' } },\n  { json: { supplier: 'Egypt potatoes', commodity: 'potato', country: 'Egypt', q: 'Egypt potato export price weather' } },\n  { json: { supplier: 'KSA logistics', commodity: 'all', country: 'Saudi Arabia', q: 'Saudi Arabia port Jeddah Dammam shipping delay customs' } }\n];"
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Gather market signals per supplier/country. FREE sources (news RSS + FX) always run.\n// X / LinkedIn run via APIFY actors only if APIFY_TOKEN is set — otherwise skipped at zero cost.\nconst targets = [\n  { supplier: 'Brazil beef suppliers', commodity: 'beef', country: 'Brazil', cur: 'BRL', q: 'Brazil beef export OR cattle price OR meatpacking' },\n  { supplier: 'India buffalo meat', commodity: 'beef', country: 'India', cur: 'INR', q: 'India buffalo meat export price OR ban' },\n  { supplier: 'Brazil chicken', commodity: 'chicken', country: 'Brazil', cur: 'BRL', q: 'Brazil chicken poultry export avian flu price' },\n  { supplier: 'Egypt potatoes', commodity: 'potato', country: 'Egypt', cur: 'EGP', q: 'Egypt potato export price OR weather OR crop' },\n  { supplier: 'KSA import logistics', commodity: 'all', country: 'Saudi Arabia', cur: 'USD', q: 'Saudi Arabia port Jeddah Dammam shipping delay customs food import' }\n];\nfunction parseRss(xml, n) {\n  const items = []; const re = /<item>([\\s\\S]*?)<\\/item>/g; let m;\n  const pick = (s, t) => { const r = new RegExp('<' + t + '>([\\\\s\\\\S]*?)<\\\\/' + t + '>').exec(s); return r ? r[1].replace(/<!\\[CDATA\\[|\\]\\]>/g, '').replace(/<[^>]+>/g, '').trim() : ''; };\n  while ((m = re.exec(xml)) && items.length < n) { const b = m[1]; items.push({ title: pick(b, 'title'), url: pick(b, 'link'), source: pick(b, 'source') || 'News', date: pick(b, 'pubDate') }); }\n  return items;\n}\nconst apify = $env.APIFY_TOKEN;\nconst xActor = $env.APIFY_TWITTER_ACTOR || 'apidojo~tweet-scraper';\nconst liActor = $env.APIFY_LINKEDIN_ACTOR;\nasync function apifyRun(actor, input, map) {\n  if (!apify || !actor) return [];\n  try {\n    const items = await this.helpers.httpRequest({ method: 'POST', url: `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${apify}`, body: input, json: true, timeout: 90000 });\n    return (Array.isArray(items) ? items : []).slice(0, 5).map(map).filter(s => s.title);\n  } catch (e) { return []; }\n}\nconst out = [];\nfor (const t of targets) {\n  let articles = [];\n  const feeds = [\n    `https://news.google.com/rss/search?q=${encodeURIComponent(t.q)}+when:3d&hl=en-US&gl=US&ceid=US:en`,\n    `https://www.bing.com/news/search?q=${encodeURIComponent(t.q)}&format=rss`\n  ];\n  for (const url of feeds) { try { const xml = await this.helpers.httpRequest({ url, json: false, timeout: 15000 }); articles = articles.concat(parseRss(String(xml), 5)); } catch (e) {} }\n  let fx = null;\n  try { const r = await this.helpers.httpRequest({ url: `https://open.er-api.com/v6/latest/${t.cur}`, json: true, timeout: 15000 }); if (r && r.rates && r.rates.SAR) fx = { pair: `${t.cur}/SAR`, rate: r.rates.SAR, asOf: r.time_last_update_utc || '' }; } catch (e) {}\n  let social = [];\n  social = social.concat(await apifyRun.call(this, xActor, { searchTerms: [t.q], maxItems: 5, sort: 'Latest' }, x => ({ title: x.text || x.full_text || x.content || '', url: x.url || x.twitterUrl || '', source: 'X', date: x.createdAt || x.created_at || '' })));\n  social = social.concat(await apifyRun.call(this, liActor, { searchQuery: t.q, maxItems: 5 }, x => ({ title: x.text || x.content || x.summary || '', url: x.url || x.postUrl || '', source: 'LinkedIn', date: x.date || x.postedAt || '' })));\n  out.push({ json: { supplier: t.supplier, commodity: t.commodity, country: t.country, fx, articles, social } });\n}\nreturn out;"
       },
-      "id": "targets",
-      "name": "Suppliers + countries",
+      "id": "gather",
+      "name": "Gather all signals",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [ 420, 320 ]
-    },
-    {
-      "parameters": {
-        "url": "=https://news.google.com/rss/search?q={{ encodeURIComponent($json.q) }}+when:2d&hl=en-US&gl=US&ceid=US:en",
-        "options": { "response": { "response": { "responseFormat": "text" } } }
-      },
-      "id": "news",
-      "name": "Google News RSS",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [ 660, 320 ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Parse RSS <item> into {title, source, url, date}. Keep most-recent 8 per target.\nconst xml = $input.first().json.data || $input.first().json.body || '';\nconst t = String(xml);\nconst items = [];\nconst re = /<item>([\\s\\S]*?)<\\/item>/g; let m;\nconst pick = (s, tag) => { const r = new RegExp('<'+tag+'>([\\\\s\\\\S]*?)<\\\\/'+tag+'>').exec(s); return r ? r[1].replace(/<!\\[CDATA\\[|\\]\\]>/g,'').trim() : ''; };\nwhile ((m = re.exec(t)) && items.length < 8) {\n  const b = m[1];\n  items.push({ title: pick(b,'title'), url: pick(b,'link'), source: pick(b,'source') || 'Google News', date: pick(b,'pubDate') });\n}\nconst meta = $('Suppliers + countries').item.json;\nreturn [{ json: { ...meta, articles: items } }];"
-      },
-      "id": "parse",
-      "name": "Parse signals",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [ 900, 320 ]
+      "position": [ 440, 320 ]
     },
     {
       "parameters": {
@@ -53,24 +31,25 @@
         ] },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  model: $env.OPENAI_BATCH_MODEL || 'gpt-4o-mini',\n  temperature: 0.2,\n  response_format: { type: 'json_object' },\n  messages: [\n    { role: 'system', content: 'You are MEC\\'s supply-risk analyst. You will receive a supplier/country and recent news ARTICLES (title, source, url, date). Output STRICT JSON only. For each risk and the recommendation you MUST cite an article via {source,url,date}. If the articles show no relevant signal, return risks:[] and recommendation \"hold — no signal\". NEVER invent facts or sources. Be specific to meat/chicken/potato import into Saudi Arabia. Schema: {\"supplier\":string,\"commodity\":string,\"country\":string,\"recommendation\":string,\"forecastWindow\":string,\"risks\":[{\"type\":\"transport|weather|price|disease|policy|other\",\"severity\":\"low|medium|high\",\"summary\":string,\"citation\":{\"source\":string,\"url\":string,\"date\":string}}]}' },\n    { role: 'user', content: JSON.stringify($json) }\n  ]\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  model: $env.OPENAI_BATCH_MODEL || 'gpt-4o-mini',\n  temperature: 0.2,\n  response_format: { type: 'json_object' },\n  messages: [\n    { role: 'system', content: 'You are MEC\\'s supply-risk + price analyst for food imports into Saudi Arabia (beef, chicken, potato). You receive a supplier/country plus recent ARTICLES, optional SOCIAL posts (X/LinkedIn), and an FX rate (exporter currency vs SAR). Output STRICT JSON. Every risk AND every price driver MUST cite a real source via {source,url,date}; drop anything you cannot cite. Base the price direction on the cited signals + FX; if no signal, use direction \"stable\", change_pct 0, empty arrays. Never invent. Echo supplier/commodity/country. Schema: {\"supplier\":string,\"commodity\":string,\"country\":string,\"recommendation\":string,\"forecast_window\":string,\"price_outlook\":{\"direction\":\"up|down|stable\",\"change_pct\":number,\"low_pct\":number,\"high_pct\":number,\"confidence\":\"low|medium|high\",\"drivers\":[{\"summary\":string,\"citation\":{\"source\":string,\"url\":string,\"date\":string}}]},\"risks\":[{\"type\":\"transport|weather|price|disease|policy|other\",\"severity\":\"low|medium|high\",\"summary\":string,\"citation\":{\"source\":string,\"url\":string,\"date\":string}}]}. change_pct/low_pct/high_pct are percentage changes in import cost over the forecast window (e.g. 4 = +4%).' },\n    { role: 'user', content: JSON.stringify($json) }\n  ]\n}) }}",
         "options": {}
       },
       "id": "analyse",
-      "name": "GPT synthesise (mini)",
+      "name": "GPT price outlook",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [ 1140, 320 ]
+      "position": [ 720, 320 ]
     },
     {
       "parameters": {
-        "jsCode": "// Parse model JSON, then DROP any risk without a real citation (accuracy guard).\nlet out;\ntry { out = JSON.parse($json.choices[0].message.content); } catch (e) { return []; }\nout.risks = (out.risks || []).filter(r => r && r.citation && r.citation.url && r.citation.source);\nout.generated_at = $now.toISO();\nreturn [{ json: out }];"
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Parse each model JSON; drop risks/drivers without a real citation (accuracy guard).\nconst out = [];\nfor (const item of $input.all()) {\n  let o;\n  try { o = JSON.parse(item.json.choices[0].message.content); } catch (e) { continue; }\n  o.risks = (o.risks || []).filter(r => r && r.citation && r.citation.url && r.citation.source);\n  if (o.price_outlook) o.price_outlook.drivers = (o.price_outlook.drivers || []).filter(d => d && d.citation && d.citation.url && d.citation.source);\n  o.generated_at = $now.toISO();\n  out.push({ json: o });\n}\nreturn out;"
       },
       "id": "guard",
       "name": "Drop unsourced claims",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [ 1380, 320 ]
+      "position": [ 1000, 320 ]
     },
     {
       "parameters": {
@@ -85,22 +64,20 @@
         ] },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ supplier: $json.supplier, commodity: $json.commodity, country: $json.country, recommendation: $json.recommendation, forecast_window: $json.forecastWindow, risks: $json.risks, generated_at: $json.generated_at }) }}",
+        "jsonBody": "={{ JSON.stringify({ supplier: $json.supplier, commodity: $json.commodity, country: $json.country, recommendation: $json.recommendation, forecast_window: $json.forecast_window, price_outlook: $json.price_outlook || null, risks: $json.risks || [], generated_at: $json.generated_at }) }}",
         "options": {}
       },
       "id": "store",
       "name": "Store → Supabase",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [ 1620, 320 ]
+      "position": [ 1280, 320 ]
     }
   ],
   "connections": {
-    "Every 12h": { "main": [ [ { "node": "Suppliers + countries", "type": "main", "index": 0 } ] ] },
-    "Suppliers + countries": { "main": [ [ { "node": "Google News RSS", "type": "main", "index": 0 } ] ] },
-    "Google News RSS": { "main": [ [ { "node": "Parse signals", "type": "main", "index": 0 } ] ] },
-    "Parse signals": { "main": [ [ { "node": "GPT synthesise (mini)", "type": "main", "index": 0 } ] ] },
-    "GPT synthesise (mini)": { "main": [ [ { "node": "Drop unsourced claims", "type": "main", "index": 0 } ] ] },
+    "Every 12h": { "main": [ [ { "node": "Gather all signals", "type": "main", "index": 0 } ] ] },
+    "Gather all signals": { "main": [ [ { "node": "GPT price outlook", "type": "main", "index": 0 } ] ] },
+    "GPT price outlook": { "main": [ [ { "node": "Drop unsourced claims", "type": "main", "index": 0 } ] ] },
     "Drop unsourced claims": { "main": [ [ { "node": "Store → Supabase", "type": "main", "index": 0 } ] ] }
   },
   "settings": { "executionOrder": "v1" },

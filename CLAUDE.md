@@ -84,6 +84,24 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-23 — Supply intel upgraded: market price forecast vs real/historical cost + Apify scraping.**
+  Turned the supply feed into a **price-forecast engine**. New `lib/data/priceBaseline.ts` derives each
+  commodity's **real** cost baseline + monthly trend from `purchases.ts` (weighted avg per dominant unit).
+  Rebuilt `n8n/supply-intelligence.json` gather step: multi-source **news RSS (Google+Bing) + FX
+  (open.er-api.com) + X/LinkedIn via Apify actors** (one `this.helpers.httpRequest` Code node; Apify is
+  **key-gated** — runs free until `APIFY_TOKEN` is set, then `run-sync-get-dataset-items` per actor).
+  GPT now returns a **`price_outlook`** (direction, change_pct, low/high %, confidence, cited drivers)
+  alongside risks; unsourced drivers/risks are dropped. Supabase `supply_intel` gains a `price_outlook`
+  jsonb column (schema `add column if not exists`). The portal card now shows **"your last real cost →
+  forecast range"** with a direction arrow + %, a **real historical-cost sparkline**, and cited drivers —
+  the forecast is compared against MEC's actual purchase history. Deploy script injects missing/optional
+  env as `""` so Cloud never hits a blocked `$env`. Workflow redeployed (`Z7TPXWnlplp61VE7`). Build green
+  (34 routes).
+  - **To enable X/LinkedIn scraping:** paste an **Apify token** into `.env.local` (`APIFY_TOKEN`, optional
+    `APIFY_LINKEDIN_ACTOR`) → redeploy. Free RSS+FX path needs nothing. LinkedIn still discouraged (ToS).
+  - **Next:** add the Apify token when provided; surface the FX rate on the card; alert when a high-severity
+    risk or a >X% price jump appears (Supabase → notifications).
+
 - **2026-06-23 — Portal Supply-Intelligence + WhatsApp inbox pages (live Supabase).** Built the two
   read-views for the new workflows. New `lib/data/supply.ts` (server-only Supabase reads via service-role,
   falls back to `[]` when tables/env are absent) + API routes `app/api/supply-intel` & `app/api/whatsapp`

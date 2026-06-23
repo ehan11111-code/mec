@@ -2,13 +2,16 @@
 import { useEffect, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
-import { Radar, ExternalLink, ShieldAlert, Loader2 } from 'lucide-react'
+import { Radar, ExternalLink, ShieldAlert, Loader2, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { PageShell } from '@/components/PageShell'
 import { DisplayHeading } from '@/components/DisplayHeading'
 import { Eyebrow } from '@/components/Eyebrow'
 import { Panel } from '@/components/Panel'
 import { StatCard } from '@/components/StatCard'
 import { EmptyState } from '@/components/EmptyState'
+import { Sparkline } from '@/components/Sparkline'
+import { fmtSAR } from '@/lib/data/dataset'
+import { baselineForCommodity } from '@/lib/data/priceBaseline'
 import type { SupplyIntel } from '@/lib/data/supply'
 
 const SEV: Record<string, string> = {
@@ -52,7 +55,14 @@ export default function SupplyIntelligencePage() {
         <Panel><EmptyState icon={Radar} title={t('emptyTitle')} hint={t('emptyHint')} source={t('source')} /></Panel>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
-          {list.map(d => (
+          {list.map(d => {
+            const base = baselineForCommodity(d.commodity)
+            const po = d.price_outlook
+            const lo = base && po ? Math.round(base.latest * (1 + po.low_pct / 100)) : null
+            const hi = base && po ? Math.round(base.latest * (1 + po.high_pct / 100)) : null
+            const Dir = po?.direction === 'down' ? TrendingDown : po?.direction === 'up' ? TrendingUp : Minus
+            const dirTone = po?.direction === 'up' ? 'text-accent' : po?.direction === 'down' ? 'text-success' : 'text-muted'
+            return (
             <Panel key={d.supplier}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -63,6 +73,45 @@ export default function SupplyIntelligencePage() {
               </div>
               {d.forecast_window && (
                 <p className="mt-2 text-xs text-text-soft"><span className="text-muted">{t('forecast')}:</span> {d.forecast_window}</p>
+              )}
+
+              {po && base && (
+                <div className="mt-3 rounded-soft border border-accent/20 gradient-highlight p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-muted">{t('priceOutlook')}</span>
+                    <span className={clsx('inline-flex items-center gap-1 text-sm font-semibold tabular-nums', dirTone)}>
+                      <Dir className="h-4 w-4" strokeWidth={2} />{po.change_pct > 0 ? '+' : ''}{po.change_pct}%
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex items-baseline gap-2 flex-wrap">
+                    <span className="text-[11px] text-muted">{t('lastReal')}</span>
+                    <span className="text-sm font-medium text-text tabular-nums">{fmtSAR(base.latest)}</span>
+                    <span className="text-[11px] text-muted">/ {base.unit}</span>
+                    <span className="text-muted">→</span>
+                    <span className="text-sm font-semibold text-accent tabular-nums">{lo !== null && hi !== null ? `${fmtSAR(lo)}–${fmtSAR(hi)}` : '—'}</span>
+                    {po.confidence && <span className="text-[11px] text-muted">· {t(`conf_${po.confidence}`)}</span>}
+                  </div>
+                  {base.series.length > 1 && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <Sparkline data={base.series.map(s => s.cost)} accent />
+                      <span className="text-[10px] text-muted">{t('histTrend', { months: base.series.length })}</span>
+                    </div>
+                  )}
+                  {(po.drivers || []).length > 0 && (
+                    <ul className="mt-2.5 space-y-1.5 border-t border-border/60 pt-2">
+                      {po.drivers.map((dr, i) => (
+                        <li key={i} className="text-[11px] text-text-soft leading-snug">
+                          {dr.summary}
+                          {dr.citation?.url && (
+                            <a href={dr.citation.url} target="_blank" rel="noopener noreferrer" className="ms-1 inline-flex items-center gap-0.5 text-accent/90 hover:text-accent">
+                              <ExternalLink className="h-2.5 w-2.5" strokeWidth={1.8} />{dr.citation.source || t('source')}{dr.citation.date ? ` · ${dr.citation.date}` : ''}
+                            </a>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               )}
 
               <div className="mt-4 space-y-2.5">
@@ -87,7 +136,7 @@ export default function SupplyIntelligencePage() {
                 ))}
               </div>
             </Panel>
-          ))}
+          )})}
         </div>
       )}
 

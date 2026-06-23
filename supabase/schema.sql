@@ -23,9 +23,12 @@ create table if not exists public.supply_intel (
   country         text,
   recommendation  text,
   forecast_window text,
-  risks           jsonb default '[]'::jsonb,   -- [{type,severity,summary,citation:{source,url,date}}]
+  price_outlook   jsonb,                        -- {direction,change_pct,low_pct,high_pct,confidence,drivers:[{summary,citation}]}
+  risks           jsonb default '[]'::jsonb,    -- [{type,severity,summary,citation:{source,url,date}}]
   generated_at    timestamptz default now()
 );
+-- If the table already existed from an earlier run, add the new column:
+alter table public.supply_intel add column if not exists price_outlook jsonb;
 
 -- WhatsApp intake (one row per inbound message; written by n8n/whatsapp-intake.json via WaSender).
 create table if not exists public.whatsapp_intake (

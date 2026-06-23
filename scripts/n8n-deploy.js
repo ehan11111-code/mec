@@ -28,7 +28,9 @@ function injectSecrets(node) {
   if (typeof node === 'string') {
     return node.replace(/\$env\.([A-Za-z0-9_]+)/g, (full, name) => {
       const v = process.env[name]
-      return v === undefined ? full : JSON.stringify(v)
+      // n8n Cloud blocks $env, so always substitute a literal. Missing/optional keys become "" so the
+      // workflow runs free and simply skips that source (e.g. X/LinkedIn) until a key is added.
+      return JSON.stringify(v === undefined ? '' : v)
     })
   }
   if (Array.isArray(node)) return node.map(injectSecrets)
