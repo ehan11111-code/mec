@@ -1,5 +1,6 @@
--- MEC portal — Supabase schema for scheduled ERP sync + supply intelligence.
--- Run in Supabase → SQL editor. Tables are written by n8n (service_role) and read by the portal.
+-- MEC portal — Supabase schema. Run in Supabase → SQL editor. Safe to run more than once (idempotent):
+-- tables use "if not exists"; policies are dropped-then-created (Postgres has no CREATE POLICY IF NOT EXISTS).
+-- Tables are written by n8n (service_role) and read by the portal.
 
 -- ERP sales mirror (matches the normalised shape in n8n/erp-scheduled-sync.json).
 create table if not exists public.sales (
@@ -26,9 +27,27 @@ create table if not exists public.supply_intel (
   generated_at    timestamptz default now()
 );
 
--- Row Level Security: the portal reads supply_intel with the anon key; writes use service_role (bypasses RLS).
+-- WhatsApp intake (one row per inbound message; written by n8n/whatsapp-intake.json via WaSender).
+create table if not exists public.whatsapp_intake (
+  message_id    text primary key,
+  phone         text,
+  push_name     text,
+  body          text,
+  message_type  text,
+  media_url     text,
+  intent        text,            -- order | inquiry | complaint | other (classified by GPT)
+  products      jsonb default '[]'::jsonb,
+  raw           jsonb,
+  verified      boolean default false,
+  received_at   timestamptz default now()
+);
+
+-- Row Level Security ---------------------------------------------------------
+-- supply_intel: portal reads it with the anon key.
 alter table public.supply_intel enable row level security;
+drop policy if exists "read supply_intel (anon)" on public.supply_intel;
 create policy "read supply_intel (anon)" on public.supply_intel for select using (true);
 
--- sales stays service-role only (no anon policy) — the portal reads it server-side.
+-- sales + whatsapp_intake: service-role only (no anon policy) — the portal reads them server-side.
 alter table public.sales enable row level security;
+alter table public.whatsapp_intake enable row level security;

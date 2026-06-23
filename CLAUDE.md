@@ -84,6 +84,22 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-23 — Workflows deployed live + WhatsApp intake + `/report` engine.** Wired the live stack to
+  n8n Cloud (`https://hone21.app.n8n.cloud`). `scripts/n8n-deploy.js` now **injects secrets from
+  `.env.local` at push time** (n8n Cloud blocks `$env`) and is idempotent (update-by-name). **Deployed +
+  activated two workflows:** Supply-Market Intelligence (`Z7TPXWnlplp61VE7`, every 12h) and **WhatsApp
+  Intake via WaSender** (`NzuuId3FYrcqaAkb`, webhook `…/webhook/mec-wasender`) — new
+  `n8n/whatsapp-intake.json`: WaSender webhook → verify+extract → GPT-mini intent/product classification →
+  Supabase `whatsapp_intake` → auto-acknowledge reply. Supabase `schema.sql` made idempotent
+  (drop-then-create policy) + added `whatsapp_intake` table. New **`/report` skill** + branded
+  `scripts/jarvis-report.js` → JARVIS-themed HTML/PDF of every MEC workflow (internal/external, live state
+  + last run), Supabase row counts, and Vercel/JARVIS status. Keys for OpenAI/n8n/Supabase/WaSender live in
+  gitignored `.env.local` (validated: OpenAI 200, n8n 200, Supabase reachable). Build green.
+  - **One click left for the user:** run `supabase/schema.sql` in the Supabase SQL editor so the workflows
+    can store (tables currently 404). Optional: add `VERCEL_TOKEN` for live deploy insights in `/report`.
+  - **Next:** build the portal **Supply Intelligence** page (reads Supabase `supply_intel`) + a WhatsApp
+    intake inbox view; wire the live ERP when its API arrives (`/erp-sync deploy erp-scheduled-sync`).
+
 - **2026-06-23 — Scheduled ERP sync + Supply-Market Intelligence (n8n + OpenAI + Supabase).** Added the
   data-fetch/automation layer: new **`/erp-sync` skill** (`.claude/skills/erp-sync/`) that generates a
   timed fetch workflow (Schedule → fetch → normalise → Supabase) and deploys it to n8n via the public
