@@ -84,6 +84,14 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-23 — JARVIS now reasons (analyst, not parrot).** Rewrote the `/api/jarvis` system prompt: a
+  senior ops/finance analyst that **thinks step by step** (does the math, connects figures, reasons about
+  cause/risk/implication) and leads with a bottom line + why + recommendation; may compute/estimate (with
+  stated assumptions) and must never dodge a hard question with "not in the data". Bumped temp 0.2→0.4,
+  max_tokens 900, context cap 6k→14k. Enriched `buildContext`: actual gross profit + margin% + COGS +
+  below-min/loss counts, collections, biggest debtors, client amounts owed, min-margin floors, and the
+  procurement≠COGS note. Build green.
+
 - **2026-06-23 — Supply intel tabs + recommendations + live notifications.** Reorganized
   `/supply-intelligence` into **3 tabs**: **Forecasts** (charts + per-card Sources list of every reference
   link), **Recommendations** (actionable per product — secure/order/hold/monitor + "order ~N weeks ahead"

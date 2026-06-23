@@ -3,7 +3,7 @@
 // buildContext() — a compact data brief the /api/jarvis route feeds to ChatGPT.
 import {
   salesSummary, salesByMonth, salesBySalesperson, salesByClientName, salesByCategory, topProducts,
-  collectionsSummary, supplierSpend, procurementSummary, marginByCategory, crmSummary,
+  collectionsSummary, supplierSpend, procurementSummary, marginByCategory, crmSummary, profitSummary,
   monthLabel, categoryLabel, fmtSAR, MONTHS
 } from '@/lib/data/dataset'
 
@@ -118,17 +118,23 @@ export function buildContext(locale: 'en' | 'ar'): string {
   const reps = salesBySalesperson().slice(0, 5).map(r => `${r.en}:${Math.round(r.v)}`).join(', ')
   const cats = salesByCategory().map(x => `${x.key}:${Math.round(x.v)}`).join(', ')
   const margins = marginByCategory().map(m => `${m.key}:${m.marginPct}%`).join(', ')
-  const topC = salesByClientName().slice(0, 8).map(x => `${x.name}:${Math.round(x.revenue)}`).join('; ')
-  const sup = supplierSpend(6).map(x => `${x.supplier}:${Math.round(x.spend)}`).join('; ')
+  const topC = salesByClientName().slice(0, 10).map(x => `${x.name}:${Math.round(x.revenue)}(owes ${Math.round(x.outstanding)})`).join('; ')
+  const sup = supplierSpend(8).map(x => `${x.supplier}:${Math.round(x.spend)}`).join('; ')
+  const pr = profitSummary(); const col = collectionsSummary()
+  const debtors = salesByClientName().filter(x => x.outstanding > 0).sort((a, b) => b.outstanding - a.outstanding).slice(0, 6).map(x => `${x.name}:${Math.round(x.outstanding)}`).join('; ')
   return [
     `MEC (food importer/distributor, Saudi Arabia) operations data. Currency SAR. Period Oct 2025–Jun 2026.`,
-    `Sales total ${Math.round(s.revenue)} across ${s.invoices} invoices; collected ${Math.round(s.collected)}; outstanding ${Math.round(s.outstanding)}; VAT ${Math.round(s.vat)}.`,
-    `Procurement total ${Math.round(p.spend)} across ${p.suppliers} suppliers. Clients ${c.total} (${c.active} with sales).`,
+    `Sales total ${Math.round(s.revenue)} (incl 15% VAT) across ${s.invoices} invoices; collected ${Math.round(s.collected)}; outstanding ${Math.round(s.outstanding)}; VAT ${Math.round(s.vat)}.`,
+    `Procurement total ${Math.round(p.spend)} across ${p.suppliers} suppliers (this is total PURCHASED, not cost-of-goods-sold; the gap vs COGS is inventory + unmatched lines). Clients ${c.total} (${c.active} with sales).`,
+    `Actual gross profit (per-product sell vs matched buy cost, pre-VAT) on ${pr.priced} priced products: ${Math.round(pr.grossProfit)} on ${Math.round(pr.revenue)} revenue = ${pr.marginPct}% margin; COGS ${Math.round(pr.cogs)}. Flagged: ${pr.belowMin} below minimum margin, ${pr.lossMakers} sold at a loss.`,
+    `Collections: ${Math.round(col.collected)} collected vs ${Math.round(col.outstanding)} outstanding; cash ${Math.round(col.cash)}, bank ${Math.round(col.bank)}.`,
     `Sales by month: ${months}.`,
     `Sales by salesperson: ${reps}.`,
     `Sales by category: ${cats}. Gross margin by category: ${margins}.`,
-    `Top clients: ${topC}.`,
-    `Top suppliers: ${sup}.`,
-    `Answer concisely in ${locale === 'ar' ? 'Arabic' : 'English'}, using these figures. If asked for something not present, say it isn't in the data.`
+    `Top clients (revenue, owed): ${topC}.`,
+    `Biggest debtors (outstanding): ${debtors}.`,
+    `Top suppliers (spend): ${sup}.`,
+    `Minimum margin floors: meat 3%, chicken 5%, vegetables 6%, potatoes 10%.`,
+    `You may compute ratios, trends, per-unit economics and recommendations from these figures. Reason it through; give a decision-useful answer in ${locale === 'ar' ? 'Arabic' : 'English'}.`
   ].join('\n')
 }
