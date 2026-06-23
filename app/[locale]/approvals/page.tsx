@@ -1,8 +1,8 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
-import { ClipboardCheck, Check, X, Loader2, MessageCircle } from 'lucide-react'
+import { ClipboardCheck, Check, X, Loader2, MessageCircle, RefreshCw } from 'lucide-react'
 import { PageShell } from '@/components/PageShell'
 import { DisplayHeading } from '@/components/DisplayHeading'
 import { Eyebrow } from '@/components/Eyebrow'
@@ -19,8 +19,21 @@ export default function ApprovalsPage() {
   const [orders, setOrders] = useState<WhatsappMsg[] | null>(null)
   const [tab, setTab] = useState<Status>('pending')
   const [busy, setBusy] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
 
-  useEffect(() => { fetch('/api/approvals').then(r => r.json()).then(d => setOrders(Array.isArray(d) ? d : [])).catch(() => setOrders([])) }, [])
+  const load = useCallback(async (manual = false) => {
+    if (manual) setRefreshing(true)
+    try { const d = await fetch('/api/approvals').then(r => r.json()); if (Array.isArray(d)) setOrders(d) } catch { setOrders(o => o ?? []) }
+    if (manual) setRefreshing(false)
+  }, [])
+
+  useEffect(() => {
+    load()
+    const id = setInterval(() => load(), 20000) // auto-refresh so new orders appear
+    const onFocus = () => load()
+    window.addEventListener('focus', onFocus)
+    return () => { clearInterval(id); window.removeEventListener('focus', onFocus) }
+  }, [load])
 
   const list = orders ?? []
   const counts = useMemo(() => ({
@@ -43,10 +56,17 @@ export default function ApprovalsPage() {
 
   return (
     <PageShell breadcrumbs={[{ label: tNav('operations') }, { label: tNav('approvals') }]}>
-      <header className="mb-7 max-w-3xl">
-        <Eyebrow accent>{t('eyebrow')}</Eyebrow>
-        <DisplayHeading size="lg" className="mt-3" locale={locale}>{t('headline')}</DisplayHeading>
-        <p className="text-base text-text-soft mt-3 leading-relaxed">{t('subline')}</p>
+      <header className="mb-7 flex items-start justify-between gap-4">
+        <div className="max-w-3xl">
+          <Eyebrow accent>{t('eyebrow')}</Eyebrow>
+          <DisplayHeading size="lg" className="mt-3" locale={locale}>{t('headline')}</DisplayHeading>
+          <p className="text-base text-text-soft mt-3 leading-relaxed">{t('subline')}</p>
+        </div>
+        <button type="button" onClick={() => load(true)} disabled={refreshing} aria-label={t('refresh')}
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface hover:bg-surface-elev px-3.5 py-2 text-xs font-medium text-text-soft transition-colors disabled:opacity-60">
+          <RefreshCw className={clsx('h-3.5 w-3.5', refreshing && 'animate-spin')} strokeWidth={1.9} />
+          <span className="hidden sm:inline">{t('refresh')}</span>
+        </button>
       </header>
 
       <section className="mb-7 grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">

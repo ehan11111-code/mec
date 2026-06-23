@@ -30,7 +30,12 @@ export function NotificationBell() {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    fetch('/api/notifications').then(r => r.json()).then(d => { if (Array.isArray(d)) setLive(d) }).catch(() => {})
+    const load = () => fetch('/api/notifications').then(r => r.json()).then(d => { if (Array.isArray(d)) setLive(d) }).catch(() => {})
+    load()
+    const id = setInterval(load, 20000) // keep notifications fresh
+    const onFocus = () => load()
+    window.addEventListener('focus', onFocus)
+    return () => { clearInterval(id); window.removeEventListener('focus', onFocus) }
   }, [])
 
   useEffect(() => {

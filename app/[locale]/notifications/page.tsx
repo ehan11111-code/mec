@@ -26,7 +26,10 @@ export default function NotificationsPage() {
   const [live, setLive] = useState<typeof firm.notifications>([])
   const [readAll, setReadAll] = useState(false)
   const [filter, setFilter] = useState<NotificationType | 'all'>('all')
-  useEffect(() => { fetch('/api/notifications').then(r => r.json()).then(d => { if (Array.isArray(d)) setLive(d) }).catch(() => {}) }, [])
+  useEffect(() => {
+    const load = () => fetch('/api/notifications').then(r => r.json()).then(d => { if (Array.isArray(d)) setLive(d) }).catch(() => {})
+    load(); const id = setInterval(load, 20000); return () => clearInterval(id)
+  }, [])
   const items = [...live, ...firm.notifications].filter(n => filter === 'all' || n.type === filter)
   const filters: (NotificationType | 'all')[] = ['all', 'urgent', 'approval', 'attention', 'update']
   return (
