@@ -16,20 +16,21 @@ function riskTone(r: number) { return r >= 60 ? 'text-accent' : r >= 35 ? 'text-
 export default function ClientsPage() {
   const tNav = useTranslations('nav'); const t = useTranslations('clients'); const locale = useLocale() as 'en' | 'ar'
   const all = getClients(); const sum = crmSummary(); const byStatus = clientsByStatus(); const top = topClients(6)
+  const sorted = useMemo(() => [...all].sort((a, b) => b.totalRevenue - a.totalRevenue), [all])
   const [q, setQ] = useState('')
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase()
-    if (!s) return all
-    return all.filter(c => c.nameAr.toLowerCase().includes(s) || c.nameEn.toLowerCase().includes(s) || c.id.includes(s) || c.cityEn.toLowerCase().includes(s) || c.cityAr.includes(s))
-  }, [q, all])
-  const rows = filtered.slice(0, 60)
+    if (!s) return sorted
+    return sorted.filter(c => c.nameAr.toLowerCase().includes(s) || c.nameEn.toLowerCase().includes(s) || c.id.includes(s) || c.cityEn.toLowerCase().includes(s) || c.cityAr.includes(s))
+  }, [q, sorted])
+  const rows = filtered.slice(0, 80)
 
   return (
     <PageShell breadcrumbs={[{ label: tNav('operations') }, { label: tNav('clients') }]}>
       <header className="mb-8 max-w-3xl">
         <Eyebrow accent>{t('eyebrow')}</Eyebrow>
         <DisplayHeading size="lg" className="mt-3" locale={locale}>{t('headline')}</DisplayHeading>
-        <p className="text-base text-text-soft mt-3 leading-relaxed">{t('subline', { count: all.length })}</p>
+        <p className="text-base text-text-soft mt-3 leading-relaxed">{t('subline', { count: sum.total, erp: sum.erp, sales: sum.total - sum.erp })}</p>
       </header>
 
       <section className="mb-8 grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">

@@ -9,7 +9,7 @@ import { SlicerBar } from '@/components/SlicerBar'
 import { ExportBar } from '@/components/ExportBar'
 import { BrandLogo } from '@/components/BrandLogo'
 import { OverviewDashboard, SalesDashboard, ProcurementDashboard, MarginDashboard, CollectionsDashboard, ProductsDashboard } from '@/components/analytics/Dashboards'
-import { salesByClientName, supplierSpend, marginByCategory, topProducts, type SalesFilter } from '@/lib/data/dataset'
+import { salesByClientName, supplierSpend, productMargins, topProducts, type SalesFilter } from '@/lib/data/dataset'
 import type { Row } from '@/lib/export/exporters'
 
 type Tab = 'overview' | 'sales' | 'procurement' | 'margin' | 'collections' | 'products'
@@ -22,7 +22,7 @@ export default function AnalyticsPage() {
 
   const exportRows = (): Row[] => {
     if (tab === 'procurement') return supplierSpend(50)
-    if (tab === 'margin') return marginByCategory().map(m => ({ category: m.key, avgSell: m.avgSell, avgCost: m.avgCost, marginPct: m.marginPct, revenue: m.revenue }))
+    if (tab === 'margin') return productMargins().map(p => ({ product: p.item, category: p.category, cartons: p.units, sellPerCarton: p.avgSell, costPerCarton: p.unitCost ?? '', grossProfit: p.grossProfit ?? '', marginPct: p.marginPct ?? '', minMargin: p.minMargin, belowMin: p.belowMin ? 'YES' : '', status: p.confidence === 'none' ? 'cost n/a' : p.marginPct != null && p.marginPct < 0 ? 'loss' : p.belowMin ? 'below min' : 'healthy' }))
     if (tab === 'products') return topProducts(filter, 50)
     return salesByClientName(filter).map(r => ({ client: r.name, invoices: r.invoices, revenue: r.revenue, collected: r.collected, outstanding: r.outstanding }))
   }

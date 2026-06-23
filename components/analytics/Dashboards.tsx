@@ -1,6 +1,7 @@
 'use client'
 import { useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
+import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { StatCard } from '@/components/StatCard'
 import { Panel } from '@/components/Panel'
 import { BarChartPanel } from '@/components/BarChartPanel'
@@ -8,10 +9,11 @@ import { LineChartPanel } from '@/components/LineChartPanel'
 import { DonutStat } from '@/components/DonutStat'
 import { InfoTooltip } from '@/components/InfoTooltip'
 import { NoteCallout } from '@/components/NoteCallout'
+import { ProfitDiagram } from '@/components/analytics/ProfitDiagram'
 import {
   salesSummary, salesByMonth, salesBySalesperson, salesByCategory, salesByClientName, topProducts,
-  collectionsSummary, supplierSpend, purchasesByCategory, procurementSummary, marginByCategory,
-  monthLabel, categoryLabel, fmtSAR, type SalesFilter
+  collectionsSummary, supplierSpend, purchasesByCategory, procurementSummary, productMargins, profitSummary,
+  categoryLabel, fmtSAR, type SalesFilter
 } from '@/lib/data/dataset'
 
 type P = { filter: SalesFilter; locale: 'en' | 'ar' }
@@ -66,21 +68,22 @@ function TopClientsTable({ filter, locale, title }: P & { title: string }) {
 export function OverviewDashboard({ filter, locale }: P) {
   const t = useTranslations('analytics')
   const s = salesSummary(filter); const proc = procurementSummary()
-  const grossProfit = s.revenue - proc.spend
   return (
     <div className="space-y-6 md:space-y-8">
+      {/* Revenue = Collected + Receivables (reconciles on screen). VAT shown separately. */}
       <section className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         <StatCard label={t('kRevenue')} value={fmtSAR(s.revenue)} accent infoId="revenue" index={0} />
-        <StatCard label={t('kSpend')} value={fmtSAR(proc.spend)} infoId="procurement" index={1} />
-        <StatCard label={t('kGrossProfit')} value={fmtSAR(grossProfit)} accent infoId="grossProfit" index={2} />
-        <StatCard label={t('kReceivables')} value={fmtSAR(s.outstanding)} infoId="receivables" index={3} />
+        <StatCard label={t('collected')} value={fmtSAR(s.collected)} infoId="collected" index={1} />
+        <StatCard label={t('kReceivables')} value={fmtSAR(s.outstanding)} accent infoId="receivables" index={2} />
+        <StatCard label={t('kVat')} value={fmtSAR(s.vat)} infoId="vat" index={3} />
       </section>
       <section className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         <StatCard label={t('kInvoices')} value={f0(s.invoices)} infoId="invoices" index={0} />
-        <StatCard label={t('kClients')} value={f0(s.clients)} infoId="clients" index={1} />
-        <StatCard label={t('kVat')} value={fmtSAR(s.vat)} infoId="vat" index={2} />
-        <StatCard label={t('kAvgInvoice')} value={fmtSAR(s.avgInvoice)} infoId="avgInvoice" index={3} />
+        <StatCard label={t('kActiveClients')} value={f0(s.clients)} infoId="clients" index={1} />
+        <StatCard label={t('kAvgInvoice')} value={fmtSAR(s.avgInvoice)} infoId="avgInvoice" index={2} />
+        <StatCard label={t('kSpend')} value={fmtSAR(proc.spend)} infoId="procurement" index={3} />
       </section>
+      <NoteCallout tone="info">{t('reconcileNote')}</NoteCallout>
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
         <MonthLine filter={filter} locale={locale} title={t('revByMonth')} />
         <CategoryDonut filter={filter} locale={locale} title={t('byCategory')} />
@@ -133,36 +136,61 @@ export function ProcurementDashboard({ locale }: P) {
 
 export function MarginDashboard({ locale }: P) {
   const t = useTranslations('analytics')
-  const rows = marginByCategory()
+  const all = productMargins()
+  const sum = profitSummary()
+  const priced = all.filter(p => p.confidence !== 'none')
+  const topByGP = priced.slice(0, 15)                            // detailed diagram: top products by gross profit
+  const f0 = (n: number) => Math.round(n).toLocaleString('en-US')
+  const statusCell = (p: typeof all[number]) => {
+    if (p.confidence === 'none') return <span className="text-muted">{t('costNa')}</span>
+    if (p.marginPct != null && p.marginPct < 0) return <span className="inline-flex items-center gap-1 text-accent font-medium"><AlertTriangle className="h-3.5 w-3.5" />{t('loss')}</span>
+    if (p.belowMin) return <span className="inline-flex items-center gap-1 text-warn font-medium"><AlertTriangle className="h-3.5 w-3.5" />{t('belowMin')}</span>
+    return <span className="inline-flex items-center gap-1 text-success"><CheckCircle2 className="h-3.5 w-3.5" />{t('healthy')}</span>
+  }
   return (
     <div className="space-y-6 md:space-y-8">
-      <BarChartPanel locale={locale} title={t('marginByCategory')} subtitle={t('marginSub')} valueFormat="pct" valueLabel={t('marginPct')}
-        data={rows.map((r, i) => ({ label: categoryLabel(r.key, locale), value: r.marginPct, accent: i === 0 }))} height={260} />
-      <Panel title={t('sellVsCost')} bodyClassName="px-0 pb-0">
+      <section className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
+        <StatCard label={t('totalGrossProfit')} value={fmtSAR(sum.grossProfit)} accent infoId="grossProfitActual" index={0} />
+        <StatCard label={t('overallMargin')} value={`${sum.marginPct}%`} infoId="overallMargin" index={1} />
+        <StatCard label={t('belowMinCount')} value={`${sum.belowMin}`} accent infoId="belowMinCount" index={2} />
+        <StatCard label={t('lossMakers')} value={`${sum.lossMakers}`} infoId="lossMakers" index={3} />
+      </section>
+
+      <ProfitDiagram rows={topByGP} title={t('profitDiagram')} subtitle={t('profitDiagramSub')} />
+
+      <Panel title={t('profitTable')} bodyClassName="px-0 pb-0">
         <div className="overflow-x-auto scrollbar-soft">
           <table className="w-full text-sm">
             <thead><tr className="text-xs text-muted border-b border-border">
-              <th className="text-start font-medium px-5 md:px-6 py-3"><span className="inline-flex items-center gap-1.5">{t('colCategory')}<InfoTooltip id="category" /></span></th>
-              <th className="text-end font-medium px-4 py-3"><span className="inline-flex items-center gap-1.5">{t('avgSell')}<InfoTooltip id="avgSell" /></span></th>
-              <th className="text-end font-medium px-4 py-3"><span className="inline-flex items-center gap-1.5">{t('avgCost')}<InfoTooltip id="avgCost" /></span></th>
-              <th className="text-end font-medium px-4 py-3"><span className="inline-flex items-center gap-1.5">{t('marginPct')}<InfoTooltip id="margin" /></span></th>
-              <th className="text-end font-medium px-5 md:px-6 py-3">{t('kRevenue')}</th>
+              <th className="text-start font-medium px-5 md:px-6 py-3">{t('colProduct')}</th>
+              <th className="text-start font-medium px-3 py-3 hidden md:table-cell"><span className="inline-flex items-center gap-1.5">{t('colCategory')}<InfoTooltip id="category" /></span></th>
+              <th className="text-end font-medium px-3 py-3 hidden sm:table-cell">{t('colCartons')}</th>
+              <th className="text-end font-medium px-3 py-3"><span className="inline-flex items-center gap-1.5">{t('avgSell')}<InfoTooltip id="avgSell" /></span></th>
+              <th className="text-end font-medium px-3 py-3"><span className="inline-flex items-center gap-1.5">{t('avgCost')}<InfoTooltip id="avgCost" /></span></th>
+              <th className="text-end font-medium px-3 py-3"><span className="inline-flex items-center gap-1.5">{t('grossProfit')}<InfoTooltip id="grossProfitActual" /></span></th>
+              <th className="text-end font-medium px-3 py-3">{t('marginPct')}</th>
+              <th className="text-end font-medium px-3 py-3 hidden sm:table-cell">{t('minMargin')}</th>
+              <th className="text-end font-medium px-5 md:px-6 py-3">{t('status')}</th>
             </tr></thead>
             <tbody className="divide-y divide-border">
-              {rows.map((r, i) => (
-                <tr key={i} className="hover:bg-surface-elev transition-colors">
-                  <td className="px-5 md:px-6 py-2.5 text-text">{categoryLabel(r.key, locale)}</td>
-                  <td className="px-4 py-2.5 text-end tabular-nums text-text-soft">SAR {r.avgSell}</td>
-                  <td className="px-4 py-2.5 text-end tabular-nums text-text-soft">SAR {r.avgCost}</td>
-                  <td className={clsx('px-4 py-2.5 text-end tabular-nums font-medium', r.marginPct >= 20 ? 'text-success' : r.marginPct >= 10 ? 'text-warn' : 'text-accent')}>{r.marginPct}%</td>
-                  <td className="px-5 md:px-6 py-2.5 text-end tabular-nums text-accent">{fmtSAR(r.revenue)}</td>
+              {all.map((p, i) => (
+                <tr key={i} className={clsx('hover:bg-surface-elev transition-colors', p.belowMin && p.confidence !== 'none' && 'bg-warn-soft/30', p.marginPct != null && p.marginPct < 0 && 'bg-accent-soft/30')}>
+                  <td className="px-5 md:px-6 py-2.5 text-text max-w-[260px] truncate">{p.item}</td>
+                  <td className="px-3 py-2.5 text-text-soft hidden md:table-cell">{categoryLabel(p.category, locale)}</td>
+                  <td className="px-3 py-2.5 text-end tabular-nums text-text-soft hidden sm:table-cell">{f0(p.units)}</td>
+                  <td className="px-3 py-2.5 text-end tabular-nums text-text-soft">{fmtSAR(p.avgSell)}</td>
+                  <td className="px-3 py-2.5 text-end tabular-nums text-text-soft">{p.unitCost != null ? fmtSAR(p.unitCost) : '—'}</td>
+                  <td className={clsx('px-3 py-2.5 text-end tabular-nums font-medium', p.grossProfit == null ? 'text-muted' : p.grossProfit < 0 ? 'text-accent' : 'text-success')}>{p.grossProfit != null ? fmtSAR(p.grossProfit) : '—'}</td>
+                  <td className={clsx('px-3 py-2.5 text-end tabular-nums', p.marginPct == null ? 'text-muted' : p.marginPct < 0 ? 'text-accent' : p.belowMin ? 'text-warn' : 'text-success')}>{p.marginPct != null ? `${p.marginPct}%` : '—'}</td>
+                  <td className="px-3 py-2.5 text-end tabular-nums text-muted hidden sm:table-cell">{p.minMargin}%</td>
+                  <td className="px-5 md:px-6 py-2.5 text-end text-xs">{statusCell(p)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </Panel>
-      <NoteCallout tone="info">{t('marginNote')}</NoteCallout>
+      <NoteCallout tone="info">{t('profitNote')}</NoteCallout>
     </div>
   )
 }

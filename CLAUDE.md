@@ -84,6 +84,17 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-23 — Number reconciliation (no contradictions) + per-product gross profit.** Fixed
+  contradicting figures flagged in review: revenue/receivables/clients now use **one canonical value
+  everywhere** (Control Center = Analytics = CRM). **Every sale is attributed to a client** (ERP +
+  sales-only rows incl. "Cash / unspecified") so CRM totals reconcile exactly: Revenue **31,084,511** =
+  Collected **6,024,714** + Receivables **25,059,797** (verified). Removed the misleading "revenue −
+  procurement" gross-profit estimate. Added **actual per-product gross profit** (`productMargins`):
+  each product's sell price vs its **matched purchase cost per carton** (Jaccard name match, 105/120
+  priced), pre-VAT, with **minimum-margin floors** (meat 3% · chicken 5% · vegetables 6% · potatoes 10%)
+  → flags below-min and loss-making products. New **ProfitDiagram** (per-product cost/profit bars +
+  floor marker) on the Margin tab. Total gross profit ≈ SAR 1.99M (8.3% on priced products). Build green.
+
 - **2026-06-23 — Data correctness, clarity (info+source icons), no-mock, comma numbers, polish.**
   Fixed issues found in the live review: (1) removed **SAR 32.3M of spreadsheet subtotal/total rows**
   from import → revenue corrects to **SAR 31,084,511**; (2) eliminated the **"Other"** category by

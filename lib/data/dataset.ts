@@ -160,41 +160,140 @@ export function marginByCategory(): { key: string; ar: string; en: string; avgSe
   return out.sort((a, b) => b.revenue - a.revenue)
 }
 
+// ── per-PRODUCT actual gross profit (each product's own sell price vs its matched purchase cost) ──
+function tokens(s: string): string[] {
+  return String(s || '').replace(/[0-9.]+/g, ' ').replace(/[^؀-ۿ\s]/g, ' ')
+    .split(/\s+/).filter(w => w.length > 1 && !['كجم', 'وزن', 'كرتون', 'بوكس'].includes(w))
+}
+function jaccard(a: string[], b: string[]): number {
+  const A = new Set(a), B = new Set(b); let i = 0; for (const x of A) if (B.has(x)) i++
+  return i / (A.size + B.size - i || 1)
+}
+// Minimum acceptable gross margin % per product family (set by MEC). Potatoes are split out of
+// Vegetables. Products below their floor are flagged for pricing/approval review.
+const MIN_MARGIN: Record<string, number> = { Beef: 3, Lamb: 3, Poultry: 5, Processed: 5, Dairy: 6, Vegetables: 6 }
+export function minMarginFor(category: string, item: string): number {
+  if (/بطاطس|potato/i.test(item)) return 10        // potatoes
+  return MIN_MARGIN[category] ?? 5
+}
+export type ProductMargin = {
+  item: string; category: string; categoryAr: string; units: number; revenue: number
+  avgSell: number; unitCost: number | null; unitProfit: number | null; cogs: number | null
+  grossProfit: number | null; marginPct: number | null; minMargin: number; belowMin: boolean
+  matchedCost: string; confidence: 'high' | 'low' | 'none'
+}
+let _prodMargins: ProductMargin[] | null = null
+export function productMargins(): ProductMargin[] {
+  if (_prodMargins) return _prodMargins
+  // purchase cost candidates (token sets) — average cost per identical purchase item
+  const purItems = new Map<string, { cost: number; n: number; tok: string[] }>()
+  for (const p of purchases) {
+    if (isSupplierNoise(p.supplier) || p.unitCost <= 0) continue
+    const cur = purItems.get(p.item) ?? { cost: 0, n: 0, tok: tokens(p.item) }
+    cur.cost += p.unitCost; cur.n++; purItems.set(p.item, cur)
+  }
+  const purList = [...purItems.entries()].map(([item, v]) => ({ item, cost: v.cost / v.n, tok: v.tok }))
+  // aggregate sales per product (pre-VAT basis for a true margin)
+  const prod = new Map<string, { category: string; categoryAr: string; units: number; revenue: number; priceSum: number; n: number; tok: string[] }>()
+  for (const r of sales) {
+    if (r.preVat <= 0) continue
+    const cur = prod.get(r.item) ?? { category: r.category, categoryAr: r.categoryAr, units: 0, revenue: 0, priceSum: 0, n: 0, tok: tokens(r.item) }
+    cur.units += r.qty; cur.revenue += r.preVat; cur.priceSum += r.unitPrice; cur.n++; prod.set(r.item, cur)
+  }
+  const out: ProductMargin[] = []
+  for (const [item, p] of prod.entries()) {
+    const avgSell = p.n ? p.priceSum / p.n : 0
+    let best: { item: string; cost: number } | null = null; let bs = 0
+    for (const pu of purList) { const s = jaccard(p.tok, pu.tok); if (s > bs) { bs = s; best = pu } }
+    const min = minMarginFor(p.category, item)
+    if (!best || bs < 0.5) {
+      out.push({ item, category: p.category, categoryAr: p.categoryAr, units: Math.round(p.units), revenue: Math.round(p.revenue), avgSell: Math.round(avgSell), unitCost: null, unitProfit: null, cogs: null, grossProfit: null, marginPct: null, minMargin: min, belowMin: false, matchedCost: '', confidence: 'none' })
+      continue
+    }
+    const unitCost = best.cost
+    const cogs = p.units * unitCost
+    const grossProfit = p.revenue - cogs
+    const marginPct = p.revenue > 0 ? (grossProfit / p.revenue) * 100 : 0
+    const confidence: 'high' | 'low' = (bs >= 0.6 && marginPct <= 65 && marginPct >= -40) ? 'high' : 'low'
+    out.push({
+      item, category: p.category, categoryAr: p.categoryAr, units: Math.round(p.units), revenue: Math.round(p.revenue),
+      avgSell: Math.round(avgSell), unitCost: Math.round(unitCost), unitProfit: Math.round(avgSell - unitCost),
+      cogs: Math.round(cogs), grossProfit: Math.round(grossProfit), marginPct: Math.round(marginPct * 10) / 10,
+      minMargin: min, belowMin: marginPct < min, matchedCost: best.item, confidence
+    })
+  }
+  out.sort((a, b) => (b.grossProfit ?? -Infinity) - (a.grossProfit ?? -Infinity))
+  _prodMargins = out
+  return out
+}
+export function profitSummary() {
+  const rows = productMargins().filter(r => r.grossProfit != null && r.confidence !== 'low')
+  const revenue = rows.reduce((s, r) => s + r.revenue, 0)
+  const cogs = rows.reduce((s, r) => s + (r.cogs ?? 0), 0)
+  const grossProfit = revenue - cogs
+  const all = productMargins()
+  return {
+    revenue, cogs, grossProfit, marginPct: revenue > 0 ? Math.round((grossProfit / revenue) * 1000) / 10 : 0,
+    products: all.length, priced: all.filter(r => r.confidence === 'high').length,
+    lowConf: all.filter(r => r.confidence === 'low').length, unpriced: all.filter(r => r.confidence === 'none').length,
+    lossMakers: all.filter(r => r.marginPct != null && r.marginPct < 0).length,
+    belowMin: all.filter(r => r.confidence !== 'none' && r.belowMin).length
+  }
+}
+
 // ── sales → CRM client join (REAL revenue) ──
+// EVERY sale is attributed to a client so the CRM totals reconcile exactly with Analytics/Control
+// Center. ERP clients are matched by name; sales-only names (incl. "Cash / unspecified") become their
+// own client rows. So Σ(client revenue) === total sales, Σ(client overdue) === total receivables.
 type ClientAgg = { revenue: number; invoices: number; collected: number }
 let _enriched: Client[] | null = null
+function riskFrom(revenue: number, overdue: number) { return revenue > 0 ? Math.min(95, Math.round((overdue / revenue) * 80 + 10)) : 20 }
 function enrichClients(): Client[] {
   if (_enriched) return _enriched
   const normToClient = new Map<string, Client>()
   for (const c of rawClients) normToClient.set(norm(c.nameAr), c)
-  const agg = new Map<string, ClientAgg>() // clientId -> agg
-  const byName = salesByClientName()
-  for (const sn of byName) {
+  const agg = new Map<string, ClientAgg>()                 // ERP clientId -> agg
+  const unmatched: { name: string; revenue: number; invoices: number; collected: number }[] = []
+  for (const sn of salesByClientName()) {
     const n = norm(sn.name)
     let client = normToClient.get(n)
     if (!client) client = rawClients.find(c => { const cn = norm(c.nameAr); return cn.includes(n) || n.includes(cn) })
-    if (!client) continue
-    const cur = agg.get(client.id) ?? { revenue: 0, invoices: 0, collected: 0 }
-    cur.revenue += sn.revenue; cur.invoices += sn.invoices; cur.collected += sn.collected; agg.set(client.id, cur)
+    if (client) {
+      const cur = agg.get(client.id) ?? { revenue: 0, invoices: 0, collected: 0 }
+      cur.revenue += sn.revenue; cur.invoices += sn.invoices; cur.collected += sn.collected; agg.set(client.id, cur)
+    } else {
+      unmatched.push({ name: sn.name, revenue: sn.revenue, invoices: sn.invoices, collected: sn.collected })
+    }
   }
-  _enriched = rawClients.map(c => {
+  const erp: Client[] = rawClients.map(c => {
     const a = agg.get(c.id)
     if (!a) return { ...c, totalRevenue: 0, totalOrders: 0, overdueAmount: 0, riskScore: 20, status: 'lead' as const }
     const overdue = Math.max(0, a.revenue - a.collected)
-    const risk = a.revenue > 0 ? Math.min(95, Math.round((overdue / a.revenue) * 80 + 10)) : 20
-    return { ...c, totalRevenue: Math.round(a.revenue), totalOrders: a.invoices, overdueAmount: Math.round(overdue), riskScore: risk, status: 'active' as const }
+    return { ...c, totalRevenue: Math.round(a.revenue), totalOrders: a.invoices, overdueAmount: Math.round(overdue), riskScore: riskFrom(a.revenue, overdue), status: 'active' as const }
   })
+  const salesOnly: Client[] = unmatched.map((u, i) => {
+    const overdue = Math.max(0, u.revenue - u.collected)
+    return {
+      id: `SC-${i + 1}`, nameAr: u.name, nameEn: u.name, salespersonAr: 'غير محدد', salespersonEn: 'Unassigned',
+      branch: '', source: 'Sales', type: '', mobile: '', crNumber: '', accountNumber: '', cityAr: '', cityEn: '',
+      active: true, status: 'active' as const, riskScore: riskFrom(u.revenue, overdue),
+      totalOrders: u.invoices, totalRevenue: Math.round(u.revenue), overdueAmount: Math.round(overdue), paymentTermsDays: 0
+    }
+  })
+  _enriched = [...erp, ...salesOnly]
   return _enriched
 }
 export function getClients(): Client[] { return enrichClients() }
 export function getClient(id: string): Client | undefined { return enrichClients().find(c => c.id === id) }
+export function erpClientCount() { return rawClients.length }
+// CRM headline figures read the SAME canonical totals as Analytics/Control Center (no scope drift).
 export function crmSummary() {
   const all = enrichClients()
+  const s = salesSummary()
+  const atRisk = all.filter(c => c.riskScore >= 60 && c.totalRevenue > 0).length
   const withSales = all.filter(c => c.totalRevenue > 0)
-  const revenue = all.reduce((s, c) => s + c.totalRevenue, 0)
-  const overdue = all.reduce((s, c) => s + c.overdueAmount, 0)
-  const atRisk = all.filter(c => c.riskScore >= 60).length
-  return { total: all.length, active: withSales.length, revenue, overdue, atRisk, avgRisk: Math.round(all.reduce((s, c) => s + c.riskScore, 0) / all.length) }
+  const avgRisk = withSales.length ? Math.round(withSales.reduce((sum, c) => sum + c.riskScore, 0) / withSales.length) : 0
+  return { total: all.length, erp: rawClients.length, active: withSales.length, revenue: s.revenue, overdue: s.outstanding, atRisk, avgRisk }
 }
 export function clientsByStatus() {
   const all = enrichClients()
