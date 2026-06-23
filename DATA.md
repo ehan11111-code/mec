@@ -13,9 +13,14 @@ deterministic, so once imported the data renders identically on localhost and on
   regenerate with `node DATA/_salesgen.js`. Power the **Analytics** suite, **Orders**, JARVIS, and make
   **client revenue real**. The importer cleans subtotal/tax rows, validates dates, dedupes the
   overlapping Q2 purchase sheet, and categorises Arabic product names (`lib/data/categorize.ts`).
+  - Importer now **drops spreadsheet subtotal/total rows** (blank invoice+client+item) — these had
+    inflated revenue to SAR 64.5M; corrected revenue is **SAR 31,084,511**. Blank client cells are
+    labelled "Cash / unspecified"; returns/`عام` are excluded from the salesperson breakdown.
+  - Categoriser (`lib/data/categorize.ts`) covers the full Arabic meat taxonomy → **no "Other" bucket**.
   - **Not usable from the source:** the *paid / remaining / dwell-time* columns in the purchase sheets
-    were left blank, so supplier-payables and inventory-turnover views are omitted until that data
-    arrives. ~19% of products land in an "Other" category — extend the categoriser keywords to shrink it.
+    were left blank, so supplier-payables and inventory-turnover views are omitted until that data arrives.
+  - Every figure in the portal carries an **(i) icon** with its definition and **source reference**
+    (which file / JARVIS-derived) — see `lib/info/definitions.ts`.
 
 ## How to send more data
 

@@ -1,0 +1,43 @@
+// Definitions + SOURCE REFERENCE for every metric/figure shown in the portal. Each (i) info icon reads
+// from here so the user always sees (a) what the number means and (b) exactly where it comes from —
+// a file, a JARVIS-derived calculation, or an external reference. Bilingual EN/AR.
+export type Bi = { en: string; ar: string }
+export type Def = { def: Bi; source: Bi }
+
+const SALES_SRC: Bi = { en: 'Source file: مبيعات Q4-2025 / Q1-2026 / Q2-2026.xlsx (sales invoices, Oct 2025–Jun 2026).', ar: 'ملف المصدر: مبيعات الربع الرابع 2025 / الأول 2026 / الثاني 2026.xlsx (فواتير المبيعات، أكتوبر 2025–يونيو 2026).' }
+const PURCH_SRC: Bi = { en: 'Source: the المشتريات (procurement) sheet inside the sales workbooks.', ar: 'المصدر: ورقة المشتريات داخل ملفات المبيعات.' }
+const CLIENTS_SRC: Bi = { en: 'Source file: بيانات العملاء.xlsx (ERP client export, 112 clients).', ar: 'ملف المصدر: بيانات العملاء.xlsx (تصدير العملاء من ERP، 112 عميلًا).' }
+const DERIVED: Bi = { en: 'Derived by JARVIS analytics from the sales & procurement workbooks.', ar: 'محسوب بواسطة تحليلات جارفيس من ملفات المبيعات والمشتريات.' }
+
+export const DEFS: Record<string, Def> = {
+  revenue: { def: { en: 'Total sales value including 15% VAT, summed from invoice lines.', ar: 'إجمالي قيمة المبيعات شاملة ضريبة 15%، مجموعة من بنود الفواتير.' }, source: { en: SALES_SRC.en + ' Field: المبلغ بعد الضريبة.', ar: SALES_SRC.ar + ' الحقل: المبلغ بعد الضريبة.' } },
+  procurement: { def: { en: 'Total amount spent buying stock from suppliers (incl. VAT).', ar: 'إجمالي المبلغ المنفق على شراء البضائع من الموردين (شامل الضريبة).' }, source: PURCH_SRC },
+  grossProfit: { def: { en: 'Estimated gross profit = total sales revenue − total procurement spend.', ar: 'الربح الإجمالي التقديري = إجمالي إيراد المبيعات − إجمالي إنفاق المشتريات.' }, source: DERIVED },
+  receivables: { def: { en: 'Sales value not yet marked collected — money clients still owe.', ar: 'قيمة المبيعات غير المُحصّلة بعد — أموال ما زال العملاء مدينين بها.' }, source: { en: SALES_SRC.en + ' Field: حالة التحصيل.', ar: SALES_SRC.ar + ' الحقل: حالة التحصيل.' } },
+  invoices: { def: { en: 'Count of sales invoice lines in the selected period.', ar: 'عدد بنود فواتير المبيعات في الفترة المحددة.' }, source: SALES_SRC },
+  clients: { def: { en: 'Distinct clients that appear in the sales invoices.', ar: 'العملاء المختلفون الذين يظهرون في فواتير المبيعات.' }, source: SALES_SRC },
+  vat: { def: { en: 'Value-added tax (15%) charged on the sales.', ar: 'ضريبة القيمة المضافة (15%) المحتسبة على المبيعات.' }, source: { en: SALES_SRC.en + ' Field: الضريبة.', ar: SALES_SRC.ar + ' الحقل: الضريبة.' } },
+  avgInvoice: { def: { en: 'Average value per invoice = revenue ÷ number of invoices.', ar: 'متوسط قيمة الفاتورة = الإيراد ÷ عدد الفواتير.' }, source: DERIVED },
+  suppliers: { def: { en: 'Distinct suppliers MEC purchased from.', ar: 'الموردون المختلفون الذين اشترت منهم MEC.' }, source: PURCH_SRC },
+  purchaseLines: { def: { en: 'Count of procurement line items.', ar: 'عدد بنود الشراء.' }, source: PURCH_SRC },
+  collected: { def: { en: 'Sales value marked as collected (تم) from clients.', ar: 'قيمة المبيعات المعلّمة كمُحصّلة (تم) من العملاء.' }, source: { en: SALES_SRC.en + ' Field: حالة التحصيل.', ar: SALES_SRC.ar + ' الحقل: حالة التحصيل.' } },
+  outstanding: { def: { en: 'Sales value still uncollected (receivables).', ar: 'قيمة المبيعات غير المُحصّلة (المستحقات).' }, source: { en: SALES_SRC.en + ' Field: حالة التحصيل.', ar: SALES_SRC.ar + ' الحقل: حالة التحصيل.' } },
+  cash: { def: { en: 'Sales paid in cash.', ar: 'المبيعات المدفوعة نقدًا.' }, source: { en: SALES_SRC.en + ' Field: كاش / تحويل بنكي.', ar: SALES_SRC.ar + ' الحقل: كاش / تحويل بنكي.' } },
+  bank: { def: { en: 'Sales paid by bank transfer.', ar: 'المبيعات المدفوعة بتحويل بنكي.' }, source: { en: SALES_SRC.en + ' Field: كاش / تحويل بنكي.', ar: SALES_SRC.ar + ' الحقل: كاش / تحويل بنكي.' } },
+  margin: { def: { en: 'Gross margin % = (avg sell price − avg buy cost) ÷ avg sell price, per category.', ar: 'نسبة الهامش = (متوسط سعر البيع − متوسط تكلفة الشراء) ÷ متوسط سعر البيع، لكل فئة.' }, source: DERIVED },
+  avgSell: { def: { en: 'Average sell unit price for the category (from sales).', ar: 'متوسط سعر بيع الوحدة للفئة (من المبيعات).' }, source: SALES_SRC },
+  avgCost: { def: { en: 'Average buy unit cost for the category (from purchases).', ar: 'متوسط تكلفة شراء الوحدة للفئة (من المشتريات).' }, source: PURCH_SRC },
+  clientsTotal: { def: { en: 'Total clients on record in the CRM.', ar: 'إجمالي العملاء المسجّلين في إدارة العملاء.' }, source: CLIENTS_SRC },
+  overdue: { def: { en: 'Uncollected balance for the client (sales not marked collected).', ar: 'الرصيد غير المُحصّل للعميل (مبيعات غير معلّمة كمحصّلة).' }, source: { en: CLIENTS_SRC.en + ' Joined with ' + SALES_SRC.en, ar: CLIENTS_SRC.ar + ' مدموج مع ' + SALES_SRC.ar } },
+  atRisk: { def: { en: 'Clients with a risk score ≥ 60% (high uncollected ratio).', ar: 'العملاء بدرجة مخاطر ≥ 60% (نسبة تحصيل منخفضة).' }, source: DERIVED },
+  riskScore: { def: { en: 'Risk score = share of the client’s sales still uncollected, scaled 0–95.', ar: 'درجة المخاطر = نسبة مبيعات العميل غير المُحصّلة، على مقياس 0–95.' }, source: DERIVED },
+  ordersTotal: { def: { en: 'Total orders (one per sales invoice).', ar: 'إجمالي الطلبات (واحد لكل فاتورة مبيعات).' }, source: SALES_SRC },
+  openOrders: { def: { en: 'Orders awaiting payment (not yet collected).', ar: 'الطلبات بانتظار السداد (لم تُحصّل بعد).' }, source: SALES_SRC },
+  orderValue: { def: { en: 'Total value of all orders (incl. VAT).', ar: 'إجمالي قيمة كل الطلبات (شاملة الضريبة).' }, source: SALES_SRC },
+  avgMargin: { def: { en: 'Average gross margin % across orders (by product category).', ar: 'متوسط نسبة الهامش عبر الطلبات (حسب فئة المنتج).' }, source: DERIVED },
+  topClients: { def: { en: 'Clients ranked by total sales revenue in the period.', ar: 'العملاء مرتّبون حسب إجمالي إيراد المبيعات في الفترة.' }, source: SALES_SRC },
+  category: { def: { en: 'Product family (Beef, Poultry, Lamb, Processed, Dairy, Vegetables) auto-classified from the Arabic item name.', ar: 'عائلة المنتج (لحوم، دواجن، غنم، مصنّعة، ألبان، خضروات) مصنّفة تلقائيًا من اسم الصنف.' }, source: { en: 'Classified by JARVIS from ' + SALES_SRC.en, ar: 'مصنّفة بواسطة جارفيس من ' + SALES_SRC.ar } },
+  salesperson: { def: { en: 'Sales attributed to each salesperson; unattributed invoices are grouped as “Unassigned”.', ar: 'المبيعات المنسوبة لكل مندوب؛ الفواتير غير المنسوبة تُجمع كـ«غير محدد».' }, source: { en: SALES_SRC.en + ' Field: المندوب.', ar: SALES_SRC.ar + ' الحقل: المندوب.' } }
+}
+
+export function getDef(id: string): Def | undefined { return DEFS[id] }

@@ -53,22 +53,29 @@ function serialToISO(serial) { const n = num(serial); if (n < 45000 || n > 47000
 function monthKey(iso) { return iso ? iso.slice(0, 7) : '' }
 
 // ── product categoriser (mirror of lib/data/categorize.ts — keep in sync) ──
+const CAT_AR = { Poultry: 'دواجن', Beef: 'لحوم بقري', Lamb: 'لحوم غنم', Processed: 'منتجات مصنّعة', Dairy: 'أجبان وألبان', Vegetables: 'خضروات', Other: 'أخرى' }
 function categorize(itemRaw) {
   const s = String(itemRaw || '')
-  let category = 'Other', catAr = 'أخرى', origin = '', originAr = ''
-  if (/دجاج|صدور|ارجل|أرجل|اجنحة|أجنحة|فيليه دجاج|بوبي فيل|فيل ليجز|فيل/.test(s)) { category = 'Poultry'; catAr = 'دواجن' }
-  else if (/لحم|توب سايد|سلفر سايد|توب|بيف|عجل|بقري|غنم|كبدة|ريش/.test(s)) { category = 'Beef'; catAr = 'لحوم' }
-  else if (/بطاطس|خضار|بصل|طماطم|فلفل/.test(s)) { category = 'Vegetables'; catAr = 'خضروات' }
-  else if (/شاورما|برجر|كباب|مصنّع|مصنع|ناجت|كبة/.test(s)) { category = 'Processed'; catAr = 'مصنّعة' }
+  let category = 'Other'
+  if (/دجاج|صدور|صدر|ارجل|أرجل|اجنحة|أجنحة|فيل ليج|ليجز|ورك|أوراك|افخاذ|كبد دجاج|شاورما دجاج/.test(s)) category = 'Poultry'
+  else if (/خروف|غنم|ضأن|ضاني|حري|موزات/.test(s)) category = 'Lamb'
+  else if (/جبن|جبنة|زبد|زبدة|لبن|حليب|قشطة|كريم/.test(s)) category = 'Dairy'
+  else if (/شاورما|برجر|برغر|كباب|كفتة|ناجت|نقانق|مرتديلا|هوت دوج|سجق|كبة/.test(s)) category = 'Processed'
+  else if (/بطاطس|خضار|خضروات|بصل|طماطم|فلفل|بازلاء|جزر/.test(s)) category = 'Vegetables'
+  else if (/توب سايد|سلفر سايد|فور كوارتر|فور كورتر|فوركوارتر|كوارتر|تندر ليون|تندرليون|رامب|ستيك|فلانك|ثك فلانك|فيليه|فخدة|فخذ|عجل|بقر|بقري|لحم|رول|سلايس|بوبي فيل|تمام|نخاع|كبدة|ريش|عصب/.test(s)) category = 'Beef'
+  else if (s.trim().length > 0) category = 'Beef'
+  let origin = '', originAr = ''
   if (/هندي|الهند/.test(s)) { origin = 'India'; originAr = 'الهند' }
   else if (/برازيلي|البرازيل/.test(s)) { origin = 'Brazil'; originAr = 'البرازيل' }
   else if (/استرالي|أسترالي/.test(s)) { origin = 'Australia'; originAr = 'أستراليا' }
+  else if (/روسي|روسيا/.test(s)) { origin = 'Russia'; originAr = 'روسيا' }
   else if (/فرنسي|فرنسا/.test(s)) { origin = 'France'; originAr = 'فرنسا' }
-  return { category, catAr, origin, originAr }
+  return { category, catAr: CAT_AR[category], origin, originAr }
 }
 
-const REP_EN = { 'محمود': 'Mahmoud', 'عمرو': 'Amr', 'تامر': 'Tamer', 'عام': 'General', 'محمد': 'Mohammed' }
-function repEn(ar) { return REP_EN[ar] || (ar || 'General') }
+const REP_EN = { 'محمود': 'Mahmoud', 'عمرو': 'Amr', 'تامر': 'Tamer', 'عام': 'Unassigned', 'غير محدد': 'Unassigned', 'أبو خالد': 'Abu Khalid', 'محمد': 'Mohammed' }
+function repEn(ar) { return REP_EN[ar] || (ar || 'Unassigned') }
+const locale_unspecified = 'عميل نقدي / غير محدد'  // blank client cell → labelled cash/unspecified
 function isJunk(s) { return /اجمالي|الاجمالي|إجمالي|المجموع|الضريبة المستحقة|ضريبة مشتريات|اجمالى/.test(String(s || '')) }
 
 // header text → column index (match by keyword, robust to suffixes & column shifts)
@@ -139,18 +146,25 @@ for (const fname of FILES) {
       const cPay = findCol(hm, v => /كاش/.test(v))
       for (const row of rows) {
         if (row.r <= 2) continue
-        const c = row.cells; const client = c[cClient]
+        const c = row.cells; const client = (c[cClient] || '').trim(); const item = (c[cItem] || '').trim()
         const post = num(c[cPost]); if (!post) continue
-        if (isJunk(client) || isJunk(c[cItem])) continue
-        const iso = serialToISO(c[cDate])
-        const repAr = (c[cRep] && !/^\d+$/.test(c[cRep])) ? c[cRep] : 'عام'
+        const inv = (c[cInv] || '').trim(); const iso = serialToISO(c[cDate])
+        // Drop subtotal/total rows: no item (or "0"), or no invoice AND no date — these are sheet sums.
+        if (!item || item === '0') continue
+        if (!inv && !iso) continue
+        if (isJunk(client) || isJunk(item)) continue
+        const repRaw = (c[cRep] || '').trim()
+        // 'مرتجع' (return marker) and 'عام' (generic) are not real salespeople → unassigned bucket.
+        const repAr = (repRaw && !/^\d+$/.test(repRaw) && !/مرتجع|^عام$/.test(repRaw)) ? repRaw : 'غير محدد'
         const coll = String(c[cColl] || '')
         const collected = /تم/.test(coll) && !/مرتجع/.test(coll)
-        const cat = categorize(c[cItem])
+        const cat = categorize(item)
+        // Real cash sales sometimes have a blank client cell → label clearly, never leave empty.
+        const clientName = client && !isJunk(client) ? client : (locale_unspecified)
         sales.push({
-          id: 'S-' + (salesSeq++), date: iso, month: monthKey(iso), invoiceNo: esc(c[cInv]),
-          salespersonAr: esc(repAr), salespersonEn: repEn(repAr), clientName: esc(client),
-          item: esc(c[cItem]), category: cat.category, categoryAr: cat.catAr, origin: cat.origin, originAr: cat.originAr,
+          id: 'S-' + (salesSeq++), date: iso, month: monthKey(iso), invoiceNo: esc(inv),
+          salespersonAr: esc(repAr), salespersonEn: repEn(repAr), clientName: esc(clientName),
+          item: esc(item), category: cat.category, categoryAr: cat.catAr, origin: cat.origin, originAr: cat.originAr,
           cartons: num(c[cCart]), unitPrice: num(c[cPrice]), qty: num(c[cQty]),
           preVat: Math.round(num(c[cPre])), vat: Math.round(num(c[cVat])), postVat: Math.round(post),
           collected, collectionStatus: esc(coll), payMethod: esc(c[cPay])

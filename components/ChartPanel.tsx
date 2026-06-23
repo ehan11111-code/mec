@@ -19,7 +19,7 @@ export function ChartPanel({ chart, locale, height = 240, title }: { chart: Char
       <div style={{ height }}>
         {mounted && (
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+            <AreaChart data={data} margin={{ top: 8, right: 12, left: 12, bottom: 0 }}>
               <defs>{chart.series.map(s => (
                 <linearGradient key={s.key} id={`grad-${s.key}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={s.highlight ? p.accent : p.base} stopOpacity={0.28} />
@@ -28,10 +28,10 @@ export function ChartPanel({ chart, locale, height = 240, title }: { chart: Char
               </defs>
               <CartesianGrid strokeDasharray="3 4" stroke={p.grid} vertical={false} />
               <XAxis dataKey="t" tick={{ fill: p.axis, fontSize: 11 }} axisLine={false} tickLine={false} reversed={locale === 'ar'} />
-              <YAxis tick={{ fill: p.axis, fontSize: 11 }} axisLine={false} tickLine={false} orientation={locale === 'ar' ? 'right' : 'left'} />
+              <YAxis width={52} tick={{ fill: p.axis, fontSize: 11 }} axisLine={false} tickLine={false} orientation={locale === 'ar' ? 'right' : 'left'} tickFormatter={(v: number) => v >= 1000 ? `${Math.round(v / 1000)}K` : String(v)} />
               <Tooltip cursor={{ stroke: p.accent, strokeWidth: 1, strokeDasharray: '4 4' }}
                 contentStyle={{ background: p.tooltipBg, border: `1px solid ${p.tooltipBorder}`, borderRadius: 10, fontSize: 12, color: p.tooltipText }}
-                labelStyle={{ color: p.axis, fontWeight: 500 }} />
+                labelStyle={{ color: p.axis, fontWeight: 500 }} formatter={(v: number, n: string) => [Math.round(v).toLocaleString('en-US'), n]} />
               {chart.series.map(s => (
                 <Area key={s.key} type="monotone" dataKey={s.key} stroke={s.highlight ? p.accent : p.base} strokeWidth={s.highlight ? 2.4 : 1.6}
                   fill={`url(#grad-${s.key})`} name={s.label[locale]} activeDot={{ r: 4, fill: s.highlight ? p.accent : p.base, stroke: p.tooltipBg, strokeWidth: 2 }} />

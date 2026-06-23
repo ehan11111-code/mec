@@ -42,6 +42,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
 .pulse-ring::after { content: ''; position: absolute; inset: -2px; border-radius: 9999px; border: 1.5px solid currentColor; animation: soft-pulse 1.8s ease-out infinite; }
 
+/* Gradient accents (same palette) — subtle depth + emphasis for important information. */
+.gradient-accent { background-image: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%); }
+.gradient-surface { background-image: linear-gradient(160deg, var(--surface-elev) 0%, var(--surface) 60%); }
+.gradient-highlight { background-image: linear-gradient(150deg, var(--accent-soft) 0%, transparent 55%); }
+.gradient-hero { background-image: radial-gradient(120% 120% at 0% 0%, var(--accent-soft) 0%, transparent 45%), linear-gradient(160deg, var(--surface-elev) 0%, var(--bg) 70%); }
+.text-gradient-accent { background-image: linear-gradient(120deg, var(--accent) 0%, var(--accent-strong) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+@media print { .gradient-accent, .gradient-surface, .gradient-highlight, .gradient-hero { background-image: none !important; } }
+
 /* Print: branded, content-only report layout (hides nav/sidebar/controls). */
 @media print {
   aside, .print\:hidden, button, nav[aria-label='breadcrumb'] { display: none !important; }

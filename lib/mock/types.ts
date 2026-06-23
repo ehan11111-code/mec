@@ -1,5 +1,5 @@
 export type Bi = { en: string; ar: string }
-export type Status = 'running' | 'awaiting_approval' | 'exception' | 'blocked'
+export type Status = 'running' | 'awaiting_approval' | 'exception' | 'blocked' | 'planned'
 export type Outcome = 'cleared' | 'escalated' | 'rejected' | 'pending'
 export type KPI = { label: Bi; value: string; delta?: string; highlight?: boolean }
 export type Decision = { ts: string; text: Bi; confidence?: number; outcome: Outcome }

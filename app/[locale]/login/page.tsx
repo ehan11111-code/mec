@@ -22,7 +22,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-bg">
-      <div className="relative hidden lg:flex flex-col justify-between p-12 bg-bg-soft border-e border-border overflow-hidden">
+      <div className="relative hidden lg:flex flex-col justify-between p-12 gradient-hero border-e border-border overflow-hidden">
         <div className="absolute inset-0 soft-grid soft-grid-fade" aria-hidden />
         <div className="relative"><BrandLogo size="lg" /></div>
         <div className="relative max-w-md">

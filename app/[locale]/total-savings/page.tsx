@@ -1,53 +1,43 @@
 'use client'
 import { useLocale, useTranslations } from 'next-intl'
+import { TrendingUp } from 'lucide-react'
 import { PageShell } from '@/components/PageShell'
 import { DisplayHeading } from '@/components/DisplayHeading'
 import { Eyebrow } from '@/components/Eyebrow'
-import { MetricRow } from '@/components/MetricCard'
-import { ChartPanel } from '@/components/ChartPanel'
-import { Panel } from '@/components/Panel'
-import { getSavings } from '@/lib/mock/savings'
+import { NoteCallout } from '@/components/NoteCallout'
+import { EmptyState } from '@/components/EmptyState'
+import { InfoTooltip } from '@/components/InfoTooltip'
 
 export default function TotalSavingsPage() {
-  const tNav = useTranslations('nav'); const tSav = useTranslations('savings'); const locale = useLocale() as 'en' | 'ar'
-  const s = getSavings()
+  const tNav = useTranslations('nav'); const t = useTranslations('savings'); const locale = useLocale() as 'en' | 'ar'
+  const planned: { label: string; def: { en: string; ar: string } }[] = [
+    { label: t('kTotal'), def: { en: 'Cost saved vs the old manual WhatsApp/email/Excel process.', ar: 'التكلفة الموفّرة مقابل العملية اليدوية القديمة (واتساب/بريد/إكسل).' } },
+    { label: t('kHours'), def: { en: 'Staff hours reclaimed by automation.', ar: 'ساعات العمل المستردّة بفضل الأتمتة.' } },
+    { label: t('kErrors'), def: { en: 'Manual errors avoided (mismatches, lost documents).', ar: 'الأخطاء اليدوية التي تم تفاديها (عدم تطابق، مستندات مفقودة).' } },
+    { label: t('kCostPerOrder'), def: { en: 'Average processing cost per order.', ar: 'متوسط تكلفة معالجة الطلب الواحد.' } }
+  ]
   return (
     <PageShell breadcrumbs={[{ label: tNav('operations') }, { label: tNav('totalSavings') }]}>
-      <header className="mb-8 max-w-3xl">
-        <Eyebrow accent>{tSav('eyebrow')}</Eyebrow>
-        <DisplayHeading size="lg" className="mt-3" locale={locale}>{tSav('headline', { value: s.headlineSaved })}</DisplayHeading>
-        <p className="text-base text-text-soft mt-3 leading-relaxed">{tSav('subline')}</p>
+      <header className="mb-6 max-w-3xl">
+        <Eyebrow accent>{t('eyebrow')}</Eyebrow>
+        <DisplayHeading size="lg" className="mt-3" locale={locale}>{tNav('totalSavings')}</DisplayHeading>
+        <p className="text-base text-text-soft mt-3 leading-relaxed">{t('blueprintSub')}</p>
       </header>
-      <section className="mb-8 md:mb-10"><MetricRow kpis={s.kpis} locale={locale} /></section>
-      <section className="mb-8 md:mb-10"><ChartPanel chart={s.comparison} locale={locale} height={300} /></section>
-      <section>
-        <Panel title={tSav('breakdown')} subtitle={tSav('breakdownSub')} bodyClassName="px-0 pb-0">
-          <div className="overflow-x-auto scrollbar-soft">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs text-muted border-b border-border">
-                  <th className="text-start font-medium px-5 md:px-6 py-3">{tSav('colDept')}</th>
-                  <th className="text-end font-medium px-4 py-3">{tSav('colBefore')}</th>
-                  <th className="text-end font-medium px-4 py-3">{tSav('colAfter')}</th>
-                  <th className="text-end font-medium px-4 py-3">{tSav('colSaved')}</th>
-                  <th className="text-end font-medium px-5 md:px-6 py-3">{tSav('colHours')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {s.breakdown.map((r, i) => (
-                  <tr key={i} className="hover:bg-surface-elev transition-colors">
-                    <td className="px-5 md:px-6 py-3 text-text">{r.dept[locale]}</td>
-                    <td className="px-4 py-3 text-end tabular-nums text-muted">{r.before}</td>
-                    <td className="px-4 py-3 text-end tabular-nums text-text-soft">{r.after}</td>
-                    <td className="px-4 py-3 text-end tabular-nums text-accent font-medium">{r.saved}</td>
-                    <td className="px-5 md:px-6 py-3 text-end tabular-nums text-text-soft">{r.hoursReclaimed}h</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <NoteCallout tone="info" title={t('requirementTitle')} className="mb-8 max-w-3xl">{t('requirementBody')}</NoteCallout>
+      <section className="mb-8 grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
+        {planned.map((p, i) => (
+          <div key={i} className="rounded-soft border border-border bg-surface shadow-soft p-5 flex flex-col gap-2">
+            <div className="flex items-center gap-1.5 text-xs text-muted leading-tight">
+              {p.label}
+              <InfoTooltip def={p.def} source={{ en: 'Computed once automations run (no data yet).', ar: 'يُحتسب بمجرد تشغيل الأتمتة (لا توجد بيانات بعد).' }} />
+            </div>
+            <div className="font-display font-semibold text-3xl text-muted leading-none">—</div>
           </div>
-        </Panel>
+        ))}
       </section>
+      <div className="rounded-soft border border-border bg-surface shadow-soft">
+        <EmptyState icon={TrendingUp} title={t('emptyTitle')} hint={t('emptyHint')} source={tNav('automations')} />
+      </div>
     </PageShell>
   )
 }

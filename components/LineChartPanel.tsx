@@ -3,12 +3,13 @@ import { useEffect, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Panel } from './Panel'
 import { useTheme } from './ThemeProvider'
+import { fmtSARcompact } from '@/lib/data/dataset'
 
 export type LineSeries = { key: string; label: string; accent?: boolean }
 export type LineRow = { t: string } & Record<string, number | string>
 
-export function LineChartPanel({ data, series, title, subtitle, height = 260, locale = 'en', action }: {
-  data: LineRow[]; series: LineSeries[]; title?: string; subtitle?: string; height?: number; locale?: 'en' | 'ar'; action?: React.ReactNode
+export function LineChartPanel({ data, series, title, subtitle, height = 260, locale = 'en', valueFormat = 'sar', action }: {
+  data: LineRow[]; series: LineSeries[]; title?: string; subtitle?: string; height?: number; locale?: 'en' | 'ar'; valueFormat?: 'sar' | 'num'; action?: React.ReactNode
 }) {
   const { theme } = useTheme(); const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
@@ -16,16 +17,18 @@ export function LineChartPanel({ data, series, title, subtitle, height = 260, lo
   const axis = '#8A8780'; const base = theme === 'light' ? '#B9B5AA' : '#6E6B63'
   const tipBg = theme === 'light' ? '#FFFFFF' : '#1A1A18'
   const colors = ['#F36C34', base, '#6BCC78', '#F2B868']
+  const fmtFull = (v: number) => valueFormat === 'sar' ? `SAR ${Math.round(v).toLocaleString('en-US')}` : Math.round(v).toLocaleString('en-US')
+  const fmtAxis = (v: number) => valueFormat === 'sar' ? fmtSARcompact(v) : (v >= 1000 ? `${Math.round(v / 1000)}K` : String(v))
   return (
     <Panel title={title} subtitle={subtitle} showRefresh action={action}>
       <div style={{ height }}>
         {mounted && (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+            <LineChart data={data} margin={{ top: 8, right: 12, left: 12, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 4" stroke={grid} vertical={false} />
               <XAxis dataKey="t" tick={{ fill: axis, fontSize: 11 }} axisLine={false} tickLine={false} reversed={locale === 'ar'} />
-              <YAxis tick={{ fill: axis, fontSize: 11 }} axisLine={false} tickLine={false} orientation={locale === 'ar' ? 'right' : 'left'} />
-              <Tooltip contentStyle={{ background: tipBg, border: `1px solid ${grid}`, borderRadius: 10, fontSize: 12, color: 'var(--text)' }} labelStyle={{ color: axis }} />
+              <YAxis width={52} tick={{ fill: axis, fontSize: 11 }} axisLine={false} tickLine={false} orientation={locale === 'ar' ? 'right' : 'left'} tickFormatter={fmtAxis} />
+              <Tooltip contentStyle={{ background: tipBg, border: `1px solid ${grid}`, borderRadius: 10, fontSize: 12, color: 'var(--text)' }} labelStyle={{ color: axis }} formatter={(v: number, n: string) => [fmtFull(v), n]} />
               {series.map((s, i) => (
                 <Line key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={s.accent ? '#F36C34' : colors[i % colors.length]}
                   strokeWidth={s.accent ? 2.4 : 1.8} dot={false} activeDot={{ r: 4 }} />

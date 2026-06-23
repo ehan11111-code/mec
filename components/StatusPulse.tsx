@@ -6,7 +6,8 @@ const STATUS_TONES: Record<Status, { dot: string; ring: string; label: string }>
   running: { dot: 'bg-success', ring: 'text-success', label: 'text-success' },
   awaiting_approval: { dot: 'bg-warn', ring: 'text-warn', label: 'text-warn' },
   exception: { dot: 'bg-accent', ring: 'text-accent', label: 'text-accent' },
-  blocked: { dot: 'bg-muted', ring: 'text-muted', label: 'text-muted' }
+  blocked: { dot: 'bg-muted', ring: 'text-muted', label: 'text-muted' },
+  planned: { dot: 'bg-muted', ring: 'text-muted', label: 'text-muted' }
 }
 export function StatusPulse({ status, showLabel = true, className }: { status: Status; showLabel?: boolean; className?: string }) {
   const t = useTranslations('status'); const tone = STATUS_TONES[status]

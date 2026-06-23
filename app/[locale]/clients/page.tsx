@@ -33,10 +33,10 @@ export default function ClientsPage() {
       </header>
 
       <section className="mb-8 grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
-        <StatCard label={t('kTotal')} value={String(sum.total)} index={0} accent />
-        <StatCard label={t('kRevenue')} value={fmtSAR(sum.revenue)} index={1} />
-        <StatCard label={t('kOverdue')} value={fmtSAR(sum.overdue)} index={2} />
-        <StatCard label={t('kAtRisk')} value={String(sum.atRisk)} delta={`avg risk ${sum.avgRisk}%`} index={3} />
+        <StatCard label={t('kTotal')} value={String(sum.total)} infoId="clientsTotal" index={0} accent />
+        <StatCard label={t('kRevenue')} value={fmtSAR(sum.revenue)} infoId="revenue" index={1} />
+        <StatCard label={t('kOverdue')} value={fmtSAR(sum.overdue)} infoId="overdue" index={2} />
+        <StatCard label={t('kAtRisk')} value={String(sum.atRisk)} delta={`avg risk ${sum.avgRisk}%`} infoId="atRisk" index={3} />
       </section>
 
       <section className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">

@@ -6,10 +6,16 @@ import { categoryLabel } from './categorize'
 export type { Client, SalesInvoice, PurchaseRow }
 
 // ── formatting / helpers ──
-export const fmtSAR = (n: number) => {
+// Full comma-grouped figures (e.g. "SAR 31,084,511") — millions must read as millions.
+export const fmtSAR = (n: number) => `SAR ${Math.round(n).toLocaleString('en-US')}`
+// Compact form for chart axis ticks only (keeps the Y-axis narrow so labels aren't clipped).
+export const fmtSARcompact = (n: number) => {
   const a = Math.abs(n)
-  return a >= 1_000_000 ? `SAR ${(n / 1_000_000).toFixed(1)}M` : a >= 1000 ? `SAR ${Math.round(n / 1000)}K` : `SAR ${Math.round(n)}`
+  if (a >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (a >= 1000) return `${Math.round(n / 1000)}K`
+  return String(Math.round(n))
 }
+export const fmtNum = (n: number) => Math.round(n).toLocaleString('en-US')
 export const clientName = (c: Client, locale: 'en' | 'ar') => (locale === 'ar' ? c.nameAr : c.nameEn)
 export { categoryLabel }
 const norm = (s: string) => String(s || '').replace(/[ـ]/g, '').replace(/[.،,]/g, '').replace(/\s+/g, ' ').trim()

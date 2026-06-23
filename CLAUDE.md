@@ -84,6 +84,20 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-23 — Data correctness, clarity (info+source icons), no-mock, comma numbers, polish.**
+  Fixed issues found in the live review: (1) removed **SAR 32.3M of spreadsheet subtotal/total rows**
+  from import → revenue corrects to **SAR 31,084,511**; (2) eliminated the **"Other"** category by
+  expanding `lib/data/categorize.ts` (beef cuts/lamb/dairy) — **0 items uncategorised**; (3) labelled
+  blank clients as "Cash / unspecified" and dropped returns/`عام` from the salesperson breakdown;
+  (4) **comma number formatting everywhere** (`fmtSAR` → `SAR 31,084,511`, full numbers), chart tooltips
+  labelled + comma-formatted, Y-axis no longer clipped (`fmtSARcompact` ticks + width); (5) donut legend
+  commas + centred layout. **Erased all fabricated mock data** (`lib/mock/data.ts` now returns empty/
+  `planned`) — Departments/modules/Total-Savings/Control-Center show **requirements + empty states**, not
+  fake numbers (real Analytics/Orders/Clients unchanged). Added **(i) InfoTooltip** with a **definition +
+  SOURCE reference** on every metric (`lib/info/definitions.ts`) and every workflow node; new
+  `EmptyState`, `NoteCallout`. Visual polish: gradient utilities in `globals.css` (highlight cards,
+  heroes, accent note callouts). Build green (28 routes). Regenerate data: `node DATA/_salesgen.js`.
+
 - **2026-06-23 — Analytics suite + action platform + JARVIS.** Imported 3 quarterly workbooks
   (`DATA/مبيعات*.xlsx`) via self-contained `DATA/_salesgen.js` → `lib/data/sales.ts` (927 invoices,
   SAR 64.5M) + `lib/data/purchases.ts` (193 lines, SAR 31.3M); `lib/data/categorize.ts` for Arabic
