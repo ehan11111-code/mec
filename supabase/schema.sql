@@ -63,8 +63,10 @@ create table if not exists public.whatsapp_intake (
   products      jsonb default '[]'::jsonb,
   raw           jsonb,
   verified      boolean default false,
+  order_status  text,            -- pending | approved | rejected (for messages classified as orders)
   received_at   timestamptz default now()
 );
+alter table public.whatsapp_intake add column if not exists order_status text;
 
 -- Row Level Security ---------------------------------------------------------
 -- supply_intel: portal reads it with the anon key.

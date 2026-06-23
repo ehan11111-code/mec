@@ -1,17 +1,28 @@
 import { NextResponse } from 'next/server'
-import { getSupplyIntel } from '@/lib/data/supply'
+import { getSupplyIntel, getWhatsappOrders } from '@/lib/data/supply'
 
 export const dynamic = 'force-dynamic'
 
 type Bi = { en: string; ar: string }
-type Note = { id: string; type: 'urgent' | 'attention' | 'update' | 'info'; title: Bi; deptName: Bi; ts: string; read: boolean; link: string }
+type Note = { id: string; type: 'urgent' | 'attention' | 'update' | 'info' | 'approval'; title: Bi; deptName: Bi; ts: string; read: boolean; link: string }
 
 const DEPT: Bi = { en: 'Supply intelligence', ar: 'استخبارات التوريد' }
+const ORDERS: Bi = { en: 'Order approvals', ar: 'اعتماد الطلبات' }
 
-// Derive live notifications from the supply-intelligence feed: price jumps + high/medium crises.
+// Derive live notifications from the supply-intelligence feed + pending WhatsApp orders.
 export async function GET() {
-  const rows = await getSupplyIntel()
+  const [rows, orders] = await Promise.all([getSupplyIntel(), getWhatsappOrders(50)])
   const notes: Note[] = []
+  for (const o of orders) {
+    if ((o.order_status || 'pending') !== 'pending') continue
+    const items = (o.products || []).map(p => `${p.name}${p.qty ? ` ×${p.qty}` : ''}`).join(', ')
+    notes.push({
+      id: `wa-order-${o.message_id}`,
+      type: 'approval',
+      title: { en: `New order to approve — ${o.push_name || o.phone}${items ? `: ${items}` : ''}`, ar: `طلب جديد للاعتماد — ${o.push_name || o.phone}${items ? `: ${items}` : ''}` },
+      deptName: ORDERS, ts: o.received_at, read: false, link: '/approvals'
+    })
+  }
   for (const d of rows) {
     const po = d.price_outlook
     if (po && po.direction === 'up' && po.change_pct > 0) {

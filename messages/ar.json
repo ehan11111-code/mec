@@ -1,6 +1,6 @@
 {
   "brand": { "name": "MEC", "positioning": "مركز عمليات من Jarvis AI." },
-  "nav": { "operations": "العمليات", "controlCenter": "مركز التحكّم", "analytics": "التحليلات", "orders": "الطلبات", "clients": "العملاء", "automations": "الأتمتة", "supplyIntel": "استخبارات التوريد", "whatsapp": "وارد واتساب", "departments": "الأقسام", "notifications": "الإشعارات", "totalSavings": "إجمالي التوفير", "academy": "الأكاديمية", "contact": "تواصل" },
+  "nav": { "operations": "العمليات", "controlCenter": "مركز التحكّم", "analytics": "التحليلات", "orders": "الطلبات", "clients": "العملاء", "automations": "الأتمتة", "supplyIntel": "استخبارات التوريد", "whatsapp": "وارد واتساب", "approvals": "اعتماد الطلبات", "departments": "الأقسام", "notifications": "الإشعارات", "totalSavings": "إجمالي التوفير", "academy": "الأكاديمية", "contact": "تواصل" },
   "supplyIntel": {
     "eyebrow": "استخبارات خارجية", "headline": "استخبارات سوق التوريد",
     "subline": "توقّع أسعار وتنبيهات مخاطر مبنية على السوق لكل مورّد وبلد توريد — من الأخبار وأسعار الصرف وسجلّ مشترياتك الفعلي، تُحدَّث كل 12 ساعة وكل معلومة مدعومة بمصدر مؤرّخ.",
@@ -51,6 +51,17 @@
     "healthy": "سليم", "belowMin": "دون الحد", "loss": "خسارة", "costNa": "بلا تكلفة",
     "legendCost": "التكلفة", "legendProfit": "ربح (≥ الحد)", "legendBelow": "دون الحد الأدنى", "legendLoss": "بيع بخسارة", "legendFloor": "حد الهامش الأدنى",
     "print": "طباعة / PDF", "excel": "Excel"
+  },
+  "approvals": {
+    "eyebrow": "استقبال الطلبات", "headline": "اعتماد الطلبات",
+    "subline": "طلبات ملتقَطة من واتساب عبر WaSender ومُحلّلة بواسطة جارفيس — اعتمد أو ارفض كل طلب قبل توجيهه للمستودع.",
+    "kPending": "قيد الانتظار", "kApproved": "معتمد", "kRejected": "مرفوض", "kTotal": "إجمالي الطلبات",
+    "tab_pending": "قيد الانتظار", "tab_approved": "معتمد", "tab_rejected": "مرفوض",
+    "approve": "اعتماد", "reject": "رفض", "noProducts": "لم تُحلَّل منتجات — راجع الرسالة.",
+    "empty_pending": "لا توجد طلبات بانتظار الاعتماد", "empty_approved": "لا توجد طلبات معتمدة بعد", "empty_rejected": "لا توجد طلبات مرفوضة",
+    "emptyHint": "تظهر طلبات واتساب الجديدة هنا تلقائيًا، مُحلّلة إلى بنود، جاهزة للاعتماد.",
+    "source": "المصدر: واتساب (WaSender) ← تصنيف جارفيس ← Supabase whatsapp_intake",
+    "note": "تُلتقَط الطلبات وتُحلّل تلقائيًا؛ لا اعتماد تلقائي — إنسان يعتمد أو يرفض كل طلب. شغّل supabase/schema.sql مرة لتفعيل حفظ الاعتماد/الرفض."
   },
   "automations": {
     "eyebrow": "منصّة الإجراءات", "headline": "الأتمتة", "subline": "شغّل تدفّقات n8n الخاصة بـ MEC من البوابة. اربط رابط Webhook لكل تدفّق لتفعيله.",

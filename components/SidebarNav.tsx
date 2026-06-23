@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, usePathname } from '@/i18n/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { clsx } from 'clsx'
-import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap, Radar, MessageCircle } from 'lucide-react'
+import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap, Radar, MessageCircle, ClipboardCheck } from 'lucide-react'
 import { BrandLogo } from './BrandLogo'
 import { departmentSeeds } from '@/lib/mock/catalog'
 import { getFirmState } from '@/lib/mock/data'
@@ -25,7 +25,8 @@ export function SidebarNav() {
     { href: '/clients', label: tNav('clients'), icon: Users },
     { href: '/automations', label: tNav('automations'), icon: Zap },
     { href: '/supply-intelligence', label: tNav('supplyIntel'), icon: Radar },
-    { href: '/whatsapp', label: tNav('whatsapp'), icon: MessageCircle }
+    { href: '/whatsapp', label: tNav('whatsapp'), icon: MessageCircle },
+    { href: '/approvals', label: tNav('approvals'), icon: ClipboardCheck }
   ]
   const bottom: Item[] = [
     { href: '/total-savings', label: tNav('totalSavings'), icon: Coins },

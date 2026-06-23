@@ -34,6 +34,7 @@ export type WhatsappMsg = {
   intent: 'order' | 'inquiry' | 'complaint' | 'other'
   products: { name: string; qty?: number | null; unit?: string | null }[]
   verified: boolean; received_at: string
+  order_status?: 'pending' | 'approved' | 'rejected' | null
 }
 
 function cfg() {
@@ -66,4 +67,21 @@ export function getWhatsappIntake(limit = 100) {
 }
 export function getSupplyHistory(limit = 500) {
   return read<SupplyHistory>(`supply_intel_history?select=*&order=generated_at.asc&limit=${limit}`)
+}
+export function getWhatsappOrders(limit = 100) {
+  return read<WhatsappMsg>(`whatsapp_intake?intent=eq.order&select=*&order=received_at.desc&limit=${limit}`)
+}
+
+// Server-side: set a WhatsApp order's approval status. Returns true on success.
+export async function setOrderStatus(messageId: string, status: 'approved' | 'rejected'): Promise<boolean> {
+  const c = cfg()
+  if (!c) return false
+  try {
+    const r = await fetch(`${c.url}/rest/v1/whatsapp_intake?message_id=eq.${encodeURIComponent(messageId)}`, {
+      method: 'PATCH',
+      headers: { apikey: c.key, Authorization: `Bearer ${c.key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ order_status: status }), cache: 'no-store'
+    })
+    return r.ok
+  } catch { return false }
 }

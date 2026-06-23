@@ -84,6 +84,17 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-23 — WhatsApp orders → approval queue (approve/reject) + order notifications.** WhatsApp
+  messages classified as `order` now surface as **approvable orders**. New **`/approvals`** page (Pending/
+  Approved/Rejected tabs): each order shows sender, **parsed line items**, the message, and **Approve /
+  Reject** buttons. New `/api/approvals` (GET order-intent rows + POST decision → PATCH `order_status`).
+  Added `order_status` column to `whatsapp_intake` (schema, idempotent). **Pending orders also push an
+  "approval" notification** into the bell (`/api/notifications` now reads WhatsApp orders too). Sidebar +
+  EN/AR messages added. **Tested the WhatsApp pipeline live** (simulated AR order → parsed دجاج×50/لحم×20,
+  intent=order; fixed a boolean bug on `verified` + hardened the auto-reply with `continueOnFail`). Build
+  green. **User action:** re-run `supabase/schema.sql` to add `order_status` (enables approve/reject
+  persistence; the queue lists without it).
+
 - **2026-06-23 — JARVIS now reasons (analyst, not parrot).** Rewrote the `/api/jarvis` system prompt: a
   senior ops/finance analyst that **thinks step by step** (does the math, connects figures, reasons about
   cause/risk/implication) and leads with a bottom line + why + recommendation; may compute/estimate (with
