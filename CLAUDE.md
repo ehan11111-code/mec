@@ -84,6 +84,15 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-23 — Apify scraping enabled (web + X) on the supply feed.** Added the Apify token to
+  `.env.local` (validated: `/users/me` 200, **plan FREE = $5/mo credit**). Workflow gather now scrapes via
+  Apify actors: `apify~rag-web-browser` (→ cited web articles) + `apidojo~tweet-scraper` (X). **TikTok +
+  Instagram actors left blank by default to protect the $5 credit** (4 actors × 5 targets × 2/day would
+  exhaust it in days) — set `APIFY_TIKTOK_ACTOR`/`APIFY_INSTAGRAM_ACTOR` to enable, ideally after upgrading
+  Apify. Each actor is `this.helpers.httpRequest` → `run-sync-get-dataset-items`, wrapped in try/catch so a
+  bad schema just yields empty. Redeployed (`Z7TPXWnlplp61VE7`). The Apify **MCP** server (`claude mcp add
+  apify …`) must be run by the user in their own terminal — the workflow itself doesn't need it.
+
 - **2026-06-23 — Supply intel upgraded: market price forecast vs real/historical cost + Apify scraping.**
   Turned the supply feed into a **price-forecast engine**. New `lib/data/priceBaseline.ts` derives each
   commodity's **real** cost baseline + monthly trend from `purchases.ts` (weighted avg per dominant unit).
