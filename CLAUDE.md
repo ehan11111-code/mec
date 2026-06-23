@@ -84,6 +84,21 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-23 — Supply intel LIVE (seeded) + Vision key + Gmail OAuth URL.** User ran `schema.sql`, so
+  the tables exist. New `scripts/seed-supply-intel.js` runs the pipeline once locally (Google+Bing News +
+  FX + gpt-4o-mini → Supabase) — **ran it, supply_intel now populated** (Brazil beef **+10%**, chicken
+  **+5%**, others stable; each with dated, cited drivers + risks). Verified the stored row shape. The
+  `/supply-intelligence` page now shows real forecasts (anchored to real purchase costs). Apify token
+  validated (HTTP 201, actor runs) but `apidojo~tweet-scraper` returned `noResults` for these queries —
+  workflow filters empties gracefully; X input needs tuning (didn't burn more free credit). Stored
+  **`GOOGLE_VISION_API_KEY`** in `.env.local` for OCR (to wire into the Gmail/WhatsApp document intake
+  next). Gave the user the **n8n Gmail OAuth redirect URI**:
+  `https://hone21.app.n8n.cloud/rest/oauth2-credential/callback` (goes in Google Cloud Console →
+  Credentials → OAuth client → Authorized redirect URIs).
+  - **Refresh supply intel anytime:** `node scripts/seed-supply-intel.js` (or wait for the 12h cron).
+  - **Next:** tune the Apify X actor input; wire Vision OCR into the WhatsApp/email intake (image+PDF →
+    text → classify); build the Gmail email-intake workflow once OAuth is connected.
+
 - **2026-06-23 — Apify scraping enabled (web + X) on the supply feed.** Added the Apify token to
   `.env.local` (validated: `/users/me` 200, **plan FREE = $5/mo credit**). Workflow gather now scrapes via
   Apify actors: `apify~rag-web-browser` (→ cited web articles) + `apidojo~tweet-scraper` (X). **TikTok +
