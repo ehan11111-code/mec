@@ -1,6 +1,27 @@
 {
   "brand": { "name": "MEC", "positioning": "مركز عمليات من Jarvis AI." },
-  "nav": { "operations": "العمليات", "controlCenter": "مركز التحكّم", "analytics": "التحليلات", "orders": "الطلبات", "clients": "العملاء", "automations": "الأتمتة", "departments": "الأقسام", "notifications": "الإشعارات", "totalSavings": "إجمالي التوفير", "academy": "الأكاديمية", "contact": "تواصل" },
+  "nav": { "operations": "العمليات", "controlCenter": "مركز التحكّم", "analytics": "التحليلات", "orders": "الطلبات", "clients": "العملاء", "automations": "الأتمتة", "supplyIntel": "استخبارات التوريد", "whatsapp": "وارد واتساب", "departments": "الأقسام", "notifications": "الإشعارات", "totalSavings": "إجمالي التوفير", "academy": "الأكاديمية", "contact": "تواصل" },
+  "supplyIntel": {
+    "eyebrow": "استخبارات خارجية", "headline": "استخبارات سوق التوريد",
+    "subline": "توقّعات وتنبيهات مخاطر واقعية لكل مورّد وبلد توريد — تُحدَّث كل 12 ساعة، وكل معلومة مدعومة بمصدر مؤرّخ.",
+    "kSuppliers": "موردون مُراقَبون", "kRisks": "إشارات مخاطر نشطة", "kHigh": "خطورة عالية", "kUpdated": "آخر تحديث",
+    "forecast": "نافذة التوقّع", "noRisks": "لا توجد إشارات مخاطر نشطة في آخر فحص.",
+    "sev_high": "عالية", "sev_medium": "متوسطة", "sev_low": "منخفضة",
+    "type_transport": "نقل", "type_weather": "طقس", "type_price": "سعر", "type_disease": "أمراض", "type_policy": "سياسات", "type_other": "أخرى",
+    "emptyTitle": "لا توجد استخبارات بعد", "emptyHint": "يعمل تدفّق استخبارات سوق التوريد كل 12 ساعة. أنشئ جداول Supabase (supabase/schema.sql) ليتمّ تخزين النتائج — وسيملأ التشغيل التالي هذه الصفحة.",
+    "source": "المصدر: n8n استخبارات سوق التوريد → Supabase supply_intel",
+    "note": "يُحلّل JARVIS كل توقّع وخطر من الأخبار الحديثة والتنبيهات الرسمية؛ وتُحذف أي معلومة بلا مصدر حقيقي مؤرّخ قبل وصولها لهذه الصفحة. التوصيات استرشادية — والقرار النهائي لكل عملية شراء بيد الإنسان."
+  },
+  "whatsapp": {
+    "eyebrow": "استقبال خارجي", "headline": "وارد واتساب",
+    "subline": "الرسائل الواردة من العملاء عبر واتساب (WaSender) — مصنّفة حسب النية ومُحلّلة للطلبات، في مكان واحد.",
+    "kTotal": "الرسائل", "kOrders": "الطلبات", "kInquiries": "الاستفسارات", "kLatest": "الأحدث",
+    "inbox": "الوارد", "intent_order": "طلب", "intent_inquiry": "استفسار", "intent_complaint": "شكوى", "intent_other": "أخرى",
+    "type_text": "(نص)", "type_image": "📷 صورة", "type_document": "📄 مستند", "type_audio": "🎤 رسالة صوتية",
+    "emptyTitle": "لا توجد رسائل بعد", "emptyHint": "وجِّه ويب هوك WaSender إلى تدفّق استقبال واتساب الخاص بـ MEC وأنشئ جداول Supabase (supabase/schema.sql). ستظهر الرسائل الواردة هنا مصنّفة حسب النية.",
+    "source": "المصدر: WaSender → n8n استقبال واتساب → Supabase whatsapp_intake",
+    "note": "تُستقبل الرسائل عبر WaSender، ويصنّفها JARVIS (طلب / استفسار / شكوى) ويحلّلها للمنتجات. لا اعتماد تلقائي — كل طلب يراجعه إنسان."
+  },
   "analytics": {
     "eyebrow": "ذكاء الأعمال", "headline": "التحليلات", "subline": "لوحات مباشرة من بيانات مبيعات ومشتريات MEC الحقيقية — أكتوبر 2025 إلى يونيو 2026.",
     "filters": "عوامل التصفية", "month": "الشهر", "salesperson": "المندوب", "category": "الفئة", "all": "الكل", "clear": "مسح",

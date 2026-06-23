@@ -84,6 +84,20 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-23 — Portal Supply-Intelligence + WhatsApp inbox pages (live Supabase).** Built the two
+  read-views for the new workflows. New `lib/data/supply.ts` (server-only Supabase reads via service-role,
+  falls back to `[]` when tables/env are absent) + API routes `app/api/supply-intel` & `app/api/whatsapp`
+  (`force-dynamic`). New pages: **`/supply-intelligence`** (per-supplier forecast + recommendation pill +
+  cited risk cards — severity badge, type, summary, clickable **source · date** link; KPIs suppliers/
+  risks/high-severity/last-updated) and **`/whatsapp`** (inbox of inbound messages — sender, intent badge,
+  parsed products, verified tick, time). Both are client components that fetch the API at runtime so data
+  is **always fresh** (the `[locale]` layout pins server pages to SSG, so `force-dynamic`/`headers()` were
+  overridden — client-fetch is the robust fix and matches every other page). Added to the sidebar, full
+  EN/AR messages, and (i) source definitions for each metric. Empty states explain the one setup step
+  (run `supabase/schema.sql`). Build green (34 routes).
+  - **Next:** matched WhatsApp orders → draft order in the approval queue; a Supabase-backed
+    notifications feed; wire ERP sync when its API arrives.
+
 - **2026-06-23 — Workflows deployed live + WhatsApp intake + `/report` engine.** Wired the live stack to
   n8n Cloud (`https://hone21.app.n8n.cloud`). `scripts/n8n-deploy.js` now **injects secrets from
   `.env.local` at push time** (n8n Cloud blocks `$env`) and is idempotent (update-by-name). **Deployed +

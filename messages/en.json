@@ -1,6 +1,27 @@
 {
   "brand": { "name": "MEC", "positioning": "Operations command center by Jarvis AI." },
-  "nav": { "operations": "Operations", "controlCenter": "Control center", "analytics": "Analytics", "orders": "Orders", "clients": "Clients", "automations": "Automations", "departments": "Departments", "notifications": "Notifications", "totalSavings": "Total savings", "academy": "Academy", "contact": "Contact" },
+  "nav": { "operations": "Operations", "controlCenter": "Control center", "analytics": "Analytics", "orders": "Orders", "clients": "Clients", "automations": "Automations", "supplyIntel": "Supply intelligence", "whatsapp": "WhatsApp inbox", "departments": "Departments", "notifications": "Notifications", "totalSavings": "Total savings", "academy": "Academy", "contact": "Contact" },
+  "supplyIntel": {
+    "eyebrow": "External intelligence", "headline": "Supply-market intelligence",
+    "subline": "Real-world forecast and risk alerts per supplier and sourcing country — refreshed every 12 hours, every claim backed by a dated source.",
+    "kSuppliers": "Suppliers monitored", "kRisks": "Active risk signals", "kHigh": "High severity", "kUpdated": "Last updated",
+    "forecast": "Forecast window", "noRisks": "No active risk signals in the latest scan.",
+    "sev_high": "High", "sev_medium": "Medium", "sev_low": "Low",
+    "type_transport": "Transport", "type_weather": "Weather", "type_price": "Price", "type_disease": "Disease", "type_policy": "Policy", "type_other": "Other",
+    "emptyTitle": "No intelligence yet", "emptyHint": "The Supply-Market Intelligence workflow runs every 12 hours. Create the Supabase tables (supabase/schema.sql) so results can be stored — the next run will populate this page.",
+    "source": "Source: n8n Supply-Market Intelligence → Supabase supply_intel",
+    "note": "Each forecast and risk is synthesised by JARVIS from recent news and official advisories; any claim without a real, dated source is dropped before it reaches this page. Recommendations are advisory — a human decides every purchase."
+  },
+  "whatsapp": {
+    "eyebrow": "External intake", "headline": "WhatsApp inbox",
+    "subline": "Incoming WhatsApp messages from clients via WaSender — classified by intent and parsed for orders, in one place.",
+    "kTotal": "Messages", "kOrders": "Orders", "kInquiries": "Inquiries", "kLatest": "Latest",
+    "inbox": "Inbox", "intent_order": "Order", "intent_inquiry": "Inquiry", "intent_complaint": "Complaint", "intent_other": "Other",
+    "type_text": "(text)", "type_image": "📷 Image", "type_document": "📄 Document", "type_audio": "🎤 Voice note",
+    "emptyTitle": "No messages yet", "emptyHint": "Point your WaSender webhook at the MEC WhatsApp Intake workflow and create the Supabase tables (supabase/schema.sql). Incoming messages will appear here, classified by intent.",
+    "source": "Source: WaSender → n8n WhatsApp Intake → Supabase whatsapp_intake",
+    "note": "Messages are received via WaSender, classified by JARVIS (order / inquiry / complaint) and parsed for products. Nothing is auto-approved — every order is reviewed by a person."
+  },
   "analytics": {
     "eyebrow": "Business intelligence", "headline": "Analytics", "subline": "Live dashboards from MEC's real sales and procurement data — Oct 2025 to Jun 2026.",
     "filters": "Filters", "month": "Month", "salesperson": "Salesperson", "category": "Category", "all": "All", "clear": "Clear",
