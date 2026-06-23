@@ -84,6 +84,15 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-23 — Supply intel tabs + recommendations + live notifications.** Reorganized
+  `/supply-intelligence` into **3 tabs**: **Forecasts** (charts + per-card Sources list of every reference
+  link), **Recommendations** (actionable per product — secure/order/hold/monitor + "order ~N weeks ahead"
+  from lead time + real→forecast price + cited sources), **Crises & risks** (all risks flattened, sorted by
+  severity, each with source link). New **`/api/notifications`** derives alerts from `supply_intel` (price
+  ↑ + high/medium crises); **NotificationBell + notifications page now fetch them live** (bilingual, link to
+  the page). Re-seeded (lead-time/pressure/history filled). Stored Azure/Outlook creds in `.env.local`.
+  Build green.
+
 - **2026-06-23 — Supply Intelligence "wow" dashboard (charts, per product×country, lead-time, pressure).**
   Rebuilt `/supply-intelligence` into a real analytics dashboard. New `components/supply/SupplyPriceChart.tsx`
   (Recharts ComposedChart): **real ~9-month purchase-cost history** (from `priceBaseline`) + a **forecast

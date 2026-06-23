@@ -16,14 +16,22 @@ const TYPE_META: Record<NotificationType, { icon: typeof Bell; tone: string }> =
 }
 function formatTs(ts: string) { const d = new Date(ts); return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}` }
 
+type LiveNote = { id: string; type: NotificationType; title: { en: string; ar: string }; deptName: { en: string; ar: string }; ts: string; read: boolean; link: string }
+
 export function NotificationBell() {
   const locale = useLocale() as 'en' | 'ar'
   const t = useTranslations('notif')
   const firm = getFirmState()
-  const items = firm.notifications.slice(0, 6)
-  const unread = firm.notifications.filter(n => !n.read).length
+  const [live, setLive] = useState<LiveNote[]>([])
+  const all = [...live, ...firm.notifications]
+  const items = all.slice(0, 6)
+  const unread = all.filter(n => !n.read).length
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    fetch('/api/notifications').then(r => r.json()).then(d => { if (Array.isArray(d)) setLive(d) }).catch(() => {})
+  }, [])
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }

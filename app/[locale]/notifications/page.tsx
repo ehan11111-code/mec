@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
 import { AlertTriangle, CheckCircle2, Bell, Info, Eye } from 'lucide-react'
@@ -23,9 +23,11 @@ function formatTs(ts: string) { const d = new Date(ts); return `${String(d.getUT
 export default function NotificationsPage() {
   const tNav = useTranslations('nav'); const tNotif = useTranslations('notif'); const locale = useLocale() as 'en' | 'ar'
   const firm = getFirmState()
+  const [live, setLive] = useState<typeof firm.notifications>([])
   const [readAll, setReadAll] = useState(false)
   const [filter, setFilter] = useState<NotificationType | 'all'>('all')
-  const items = firm.notifications.filter(n => filter === 'all' || n.type === filter)
+  useEffect(() => { fetch('/api/notifications').then(r => r.json()).then(d => { if (Array.isArray(d)) setLive(d) }).catch(() => {}) }, [])
+  const items = [...live, ...firm.notifications].filter(n => filter === 'all' || n.type === filter)
   const filters: (NotificationType | 'all')[] = ['all', 'urgent', 'approval', 'attention', 'update']
   return (
     <PageShell breadcrumbs={[{ label: tNav('operations') }, { label: tNav('notifications') }]}>
