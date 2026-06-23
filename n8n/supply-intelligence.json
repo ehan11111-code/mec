@@ -1,0 +1,108 @@
+{
+  "name": "MEC · Supply-Market Intelligence (external · every 12h)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [ { "field": "hours", "hoursInterval": 12 } ] }
+      },
+      "id": "schedule",
+      "name": "Every 12h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [ 200, 320 ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Suppliers + sourcing countries to monitor. Edit freely (commodity → countries).\nreturn [\n  { json: { supplier: 'Brazil beef suppliers', commodity: 'beef', country: 'Brazil', q: 'Brazil beef export OR cattle OR port' } },\n  { json: { supplier: 'India buffalo meat', commodity: 'beef', country: 'India', q: 'India buffalo meat export ban OR price' } },\n  { json: { supplier: 'Brazil/Ukraine chicken', commodity: 'chicken', country: 'Brazil', q: 'Brazil chicken poultry export avian flu' } },\n  { json: { supplier: 'Egypt potatoes', commodity: 'potato', country: 'Egypt', q: 'Egypt potato export price weather' } },\n  { json: { supplier: 'KSA logistics', commodity: 'all', country: 'Saudi Arabia', q: 'Saudi Arabia port Jeddah Dammam shipping delay customs' } }\n];"
+      },
+      "id": "targets",
+      "name": "Suppliers + countries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 420, 320 ]
+    },
+    {
+      "parameters": {
+        "url": "=https://news.google.com/rss/search?q={{ encodeURIComponent($json.q) }}+when:2d&hl=en-US&gl=US&ceid=US:en",
+        "options": { "response": { "response": { "responseFormat": "text" } } }
+      },
+      "id": "news",
+      "name": "Google News RSS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [ 660, 320 ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse RSS <item> into {title, source, url, date}. Keep most-recent 8 per target.\nconst xml = $input.first().json.data || $input.first().json.body || '';\nconst t = String(xml);\nconst items = [];\nconst re = /<item>([\\s\\S]*?)<\\/item>/g; let m;\nconst pick = (s, tag) => { const r = new RegExp('<'+tag+'>([\\\\s\\\\S]*?)<\\\\/'+tag+'>').exec(s); return r ? r[1].replace(/<!\\[CDATA\\[|\\]\\]>/g,'').trim() : ''; };\nwhile ((m = re.exec(t)) && items.length < 8) {\n  const b = m[1];\n  items.push({ title: pick(b,'title'), url: pick(b,'link'), source: pick(b,'source') || 'Google News', date: pick(b,'pubDate') });\n}\nconst meta = $('Suppliers + countries').item.json;\nreturn [{ json: { ...meta, articles: items } }];"
+      },
+      "id": "parse",
+      "name": "Parse signals",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 900, 320 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
+          { "name": "Content-Type", "value": "application/json" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: $env.OPENAI_BATCH_MODEL || 'gpt-4o-mini',\n  temperature: 0.2,\n  response_format: { type: 'json_object' },\n  messages: [\n    { role: 'system', content: 'You are MEC\\'s supply-risk analyst. You will receive a supplier/country and recent news ARTICLES (title, source, url, date). Output STRICT JSON only. For each risk and the recommendation you MUST cite an article via {source,url,date}. If the articles show no relevant signal, return risks:[] and recommendation \"hold — no signal\". NEVER invent facts or sources. Be specific to meat/chicken/potato import into Saudi Arabia. Schema: {\"supplier\":string,\"commodity\":string,\"country\":string,\"recommendation\":string,\"forecastWindow\":string,\"risks\":[{\"type\":\"transport|weather|price|disease|policy|other\",\"severity\":\"low|medium|high\",\"summary\":string,\"citation\":{\"source\":string,\"url\":string,\"date\":string}}]}' },\n    { role: 'user', content: JSON.stringify($json) }\n  ]\n}) }}",
+        "options": {}
+      },
+      "id": "analyse",
+      "name": "GPT synthesise (mini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [ 1140, 320 ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse model JSON, then DROP any risk without a real citation (accuracy guard).\nlet out;\ntry { out = JSON.parse($json.choices[0].message.content); } catch (e) { return []; }\nout.risks = (out.risks || []).filter(r => r && r.citation && r.citation.url && r.citation.source);\nout.generated_at = $now.toISO();\nreturn [{ json: out }];"
+      },
+      "id": "guard",
+      "name": "Drop unsourced claims",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 1380, 320 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/supply_intel?on_conflict=supplier",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+          { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+          { "name": "Content-Type", "value": "application/json" },
+          { "name": "Prefer", "value": "resolution=merge-duplicates" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ supplier: $json.supplier, commodity: $json.commodity, country: $json.country, recommendation: $json.recommendation, forecast_window: $json.forecastWindow, risks: $json.risks, generated_at: $json.generated_at }) }}",
+        "options": {}
+      },
+      "id": "store",
+      "name": "Store → Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [ 1620, 320 ]
+    }
+  ],
+  "connections": {
+    "Every 12h": { "main": [ [ { "node": "Suppliers + countries", "type": "main", "index": 0 } ] ] },
+    "Suppliers + countries": { "main": [ [ { "node": "Google News RSS", "type": "main", "index": 0 } ] ] },
+    "Google News RSS": { "main": [ [ { "node": "Parse signals", "type": "main", "index": 0 } ] ] },
+    "Parse signals": { "main": [ [ { "node": "GPT synthesise (mini)", "type": "main", "index": 0 } ] ] },
+    "GPT synthesise (mini)": { "main": [ [ { "node": "Drop unsourced claims", "type": "main", "index": 0 } ] ] },
+    "Drop unsourced claims": { "main": [ [ { "node": "Store → Supabase", "type": "main", "index": 0 } ] ] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "active": false
+}

@@ -24,6 +24,7 @@
   "automations": {
     "eyebrow": "منصّة الإجراءات", "headline": "الأتمتة", "subline": "شغّل تدفّقات n8n الخاصة بـ MEC من البوابة. اربط رابط Webhook لكل تدفّق لتفعيله.",
     "connected": "{n} من {total} متصل", "trigger": "المُشغِّل", "live": "نشط", "notConnected": "غير متصل", "lastRun": "آخر تشغيل", "neverRun": "لم يُشغَّل بعد",
+    "internal": "سير العمل الداخلي", "internalSub": "تعمل على بيانات وعمليات MEC نفسها.", "external": "سير العمل الخارجي", "externalSub": "تجلب البيانات من العالم الخارجي.",
     "run": "تشغيل", "running": "جارٍ…", "triggered": "تم التشغيل", "connectFirst": "اربط n8n أولًا"
   },
   "jarvis": {

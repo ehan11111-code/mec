@@ -1,0 +1,69 @@
+{
+  "name": "MEC · ERP Scheduled Sync (internal)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [ { "field": "hours", "hoursInterval": 6 } ] }
+      },
+      "id": "schedule",
+      "name": "Every 6h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [ 240, 300 ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.ERP_BASE_URL }}/api/sales?since={{ $now.minus({ hours: 6 }).toISO() }}",
+        "authentication": "genericCredentialType",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "Authorization", "value": "=Bearer {{ $env.ERP_API_KEY }}" } ] },
+        "options": {}
+      },
+      "id": "fetch-erp",
+      "name": "Fetch ERP data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [ 480, 300 ]
+    },
+    {
+      "parameters": {
+        "jsClass": "",
+        "jsCode": "// Normalise ERP rows to the portal/Supabase shape (mirror lib/data/* types).\n// Adjust field names to your ERP's response once we see a sample.\nconst rows = $input.first().json;\nconst items = Array.isArray(rows) ? rows : (rows.data || rows.items || []);\nreturn items.map((r) => ({ json: {\n  invoice_no: String(r.invoiceNo ?? r.invoice ?? r.id ?? ''),\n  date: r.date ?? r.invoiceDate ?? null,\n  client: r.client ?? r.customer ?? 'عميل نقدي / غير محدد',\n  salesperson: r.salesperson ?? r.rep ?? null,\n  product: r.product ?? r.item ?? null,\n  qty: Number(r.qty ?? r.cartons ?? 0),\n  amount: Number(r.amountAfterVat ?? r.total ?? 0),\n  collected: !!(r.collected ?? (r.status === 'تم')),\n  source: 'erp'\n}}));"
+      },
+      "id": "normalise",
+      "name": "Normalise rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 720, 300 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/sales?on_conflict=invoice_no",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+          { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+          { "name": "Content-Type", "value": "application/json" },
+          { "name": "Prefer", "value": "resolution=merge-duplicates" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+        "options": {}
+      },
+      "id": "upsert-supabase",
+      "name": "Upsert → Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [ 960, 300 ]
+    }
+  ],
+  "connections": {
+    "Every 6h": { "main": [ [ { "node": "Fetch ERP data", "type": "main", "index": 0 } ] ] },
+    "Fetch ERP data": { "main": [ [ { "node": "Normalise rows", "type": "main", "index": 0 } ] ] },
+    "Normalise rows": { "main": [ [ { "node": "Upsert → Supabase", "type": "main", "index": 0 } ] ] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "active": false
+}

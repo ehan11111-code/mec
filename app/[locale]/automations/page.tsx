@@ -42,8 +42,14 @@ export default function AutomationsPage() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-        {automations.map(a => {
+      {(['internal', 'external'] as const).map(kind => (
+        <section key={kind} className="mb-8">
+          <div className="mb-3 flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-text">{t(kind)}</h2>
+            <span className="text-xs text-muted">{t(`${kind}Sub`)}</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+        {automations.filter(a => a.kind === kind).map(a => {
           const st = state[a.id] ?? 'idle'; const isConfigured = !!webhookUrls[a.webhookEnv]
           return (
             <Panel key={a.id}>
@@ -83,7 +89,9 @@ export default function AutomationsPage() {
             </Panel>
           )
         })}
-      </div>
+          </div>
+        </section>
+      ))}
     </PageShell>
   )
 }

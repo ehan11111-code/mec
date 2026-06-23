@@ -24,6 +24,7 @@
   "automations": {
     "eyebrow": "Action platform", "headline": "Automations", "subline": "Trigger MEC's n8n workflows from the portal. Connect a webhook URL per workflow to go live.",
     "connected": "{n} of {total} connected", "trigger": "Trigger", "live": "Live", "notConnected": "Not connected", "lastRun": "Last run", "neverRun": "Not run yet",
+    "internal": "Internal workflows", "internalSub": "Run on MEC's own data & operations.", "external": "External workflows", "externalSub": "Pull data in from the outside world.",
     "run": "Run", "running": "Running…", "triggered": "Triggered", "connectFirst": "Connect n8n first"
   },
   "jarvis": {

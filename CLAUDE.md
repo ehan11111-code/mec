@@ -84,6 +84,23 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-23 — Scheduled ERP sync + Supply-Market Intelligence (n8n + OpenAI + Supabase).** Added the
+  data-fetch/automation layer: new **`/erp-sync` skill** (`.claude/skills/erp-sync/`) that generates a
+  timed fetch workflow (Schedule → fetch → normalise → Supabase) and deploys it to n8n via the public
+  API. Two importable **n8n workflows** in `n8n/`: **`erp-scheduled-sync.json`** (internal, every 6h —
+  pull ERP → `sales` table) and **`supply-intelligence.json`** (external, every 12h — gather real
+  Google-News/advisory RSS signals per supplier+country → gpt-4o-mini synthesis → **drop any unsourced
+  claim** → `supply_intel` table; every risk carries source+date+link). `scripts/n8n-deploy.js` (no deps)
+  pushes+activates a workflow from `.env.local`. `supabase/schema.sql` defines both tables. Automations
+  registry now carries **`kind: internal | external`** and the page groups them; 2 new entries added.
+  Full design + **tool/cost breakdown** in **`SUPPLY_INTEL.md`** (realistic ~$3–20/mo; RSS-only path
+  <$3/mo). Keys (OpenAI, n8n JWT, Supabase) stored in **gitignored `.env.local`** only; `.env.example`
+  documents the new vars. Build green (28 routes).
+  - **Blocked on user:** n8n instance base URL (`N8N_API_BASE_URL`) + ERP connection method to actually
+    deploy+run; supplier/country list confirmation; RSS-vs-Tavily search-tier choice.
+  - **Next:** when the n8n URL + ERP access arrive, run `node scripts/n8n-deploy.js …`, then build the
+    portal **Supply Intelligence** page reading Supabase `supply_intel`.
+
 - **2026-06-23 — Number reconciliation (no contradictions) + per-product gross profit.** Fixed
   contradicting figures flagged in review: revenue/receivables/clients now use **one canonical value
   everywhere** (Control Center = Analytics = CRM). **Every sale is attributed to a client** (ERP +
