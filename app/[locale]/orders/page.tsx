@@ -83,7 +83,7 @@ export default function OrdersPage() {
                 return (
                   <tr key={o.id} className="hover:bg-surface-elev transition-colors">
                     <td className="px-5 md:px-6 py-3 font-medium text-text tabular-nums whitespace-nowrap">{o.number}</td>
-                    <td className="px-4 py-3 text-text-soft max-w-[220px] truncate">{c ? clientName(c, locale) : o.clientId}</td>
+                    <td className="px-4 py-3 text-text-soft max-w-[220px] truncate">{c ? clientName(c, locale) : o.clientName}</td>
                     <td className="px-4 py-3 text-text-soft hidden lg:table-cell">{locale === 'ar' ? o.salespersonAr : o.salespersonEn}</td>
                     <td className="px-4 py-3"><StatusBadge status={o.status} /></td>
                     <td className="px-4 py-3 text-end tabular-nums text-text">{fmtSAR(o.totalAmount)}</td>

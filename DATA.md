@@ -8,6 +8,14 @@ deterministic, so once imported the data renders identically on localhost and on
 
 - **`DATA/بيانات العملاء.xlsx`** → **112 real clients** → `lib/data/clients.ts` (regenerate with
   `node DATA/_gen.js`). Shown on the **Clients (CRM)** page and across the Control Center.
+- **`DATA/مبيعات الربع الرابع 2025.xlsx`**, **`…الربع الاول 2026.xlsx`**, **`…الربع الثاني 2026.xlsx`**
+  → **927 sales invoices** (`lib/data/sales.ts`) + **193 purchase lines** (`lib/data/purchases.ts`),
+  regenerate with `node DATA/_salesgen.js`. Power the **Analytics** suite, **Orders**, JARVIS, and make
+  **client revenue real**. The importer cleans subtotal/tax rows, validates dates, dedupes the
+  overlapping Q2 purchase sheet, and categorises Arabic product names (`lib/data/categorize.ts`).
+  - **Not usable from the source:** the *paid / remaining / dwell-time* columns in the purchase sheets
+    were left blank, so supplier-payables and inventory-turnover views are omitted until that data
+    arrives. ~19% of products land in an "Other" category — extend the categoriser keywords to shrink it.
 
 ## How to send more data
 

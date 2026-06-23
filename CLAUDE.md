@@ -84,6 +84,23 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-23 — Analytics suite + action platform + JARVIS.** Imported 3 quarterly workbooks
+  (`DATA/مبيعات*.xlsx`) via self-contained `DATA/_salesgen.js` → `lib/data/sales.ts` (927 invoices,
+  SAR 64.5M) + `lib/data/purchases.ts` (193 lines, SAR 31.3M); `lib/data/categorize.ts` for Arabic
+  product categories. Extended `lib/data/dataset.ts` with real aggregates and a **sales→CRM join** —
+  client revenue/risk and the Orders page are now **real** (synthetic order generator retired).
+  Built **/analytics** (Power-BI style: Overview/Sales/Procurement/Margin/Collections/Products, shared
+  slicer bar, LineChartPanel), **report export** (`ExportBar`: print-to-PDF + CSV + Excel, print CSS),
+  **/automations** hub (10 n8n workflows, Run → configurable webhooks), and **JARVIS** (`lib/jarvis/
+  engine.ts` data-engine + `components/JarvisPanel.tsx` + `app/api/jarvis/route.ts` OpenAI/ChatGPT,
+  activates on `OPENAI_API_KEY`). Build green (analytics/automations/api routes); all routes 200; API
+  returns 503→data-engine fallback without a key. See `.env.example` + `DATA.md`.
+  - **Data caveats:** supplier payables & warehouse dwell-time were blank in the source (dropped from
+    Procurement); ~19% of items fall in an "Other" category (categorizer can be extended); ~71% of
+    sales client names matched the CRM (unmatched still appear in Sales analytics by name).
+  - **Next:** when n8n webhooks/`OPENAI_API_KEY` are provided, paste into Vercel env to go live; extend
+    the Arabic product categoriser to shrink "Other"; import new monthly sheets via `_salesgen.js`.
+
 - **2026-06-22 — Real client data + inbox + visual upgrade.** Imported **112 real MEC clients** from
   `DATA/بيانات العملاء.xlsx` → `lib/data/clients.ts` (regen via `node DATA/_gen.js`). Added a
   **dataset layer** (`lib/data/dataset.ts`: clients, SKUs, deterministic orders/payments + aggregates),

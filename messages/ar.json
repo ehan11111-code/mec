@@ -1,6 +1,29 @@
 {
   "brand": { "name": "MEC", "positioning": "مركز عمليات من Jarvis AI." },
-  "nav": { "operations": "العمليات", "controlCenter": "مركز التحكّم", "orders": "الطلبات", "clients": "العملاء", "departments": "الأقسام", "notifications": "الإشعارات", "totalSavings": "إجمالي التوفير", "academy": "الأكاديمية", "contact": "تواصل" },
+  "nav": { "operations": "العمليات", "controlCenter": "مركز التحكّم", "analytics": "التحليلات", "orders": "الطلبات", "clients": "العملاء", "automations": "الأتمتة", "departments": "الأقسام", "notifications": "الإشعارات", "totalSavings": "إجمالي التوفير", "academy": "الأكاديمية", "contact": "تواصل" },
+  "analytics": {
+    "eyebrow": "ذكاء الأعمال", "headline": "التحليلات", "subline": "لوحات مباشرة من بيانات مبيعات ومشتريات MEC الحقيقية — أكتوبر 2025 إلى يونيو 2026.",
+    "filters": "عوامل التصفية", "month": "الشهر", "salesperson": "المندوب", "category": "الفئة", "all": "الكل", "clear": "مسح",
+    "tab_overview": "نظرة عامة", "tab_sales": "المبيعات", "tab_procurement": "المشتريات", "tab_margin": "الهامش", "tab_collections": "التحصيل", "tab_products": "المنتجات",
+    "kRevenue": "الإيراد", "kSpend": "المشتريات", "kGrossProfit": "الربح الإجمالي (تقديري)", "kVat": "ضريبة القيمة المضافة", "kReceivables": "المستحقات", "kInvoices": "الفواتير", "kClients": "العملاء", "kAvgInvoice": "متوسط الفاتورة", "kSuppliers": "الموردون", "kPurchaseLines": "بنود الشراء",
+    "revByMonth": "الإيراد حسب الشهر", "revBySalesperson": "الإيراد حسب المندوب", "topClients": "أعلى العملاء", "byCategory": "المبيعات حسب الفئة",
+    "spendBySupplier": "الإنفاق حسب المورّد", "spendByCategory": "الإنفاق حسب الفئة", "procNote": "ملاحظة: مستحقات الموردين ومدة بقاء البضاعة لم تُعبّأ في الملفات المصدرية، لذا حُذفت تلك العروض.",
+    "marginByCategory": "نسبة الهامش حسب الفئة", "marginSub": "سعر البيع مقابل تكلفة الشراء.", "sellVsCost": "سعر البيع مقابل التكلفة حسب الفئة", "avgSell": "متوسط البيع", "avgCost": "متوسط التكلفة", "marginPct": "الهامش %", "marginNote": "الهامش = متوسط سعر بيع الوحدة (المبيعات) مقابل متوسط تكلفة الوحدة (المشتريات) لكل فئة.",
+    "collectedVsOutstanding": "محصّل مقابل مستحق", "collected": "محصّل", "outstanding": "مستحق", "cash": "نقدًا", "bank": "تحويل بنكي",
+    "topByRevenue": "أعلى المنتجات إيرادًا", "topByVolume": "أعلى المنتجات كميةً", "topProducts": "أعلى المنتجات",
+    "colClient": "العميل", "colInvoices": "الفواتير", "colCollected": "محصّل", "colCategory": "الفئة", "colItem": "المنتج", "colQty": "الكمية",
+    "print": "طباعة / PDF", "excel": "Excel"
+  },
+  "automations": {
+    "eyebrow": "منصّة الإجراءات", "headline": "الأتمتة", "subline": "شغّل تدفّقات n8n الخاصة بـ MEC من البوابة. اربط رابط Webhook لكل تدفّق لتفعيله.",
+    "connected": "{n} من {total} متصل", "trigger": "المُشغِّل", "live": "نشط", "notConnected": "غير متصل", "lastRun": "آخر تشغيل", "neverRun": "لم يُشغَّل بعد",
+    "run": "تشغيل", "running": "جارٍ…", "triggered": "تم التشغيل", "connectFirst": "اربط n8n أولًا"
+  },
+  "jarvis": {
+    "subtitle": "اسأل أي شيء عن MEC", "placeholder": "اسأل عن المبيعات أو العملاء أو الهامش…", "greeting": "مرحبًا — أنا جارفيس. اسألني عن مبيعات MEC والهوامش والمستحقات والموردين والمنتجات.",
+    "s1": "أعلى عميل", "s2": "مبيعات مايو", "s3": "من يدين لنا؟", "s4": "الهامش حسب الفئة",
+    "viaAi": "بواسطة ChatGPT", "viaData": "من بياناتك"
+  },
   "orderStatus": { "under_approval": "قيد الاعتماد", "approved": "معتمَد", "dispatched": "تم الإرسال", "on_route": "في الطريق", "delivered": "تم التسليم", "payment_pending": "بانتظار السداد", "overdue": "متأخر", "paid": "مدفوع", "cancelled": "ملغى" },
   "clients": { "eyebrow": "إدارة العملاء", "headline": "العملاء", "subline": "{count} عميلًا حقيقيًا لـ MEC مستوردين من نظام ERP — البحث والمخاطر والإيراد بنظرة واحدة.", "kTotal": "إجمالي العملاء", "kActive": "نشط", "kRevenue": "إجمالي الإيراد", "kOverdue": "رصيد متأخر", "kAtRisk": "عملاء معرّضون للمخاطر", "searchPh": "ابحث بالاسم أو الرقم أو المدينة…", "colName": "العميل", "colCity": "المدينة", "colRep": "المندوب", "colStatus": "الحالة", "colOrders": "الطلبات", "colRevenue": "الإيراد", "colRisk": "المخاطر", "byStatus": "العملاء حسب الحالة", "topClients": "أعلى العملاء إيرادًا", "topClientsSub": "الأعلى قيمة إجمالية.", "cStatus_active": "نشط", "cStatus_lead": "محتمل", "cStatus_inactive": "غير نشط", "empty": "لا عملاء يطابقون بحثك.", "showing": "عرض {n} من {total}" },
   "orders": { "eyebrow": "العمليات", "headline": "الطلبات", "subline": "سجل الطلبات المباشر لجميع العملاء — الحالة والهامش وموعد السداد في عرض واحد.", "kTotal": "إجمالي الطلبات", "kOpen": "طلبات مفتوحة", "kValue": "قيمة الطلبات", "kMargin": "متوسط الهامش", "kOverdue": "متأخرة", "colNumber": "الطلب", "colClient": "العميل", "colRep": "المندوب", "colStatus": "الحالة", "colAmount": "المبلغ", "colMargin": "الهامش", "colDue": "الاستحقاق", "byStatus": "الطلبات حسب الحالة", "byStatusSub": "وضع سجل الطلبات الآن.", "revenueTrend": "اتجاه الإيراد · 6 أشهر", "categoryMix": "الكمية حسب الفئة", "categoryMixSub": "الكمية المطلوبة لكل خط منتجات.", "empty": "لا طلبات تطابق هذا التصفية.", "filterAll": "الكل" },

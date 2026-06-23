@@ -1,6 +1,7 @@
 import { AuthGate } from './AuthGate'
 import { SidebarNav } from './SidebarNav'
 import { TopBar } from './TopBar'
+import { JarvisPanel } from './JarvisPanel'
 export function PageShell({ breadcrumbs, children }: { breadcrumbs: { label: string; href?: string }[]; children: React.ReactNode }) {
   return (
     <AuthGate>
@@ -10,6 +11,7 @@ export function PageShell({ breadcrumbs, children }: { breadcrumbs: { label: str
           <TopBar breadcrumbs={breadcrumbs} />
           <main className="flex-1 px-4 md:px-6 lg:px-8 py-6 md:py-8 scrollbar-soft">{children}</main>
         </div>
+        <JarvisPanel />
       </div>
     </AuthGate>
   )

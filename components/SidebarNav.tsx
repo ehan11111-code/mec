@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, usePathname } from '@/i18n/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { clsx } from 'clsx'
-import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users } from 'lucide-react'
+import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap } from 'lucide-react'
 import { BrandLogo } from './BrandLogo'
 import { departmentSeeds } from '@/lib/mock/catalog'
 import { getFirmState } from '@/lib/mock/data'
@@ -20,8 +20,10 @@ export function SidebarNav() {
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
   const top: Item[] = [
     { href: '/control-center', label: tNav('controlCenter'), icon: LayoutDashboard },
+    { href: '/analytics', label: tNav('analytics'), icon: BarChart3 },
     { href: '/orders', label: tNav('orders'), icon: ShoppingCart },
-    { href: '/clients', label: tNav('clients'), icon: Users }
+    { href: '/clients', label: tNav('clients'), icon: Users },
+    { href: '/automations', label: tNav('automations'), icon: Zap }
   ]
   const bottom: Item[] = [
     { href: '/total-savings', label: tNav('totalSavings'), icon: Coins },
