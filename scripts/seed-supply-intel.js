@@ -23,7 +23,7 @@ function parseRss(xml, n) {
   while ((m = re.exec(xml)) && items.length < n) { const b = m[1]; items.push({ title: pick(b, 'title'), url: pick(b, 'link'), source: pick(b, 'source') || 'News', date: pick(b, 'pubDate') }) }
   return items
 }
-const SYS = 'You are MEC\'s supply-risk + price analyst for food imports into Saudi Arabia (beef, chicken, potato). You receive a supplier/country plus recent ARTICLES and an FX rate (exporter currency vs SAR). Output STRICT JSON. Every risk AND every price driver MUST cite a real source via {source,url,date}; drop anything you cannot cite. Base price direction on cited signals + FX; if no signal use direction "stable", change_pct 0, empty arrays. Never invent. Echo supplier/commodity/country. Schema: {"supplier":string,"commodity":string,"country":string,"recommendation":string,"forecast_window":string,"price_outlook":{"direction":"up|down|stable","change_pct":number,"low_pct":number,"high_pct":number,"confidence":"low|medium|high","drivers":[{"summary":string,"citation":{"source":string,"url":string,"date":string}}]},"risks":[{"type":"transport|weather|price|disease|policy|other","severity":"low|medium|high","summary":string,"citation":{"source":string,"url":string,"date":string}}]}. change_pct/low_pct/high_pct are % changes in import cost over the window.'
+const SYS = 'You are MEC\'s supply-risk + price analyst for food imports into Saudi Arabia (beef, chicken, potato). You receive a supplier/country plus recent ARTICLES and an FX rate (exporter currency vs SAR). Output STRICT JSON. Every risk AND every price driver MUST cite a real source via {source,url,date}; drop anything you cannot cite. Base price direction on cited signals + FX; if no signal use direction "stable", change_pct 0, empty arrays. Never invent. Echo supplier/commodity/country. Schema: {"supplier":string,"commodity":string,"country":string,"recommendation":string,"forecast_window":string,"lead_time_days":number,"price_index":number,"price_outlook":{"direction":"up|down|stable","change_pct":number,"low_pct":number,"high_pct":number,"confidence":"low|medium|high","drivers":[{"summary":string,"citation":{"source":string,"url":string,"date":string}}]},"risks":[{"type":"transport|weather|price|disease|policy|other","severity":"low|medium|high","summary":string,"citation":{"source":string,"url":string,"date":string}}]}. lead_time_days = estimated sea-freight lead time from that country to a Saudi port (Brazil~28, India~18, Egypt~7, KSA-domestic~2; raise it if articles mention port delays). price_index = 0-100 supply-pressure index (50 neutral; higher = more upward price pressure). change_pct/low_pct/high_pct are % changes in import cost over the window.'
 
 async function main() {
   loadEnv()
@@ -55,12 +55,18 @@ async function main() {
 
     outlook.risks = (outlook.risks || []).filter(r => r && r.citation && r.citation.url && r.citation.source)
     if (outlook.price_outlook) outlook.price_outlook.drivers = (outlook.price_outlook.drivers || []).filter(d => d && d.citation && d.citation.url && d.citation.source)
-    const row = { supplier: outlook.supplier || t.supplier, commodity: outlook.commodity || t.commodity, country: outlook.country || t.country, recommendation: outlook.recommendation || '', forecast_window: outlook.forecast_window || '', price_outlook: outlook.price_outlook || null, risks: outlook.risks || [], generated_at: new Date().toISOString() }
+    const now = new Date().toISOString()
+    const row = { supplier: outlook.supplier || t.supplier, commodity: outlook.commodity || t.commodity, country: outlook.country || t.country, recommendation: outlook.recommendation || '', forecast_window: outlook.forecast_window || '', price_outlook: outlook.price_outlook || null, risks: outlook.risks || [], lead_time_days: outlook.lead_time_days ?? null, price_index: outlook.price_index ?? null, generated_at: now }
 
     const up = await fetch(`${SUPA}/rest/v1/supply_intel?on_conflict=supplier`, {
       method: 'POST', headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
       body: JSON.stringify(row)
     })
+    // append a history snapshot for the time-series charts
+    await fetch(`${SUPA}/rest/v1/supply_intel_history`, {
+      method: 'POST', headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ supplier: row.supplier, commodity: row.commodity, country: row.country, change_pct: row.price_outlook?.change_pct ?? 0, price_index: row.price_index, lead_time_days: row.lead_time_days, risk_count: row.risks.length, high_risk: row.risks.filter(r => r.severity === 'high').length, generated_at: now })
+    }).catch(() => {})
     const po = row.price_outlook
     console.log(`${up.ok ? 'OK ' : 'ERR'} ${row.supplier} · ${row.risks.length} risks · ${po ? `${po.direction} ${po.change_pct > 0 ? '+' : ''}${po.change_pct}% (${po.drivers.length} drivers)` : 'no outlook'}${up.ok ? '' : ' · ' + up.status}`)
   }

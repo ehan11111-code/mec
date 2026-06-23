@@ -84,6 +84,20 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-23 — Supply Intelligence "wow" dashboard (charts, per product×country, lead-time, pressure).**
+  Rebuilt `/supply-intelligence` into a real analytics dashboard. New `components/supply/SupplyPriceChart.tsx`
+  (Recharts ComposedChart): **real ~9-month purchase-cost history** (from `priceBaseline`) + a **forecast
+  cone** (low–high projected from the outlook) — actual data anchored to a sourced forecast. Each
+  product×country card now shows: flag + supplier, recommendation, a **stat strip** (price direction %,
+  transport **lead time**, risk count), a **supply-pressure index** bar (0–100), the price chart, and
+  cited drivers + cited risks. KPI row adds **avg lead time**. Added `lead_time_days` + `price_index` to
+  the GPT schema/workflow/seed + a `supply_intel_history` append table (workflow + seed write a snapshot
+  each run → future time-series). Explained to the user why **gross margin ≈ 2M is correct** despite
+  sales≈procurement≈31M (procurement ≠ COGS; the gap is inventory/unmatched + VAT). Build green.
+  - **User action:** re-run the updated `supabase/schema.sql` (idempotent — adds `lead_time_days`,
+    `price_index`, `supply_intel_history`), then `node scripts/seed-supply-intel.js` to fill them.
+  - **Next:** Outlook email-intake workflow (awaiting Azure client id/secret/tenant); price-jump alerts.
+
 - **2026-06-23 — Supply intel LIVE (seeded) + Vision key + Gmail OAuth URL.** User ran `schema.sql`, so
   the tables exist. New `scripts/seed-supply-intel.js` runs the pipeline once locally (Google+Bing News +
   FX + gpt-4o-mini → Supabase) — **ran it, supply_intel now populated** (Brazil beef **+10%**, chicken

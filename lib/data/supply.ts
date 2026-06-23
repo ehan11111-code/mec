@@ -19,7 +19,14 @@ export type SupplyIntel = {
   supplier: string; commodity: string; country: string
   recommendation: string; forecast_window: string
   price_outlook?: PriceOutlook | null
+  lead_time_days?: number | null
+  price_index?: number | null
   risks: Risk[]; generated_at: string
+}
+export type SupplyHistory = {
+  supplier: string; commodity: string; country: string
+  change_pct: number; price_index: number; lead_time_days: number
+  risk_count: number; high_risk: number; generated_at: string
 }
 export type WhatsappMsg = {
   message_id: string; phone: string; push_name: string; body: string
@@ -56,4 +63,7 @@ export function getSupplyIntel() {
 }
 export function getWhatsappIntake(limit = 100) {
   return read<WhatsappMsg>(`whatsapp_intake?select=*&order=received_at.desc&limit=${limit}`)
+}
+export function getSupplyHistory(limit = 500) {
+  return read<SupplyHistory>(`supply_intel_history?select=*&order=generated_at.asc&limit=${limit}`)
 }
