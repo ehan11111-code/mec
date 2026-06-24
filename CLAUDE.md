@@ -84,6 +84,18 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-24 — Inventory on-hand reconciled (fixed the impossible 14,888).** User flagged that 14,888
+  cartons on hand can't be real vs the 6,000 capacity. Root cause: (1) a **clamp bug** — clamping each
+  SKU's negative net to 0 then summing inflated 10,079 → 14,888; (2) **the ledger doesn't reconcile** — it
+  records 141,885 cartons in vs 131,806 out (net +10,079), because **outbound is under-recorded for 8
+  SKUs** (e.g. بوبي فيل الكامل: 4,083 in / 175 out). Fix: `getInventory` now flags **`unreconciled`** SKUs
+  (out < 20% of in & net > 150, or one SKU's net > 40% of capacity); `warehouseStock` reports a
+  **reconciled on-hand that excludes them = 3,483 cartons (58% of 6,000)** — plausible — plus `rawOnHand`
+  / `netRecorded` for transparency. Inventory page headline is now the reconciled figure with an
+  explanation, an "Unreconciled" filter, and per-SKU **in/out** shown for flagged rows. Operations House
+  warehouse tile inherits the reconciled number. The `inbound-gap` **data concern** rewritten to this
+  precise finding (+ evidence table of the unreconciled SKUs with in/out/net). Build green, EN/AR parity.
+
 - **2026-06-24 — Missing-document alerts (order compliance) — final item of the big batch.** Every order
   needs its **PO → invoice → delivery note → payment proof**; the system tracks which have arrived and
   flags what's missing. The order/WhatsApp message is the PO; invoice/delivery/payment are matched from

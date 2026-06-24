@@ -25,18 +25,19 @@ export default function InventoryPage() {
 
   const cats = useMemo(() => [...new Set(inv.map(r => r.category))], [inv])
   const [q, setQ] = useState(''); const [cat, setCat] = useState(''); const [view, setView] = useState<'all' | 'reorder' | 'expiring' | 'gap'>('all')
+  const flagged = (r: InventorySku) => r.unreconciled || r.dataGap
   const rows = useMemo(() => {
     const s = q.trim().toLowerCase()
     return inv.filter(r =>
       (!s || r.item.toLowerCase().includes(s) || (r.barcode && r.barcode.includes(s))) &&
       (!cat || r.category === cat) &&
-      (view === 'all' || (view === 'reorder' && r.needsReorder) || (view === 'expiring' && (r.expiry === 'red' || r.expiry === 'yellow')) || (view === 'gap' && r.dataGap)))
+      (view === 'all' || (view === 'reorder' && r.needsReorder) || (view === 'expiring' && (r.expiry === 'red' || r.expiry === 'yellow')) || (view === 'gap' && flagged(r))))
   }, [q, cat, view, inv])
 
   const utilTone = ws.utilization >= 100 ? 'bg-accent' : ws.utilization >= 80 ? 'bg-warn' : 'bg-success'
   const selCls = 'rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-text focus:border-accent transition-colors cursor-pointer'
   const views: { v: typeof view; n: number }[] = [
-    { v: 'all', n: inv.length }, { v: 'reorder', n: ws.reorder }, { v: 'expiring', n: ws.red + ws.yellow }, { v: 'gap', n: ws.dataGaps }
+    { v: 'all', n: inv.length }, { v: 'reorder', n: ws.reorder }, { v: 'expiring', n: ws.red + ws.yellow }, { v: 'gap', n: ws.unreconciled + ws.dataGaps }
   ]
 
   return (
@@ -59,7 +60,7 @@ export default function InventoryPage() {
 
       <section className="mb-6 grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         <StatCard label={t('kSkus')} value={String(ws.skus)} index={0} accent />
-        <StatCard label={t('kOnHand')} value={fmtNum(ws.onHand)} delta={t('cartons')} index={1} />
+        <StatCard label={t('kOnHand')} value={fmtNum(ws.onHand)} delta={t('reconciledNote')} index={1} />
         <StatCard label={t('kValue')} value={fmtSAR(ws.value)} index={2} />
         <StatCard label={t('kReorder')} value={String(ws.reorder)} delta={`${ws.red + ws.yellow} ${t('expiringSoon')}`} index={3} accent />
       </section>
@@ -73,12 +74,13 @@ export default function InventoryPage() {
         <div className="h-3 w-full rounded-full bg-bg-soft overflow-hidden">
           <div className={clsx('h-full rounded-full transition-all', utilTone)} style={{ width: `${Math.min(100, ws.utilization)}%` }} />
         </div>
+        <p className="mt-2 text-[11px] text-muted">{t('recordedLine', { net: fmtNum(ws.netRecorded), raw: fmtNum(ws.rawOnHand), excluded: ws.unreconciled })}</p>
         <div className="mt-3 flex flex-wrap gap-4 text-xs">
           <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-success" />{t('expGreen')} {ws.green}</span>
           <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-warn" />{t('expYellow')} {ws.yellow}</span>
           <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-accent" />{t('expRed')} {ws.red}</span>
         </div>
-        <NoteCallout className="mt-4" tone="warn" title={t('noteTitle')}>{t('note', { gaps: ws.dataGaps })}</NoteCallout>
+        <NoteCallout className="mt-4" tone="warn" title={t('noteTitle')}>{t('note', { excluded: ws.unreconciled })}</NoteCallout>
       </Panel>
 
       <Panel bodyClassName="px-0 pb-0"
@@ -125,7 +127,10 @@ export default function InventoryPage() {
                     {r.barcode && <div className="text-[11px] text-muted tabular-nums">{r.barcode}</div>}
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell"><span className="inline-flex items-center rounded-full bg-bg-soft px-2.5 py-0.5 text-[11px] text-text-soft">{categoryLabel(r.category, locale)}</span></td>
-                  <td className="px-4 py-3 text-end tabular-nums text-text">{fmtNum(r.onHand)}</td>
+                  <td className="px-4 py-3 text-end tabular-nums">
+                    <span className={clsx(r.unreconciled ? 'text-warn' : 'text-text')}>{fmtNum(r.onHand)}</span>
+                    {(r.unreconciled || r.dataGap) && <div className="text-[10px] text-muted">{t('inOut', { in: fmtNum(r.inbound), out: fmtNum(r.outbound) })}</div>}
+                  </td>
                   <td className="px-4 py-3 text-end tabular-nums text-muted hidden lg:table-cell">{fmtNum(r.rop)}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={clsx('inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium', EXP_TONE[r.expiry])}>
@@ -135,9 +140,9 @@ export default function InventoryPage() {
                   <td className="px-4 py-3 text-end tabular-nums text-text-soft hidden sm:table-cell">{r.stockValue != null ? fmtSAR(r.stockValue) : '—'}</td>
                   <td className="px-5 md:px-6 py-3 text-center">
                     <div className="inline-flex items-center gap-1.5 justify-center flex-wrap">
-                      {r.needsReorder && <span className="inline-flex items-center rounded-full bg-accent-soft text-accent px-2 py-0.5 text-[10px] font-medium">{t('reorder')}</span>}
-                      {r.dataGap && <span className="inline-flex items-center gap-0.5 rounded-full bg-warn-soft text-warn px-2 py-0.5 text-[10px] font-medium"><AlertTriangle className="h-2.5 w-2.5" strokeWidth={2} />{t('gap')}</span>}
-                      {!r.needsReorder && !r.dataGap && <span className="text-[11px] text-success">{t('ok')}</span>}
+                      {(r.unreconciled || r.dataGap) && <span className="inline-flex items-center gap-0.5 rounded-full bg-warn-soft text-warn px-2 py-0.5 text-[10px] font-medium"><AlertTriangle className="h-2.5 w-2.5" strokeWidth={2} />{t('unreconciled')}</span>}
+                      {r.needsReorder && !r.unreconciled && <span className="inline-flex items-center rounded-full bg-accent-soft text-accent px-2 py-0.5 text-[10px] font-medium">{t('reorder')}</span>}
+                      {!r.needsReorder && !r.unreconciled && !r.dataGap && <span className="text-[11px] text-success">{t('ok')}</span>}
                     </div>
                   </td>
                 </tr>

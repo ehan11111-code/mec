@@ -622,10 +622,15 @@ export type ExpiryStatus = 'green' | 'yellow' | 'red' | 'unknown'
 export type InventorySku = InventoryRow & {
   unitCost: number | null; stockValue: number | null
   shelfLifeDays: number; expiryDate: string; daysToExpiry: number | null; expiry: ExpiryStatus
-  avgMonthlyOut: number; rop: number; needsReorder: boolean; dataGap: boolean
+  avgMonthlyOut: number; rop: number; needsReorder: boolean; dataGap: boolean; unreconciled: boolean
 }
 const DAY = 86400000
 function addDays(iso: string, days: number): string { if (!iso) return ''; const t = Date.parse(iso); if (isNaN(t)) return ''; return new Date(t + days * DAY).toISOString().slice(0, 10) }
+// A SKU's net is untrustworthy when outbound is far below inbound (issues not logged) or when one SKU's
+// net alone would fill >40% of the warehouse — both mean the ledger isn't reconciled for that SKU.
+function isUnreconciled(inbound: number, outbound: number, rawNet: number): boolean {
+  return (outbound < inbound * 0.2 && rawNet > 150) || rawNet > WAREHOUSE_CAPACITY * 0.4
+}
 
 export function getInventory(nowIso?: string): InventorySku[] {
   const now = nowIso ? Date.parse(nowIso) : Date.parse('2026-06-30')
@@ -641,22 +646,29 @@ export function getInventory(nowIso?: string): InventorySku[] {
     return {
       ...r, unitCost, stockValue: unitCost != null ? Math.round(r.onHand * unitCost) : null,
       shelfLifeDays, expiryDate, daysToExpiry, expiry,
-      avgMonthlyOut, rop, needsReorder: r.onHand < rop, dataGap: r.rawNet < 0
+      avgMonthlyOut, rop, needsReorder: r.onHand < rop, dataGap: r.rawNet < 0,
+      unreconciled: isUnreconciled(r.inbound, r.outbound, r.rawNet)
     }
   }).sort((a, b) => b.onHand - a.onHand)
 }
 
 export function warehouseStock(nowIso?: string) {
   const inv = getInventory(nowIso)
-  const onHand = inv.reduce((a, r) => a + r.onHand, 0)
-  const value = inv.reduce((a, r) => a + (r.stockValue ?? 0), 0)
+  // Reconciled on-hand only counts SKUs whose in/out ledger balances — excludes SKUs with under-recorded
+  // outbound (which would otherwise inflate the total past the physical capacity).
+  const reconciled = inv.filter(r => !r.unreconciled)
+  const onHand = reconciled.reduce((a, r) => a + r.onHand, 0)
+  const rawOnHand = inv.reduce((a, r) => a + r.onHand, 0)
+  const netRecorded = inv.reduce((a, r) => a + r.rawNet, 0)
+  const value = reconciled.reduce((a, r) => a + (r.stockValue ?? 0), 0)
   const util = Math.round((onHand / WAREHOUSE_CAPACITY) * 100)
   return {
-    skus: inv.length, onHand, value, capacity: WAREHOUSE_CAPACITY, utilization: util,
+    skus: inv.length, onHand, rawOnHand, netRecorded, value, capacity: WAREHOUSE_CAPACITY, utilization: util,
     red: inv.filter(r => r.expiry === 'red').length,
     yellow: inv.filter(r => r.expiry === 'yellow').length,
     green: inv.filter(r => r.expiry === 'green').length,
     reorder: inv.filter(r => r.needsReorder).length,
+    unreconciled: inv.filter(r => r.unreconciled).length,
     dataGaps: inv.filter(r => r.dataGap).length
   }
 }

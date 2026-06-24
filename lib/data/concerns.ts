@@ -1,7 +1,7 @@
 // Data-integrity / contradiction detector. Scans the real dataset for figures that don't reconcile or
 // that warrant attention, and surfaces them as "concern" notifications + a banner. Each concern is a
 // short report: what's off, the numbers, and what to do. Deterministic, client-safe.
-import { salesSummary, collectionsSummary, profitSummary, crmSummary, getSales, getPurchases, salesByClientName, productMargins, getClients, fmtSAR, fmtNum, WAREHOUSE_CAPACITY } from './dataset'
+import { salesSummary, collectionsSummary, profitSummary, crmSummary, getSales, getPurchases, salesByClientName, productMargins, getClients, warehouseStock, getInventory, fmtSAR, fmtNum, WAREHOUSE_CAPACITY } from './dataset'
 
 type Bi = { en: string; ar: string }
 
@@ -23,20 +23,20 @@ export function getConcerns(): Concern[] {
   const ps = profitSummary()
   const crm = crmSummary()
 
-  // 1) Inbound stock under-captured: procurement cartons << sales cartons → on-hand can't reconcile.
-  const sold = Math.round(getSales().reduce((a, r) => a + (r.cartons || 0), 0))
-  const bought = Math.round(getPurchases().filter(p => !SUPPLIER_NOISE.test(p.supplier)).reduce((a, p) => a + (p.cartons || 0), 0))
-  if (bought > 0 && bought < sold * 0.9) {
+  // 1) Warehouse ledger doesn't reconcile: recorded "in" exceeds "out" beyond the physical capacity,
+  //    because outbound isn't logged for some SKUs.
+  const ws = warehouseStock()
+  if (ws.unreconciled > 0 && ws.rawOnHand > WAREHOUSE_CAPACITY) {
     out.push({
       id: 'inbound-gap', severity: 'medium',
-      title: { en: 'Inbound stock under-recorded', ar: 'الوارد للمخزون غير مكتمل التسجيل' },
+      title: { en: 'Warehouse ledger doesn’t reconcile', ar: 'دفتر المستودع لا يتسوّى' },
       detail: {
-        en: `Procurement records ${fmtNum(bought)} cartons in, but sales moved ${fmtNum(sold)} cartons out — inbound is incomplete, so true stock on hand and warehouse load (vs ${fmtNum(WAREHOUSE_CAPACITY)} capacity) can't be reconciled. Wire the warehouse ledger (المخزون 2025/2026) to close the gap.`,
-        ar: `سجّلت المشتريات ${fmtNum(bought)} كرتون وارد، بينما باعت المبيعات ${fmtNum(sold)} كرتون — الوارد غير مكتمل، لذا لا يمكن التوفيق بين المخزون الفعلي وحمل المستودع (مقابل سعة ${fmtNum(WAREHOUSE_CAPACITY)}). اربط سجل المستودع (المخزون 2025/2026) لسدّ الفجوة.`
+        en: `The stock ledger nets to +${fmtNum(ws.netRecorded)} cartons (received − issued) — more than the ${fmtNum(WAREHOUSE_CAPACITY)} capacity — because ${ws.unreconciled} SKU(s) record far more received than issued (outbound not logged). Excluding those, reconciled on-hand is ${fmtNum(ws.onHand)} (${ws.utilization}% of capacity), which is plausible.`,
+        ar: `يبلغ صافي دفتر المخزون +${fmtNum(ws.netRecorded)} كرتون (وارد − صادر) — أكثر من سعة ${fmtNum(WAREHOUSE_CAPACITY)} — لأن ${ws.unreconciled} صنف سجّل وارده أكثر بكثير من صادره (لم يُسجَّل الصرف). باستبعادها، يصبح المخزون المُسوّى ${fmtNum(ws.onHand)} (${ws.utilization}% من السعة)، وهو منطقي.`
       },
       conclusion: {
-        en: 'Most likely a data-entry gap — purchase invoices weren’t all recorded (rather than a real stock shortage). Verify the procurement sheet is complete before acting.',
-        ar: 'الأرجح أنها فجوة في إدخال البيانات — لم تُسجَّل كل فواتير الشراء (وليست نقصًا فعليًا في المخزون). تأكّد من اكتمال ورقة المشتريات قبل اتخاذ أي إجراء.'
+        en: 'A data-entry gap, not a real overflow — receipts were logged but the matching issues weren’t for a few SKUs (e.g. بوبي فيل الكامل: 4,083 in / 175 out). Log the missing outbound for the flagged SKUs and the total will reconcile.',
+        ar: 'فجوة إدخال لا فائض حقيقي — سُجّلت المستلمات دون تسجيل الصرف لبعض الأصناف (مثل بوبي فيل الكامل: 4,083 وارد / 175 صادر). سجّل الصادر الناقص للأصناف المُعلَّمة ليتسوّى الإجمالي.'
       }
     })
   }
@@ -168,14 +168,18 @@ export function getConcernEvidence(id: string): ConcernEvidence {
     return { table: { columns: [{ en: 'Client', ar: 'العميل' }, { en: 'Risk', ar: 'المخاطر' }, { en: 'Overdue', ar: 'المتأخّر' }], rows: list.map(c => [c.nameAr, `${c.riskScore}%`, fmtSAR(c.overdueAmount)]) } }
   }
   if (id === 'inbound-gap') {
-    const sold = Math.round(getSales().reduce((a, r) => a + (r.cartons || 0), 0))
-    const bought = Math.round(getPurchases().filter(p => !SUPPLIER_NOISE2.test(p.supplier)).reduce((a, p) => a + (p.cartons || 0), 0))
+    const ws = warehouseStock()
+    const bad = getInventory().filter(r => r.unreconciled).sort((a, b) => b.rawNet - a.rawNet).slice(0, 12)
     return {
       stats: [
-        { label: { en: 'Cartons purchased (in)', ar: 'كراتين مشتراة (وارد)' }, value: fmtNum(bought) },
-        { label: { en: 'Cartons sold (out)', ar: 'كراتين مباعة (صادر)' }, value: fmtNum(sold) },
-        { label: { en: 'Unexplained gap', ar: 'فجوة غير مفسّرة' }, value: fmtNum(sold - bought) }
-      ]
+        { label: { en: 'Recorded net (in−out)', ar: 'الصافي المسجّل' }, value: fmtNum(ws.netRecorded) },
+        { label: { en: 'Capacity', ar: 'السعة' }, value: fmtNum(ws.capacity) },
+        { label: { en: 'Reconciled on-hand', ar: 'المخزون المُسوّى' }, value: `${fmtNum(ws.onHand)} (${ws.utilization}%)` }
+      ],
+      table: {
+        columns: [{ en: 'Unreconciled SKU', ar: 'صنف غير مُسوّى' }, { en: 'In', ar: 'وارد' }, { en: 'Out', ar: 'صادر' }, { en: 'Net', ar: 'الصافي' }],
+        rows: bad.map(r => [r.item, fmtNum(r.inbound), fmtNum(r.outbound), fmtNum(r.rawNet)])
+      }
     }
   }
   return {}
