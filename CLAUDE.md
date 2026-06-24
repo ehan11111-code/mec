@@ -84,6 +84,22 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-24 — Professional CRM: per-client file + product/value/size filters + drill-through.**
+  Rebuilt the Clients (CRM) page into a real directory and added a **per-client detail page**
+  (`/clients/[id]`). New data layer in `lib/data/dataset.ts`: `clientSalesIndex()` buckets **every sales
+  invoice to its client** (shares the name→id resolver with `enrichClients`, so SC-* sales-only clients
+  resolve too), `getClientStats()` (units, distinct-product count, collected/outstanding, top product,
+  product+category lists), `allProducts()` (powers the product filter), and `getClientDetail()`
+  (summary, products bought, category mix, monthly trend, full invoice history, **indicative credit
+  line** = peak-month buying ×2, used = real uncollected balance). **CRM list** now filters by
+  **product · order value tier · order size tier · status** + search, shows products/units/outstanding
+  columns, and **every row clicks through** to the client file. **Detail page**: KPI cards, a credit-line
+  panel (limit/used/available + utilization bar + payment terms, flagged ok/high/over), client profile,
+  revenue-over-time line, category donut, searchable products-purchased table, and order-history table —
+  all bilingual EN/AR with (i) definitions (`creditLimit`, `productsBought`, `units` added). Verified
+  the join live (116 clients with sales; top client → 13 products / 21 invoices / credit util 118%).
+  Build green (35 routes).
+
 - **2026-06-23 — WhatsApp orders → approval queue (approve/reject) + order notifications.** WhatsApp
   messages classified as `order` now surface as **approvable orders**. New **`/approvals`** page (Pending/
   Approved/Rejected tabs): each order shows sender, **parsed line items**, the message, and **Approve /

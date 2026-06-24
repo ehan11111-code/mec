@@ -247,11 +247,15 @@ export function profitSummary() {
 // own client rows. So Σ(client revenue) === total sales, Σ(client overdue) === total receivables.
 type ClientAgg = { revenue: number; invoices: number; collected: number }
 let _enriched: Client[] | null = null
+// sales clientName (exact) -> resolved client id (ERP id or SC-n). Lets every sale be bucketed to a
+// client for the per-client detail view (products bought, invoices, credit line).
+let _nameToId: Map<string, string> | null = null
 function riskFrom(revenue: number, overdue: number) { return revenue > 0 ? Math.min(95, Math.round((overdue / revenue) * 80 + 10)) : 20 }
 function enrichClients(): Client[] {
   if (_enriched) return _enriched
   const normToClient = new Map<string, Client>()
   for (const c of rawClients) normToClient.set(norm(c.nameAr), c)
+  const nameToId = new Map<string, string>()
   const agg = new Map<string, ClientAgg>()                 // ERP clientId -> agg
   const unmatched: { name: string; revenue: number; invoices: number; collected: number }[] = []
   for (const sn of salesByClientName()) {
@@ -259,6 +263,7 @@ function enrichClients(): Client[] {
     let client = normToClient.get(n)
     if (!client) client = rawClients.find(c => { const cn = norm(c.nameAr); return cn.includes(n) || n.includes(cn) })
     if (client) {
+      nameToId.set(sn.name, client.id)
       const cur = agg.get(client.id) ?? { revenue: 0, invoices: 0, collected: 0 }
       cur.revenue += sn.revenue; cur.invoices += sn.invoices; cur.collected += sn.collected; agg.set(client.id, cur)
     } else {
@@ -273,15 +278,33 @@ function enrichClients(): Client[] {
   })
   const salesOnly: Client[] = unmatched.map((u, i) => {
     const overdue = Math.max(0, u.revenue - u.collected)
+    const id = `SC-${i + 1}`
+    nameToId.set(u.name, id)
     return {
-      id: `SC-${i + 1}`, nameAr: u.name, nameEn: u.name, salespersonAr: 'غير محدد', salespersonEn: 'Unassigned',
+      id, nameAr: u.name, nameEn: u.name, salespersonAr: 'غير محدد', salespersonEn: 'Unassigned',
       branch: '', source: 'Sales', type: '', mobile: '', crNumber: '', accountNumber: '', cityAr: '', cityEn: '',
       active: true, status: 'active' as const, riskScore: riskFrom(u.revenue, overdue),
       totalOrders: u.invoices, totalRevenue: Math.round(u.revenue), overdueAmount: Math.round(overdue), paymentTermsDays: 0
     }
   })
+  _nameToId = nameToId
   _enriched = [...erp, ...salesOnly]
   return _enriched
+}
+// clientId -> the actual sales invoice lines for that client (newest first).
+let _salesIndex: Map<string, SalesInvoice[]> | null = null
+function clientSalesIndex(): Map<string, SalesInvoice[]> {
+  if (_salesIndex) return _salesIndex
+  enrichClients()                                          // ensures _nameToId is populated
+  const idx = new Map<string, SalesInvoice[]>()
+  for (const s of sales) {
+    const id = _nameToId!.get(s.clientName)
+    if (!id) continue
+    const arr = idx.get(id); if (arr) arr.push(s); else idx.set(id, [s])
+  }
+  for (const arr of idx.values()) arr.sort((a, b) => (a.date < b.date ? 1 : -1))
+  _salesIndex = idx
+  return idx
 }
 export function getClients(): Client[] { return enrichClients() }
 export function getClient(id: string): Client | undefined { return enrichClients().find(c => c.id === id) }
@@ -300,6 +323,110 @@ export function clientsByStatus() {
   return { active: all.filter(c => c.status === 'active').length, lead: all.filter(c => c.status === 'lead').length, inactive: all.filter(c => c.status === 'inactive').length, total: all.length }
 }
 export function topClients(n = 6): Client[] { return [...enrichClients()].sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, n) }
+
+// ── per-client product breakdown + stats (for the professional CRM + client detail page) ──
+export type ClientProduct = {
+  item: string; category: string; categoryAr: string; qty: number; revenue: number
+  invoices: number; avgPrice: number; lastDate: string
+}
+function productsForInvoices(rows: SalesInvoice[]): ClientProduct[] {
+  const map = new Map<string, { category: string; categoryAr: string; qty: number; revenue: number; n: number; priceSum: number; priceN: number; last: string }>()
+  for (const r of rows) {
+    const cur = map.get(r.item) ?? { category: r.category, categoryAr: r.categoryAr, qty: 0, revenue: 0, n: 0, priceSum: 0, priceN: 0, last: '' }
+    cur.qty += r.qty; cur.revenue += r.postVat; cur.n++
+    if (r.unitPrice > 0) { cur.priceSum += r.unitPrice; cur.priceN++ }
+    if (r.date > cur.last) cur.last = r.date
+    map.set(r.item, cur)
+  }
+  return [...map.entries()].map(([item, v]) => ({
+    item, category: v.category, categoryAr: v.categoryAr, qty: Math.round(v.qty), revenue: Math.round(v.revenue),
+    invoices: v.n, avgPrice: v.priceN ? Math.round(v.priceSum / v.priceN) : 0, lastDate: v.last
+  })).sort((a, b) => b.revenue - a.revenue)
+}
+
+// Indicative credit line, derived until MEC's finance system provides real limits. Anchored to the
+// client's busiest single month of buying × 2 (a distributor typically extends ~2 months of run-rate),
+// rounded up to the nearest SAR 10k, floor SAR 50k. `used` = real uncollected balance.
+export type CreditLine = { limit: number; used: number; available: number; utilizationPct: number; termsDays: number; status: 'ok' | 'high' | 'over'; indicative: true }
+function creditLine(rows: SalesInvoice[], outstanding: number, termsDays: number): CreditLine {
+  const byMonth = new Map<string, number>()
+  for (const r of rows) { if (!r.month) continue; byMonth.set(r.month, (byMonth.get(r.month) ?? 0) + r.postVat) }
+  const peak = byMonth.size ? Math.max(...byMonth.values()) : 0
+  const limit = Math.max(50000, Math.ceil((peak * 2) / 10000) * 10000)
+  const used = Math.max(0, Math.round(outstanding))
+  const available = Math.max(0, limit - used)
+  const utilizationPct = limit > 0 ? Math.round((used / limit) * 100) : 0
+  const status: CreditLine['status'] = utilizationPct >= 100 ? 'over' : utilizationPct >= 75 ? 'high' : 'ok'
+  return { limit, used, available, utilizationPct, termsDays: termsDays || 30, status, indicative: true }
+}
+
+export type ClientStats = Client & {
+  units: number; productCount: number; collected: number; outstanding: number; avgInvoice: number
+  topProduct: string; products: string[]; categories: string[]; firstDate: string; lastDate: string
+}
+let _clientStats: ClientStats[] | null = null
+export function getClientStats(): ClientStats[] {
+  if (_clientStats) return _clientStats
+  const idx = clientSalesIndex()
+  _clientStats = enrichClients().map(c => {
+    const rows = idx.get(c.id) ?? []
+    const collected = Math.round(rows.filter(r => r.collected).reduce((s, r) => s + r.postVat, 0))
+    const units = Math.round(rows.reduce((s, r) => s + r.qty, 0))
+    const prods = productsForInvoices(rows)
+    const dates = rows.map(r => r.date).filter(Boolean).sort()
+    return {
+      ...c, units, productCount: prods.length, collected, outstanding: Math.max(0, c.totalRevenue - collected),
+      avgInvoice: c.totalOrders ? Math.round(c.totalRevenue / c.totalOrders) : 0,
+      topProduct: prods[0]?.item ?? '', products: prods.map(p => p.item), categories: [...new Set(prods.map(p => p.category))],
+      firstDate: dates[0] ?? '', lastDate: dates[dates.length - 1] ?? ''
+    }
+  })
+  return _clientStats
+}
+
+// Distinct products across all sales, ranked by revenue — powers the CRM "filter by product" control.
+export function allProducts(): { item: string; category: string; revenue: number }[] {
+  const map = new Map<string, { category: string; revenue: number }>()
+  for (const r of sales) { const cur = map.get(r.item) ?? { category: r.category, revenue: 0 }; cur.revenue += r.postVat; map.set(r.item, cur) }
+  return [...map.entries()].map(([item, v]) => ({ item, category: v.category, revenue: Math.round(v.revenue) })).sort((a, b) => b.revenue - a.revenue)
+}
+
+export type ClientDetail = {
+  client: Client
+  summary: { revenue: number; collected: number; outstanding: number; invoices: number; units: number; products: number; avgInvoice: number; firstDate: string; lastDate: string; collectedPct: number }
+  credit: CreditLine
+  products: ClientProduct[]
+  categories: { key: string; ar: string; en: string; v: number; qty: number }[]
+  monthly: { key: string; t: string; tAr: string; v: number }[]
+  invoices: SalesInvoice[]
+}
+export function getClientDetail(id: string): ClientDetail | null {
+  const client = enrichClients().find(c => c.id === id)
+  if (!client) return null
+  const rows = clientSalesIndex().get(id) ?? []
+  const collected = Math.round(rows.filter(r => r.collected).reduce((s, r) => s + r.postVat, 0))
+  const outstanding = Math.max(0, client.totalRevenue - collected)
+  const units = Math.round(rows.reduce((s, r) => s + r.qty, 0))
+  const products = productsForInvoices(rows)
+  const dates = rows.map(r => r.date).filter(Boolean).sort()
+  const catMap = new Map<string, { ar: string; v: number; qty: number }>()
+  for (const r of rows) { const cur = catMap.get(r.category) ?? { ar: r.categoryAr, v: 0, qty: 0 }; cur.v += r.postVat; cur.qty += r.qty; catMap.set(r.category, cur) }
+  const categories = [...catMap.entries()].map(([key, v]) => ({ key, ar: v.ar, en: key, v: Math.round(v.v), qty: Math.round(v.qty) })).sort((a, b) => b.v - a.v)
+  const monMap = new Map<string, number>()
+  for (const r of rows) { if (!r.month) continue; monMap.set(r.month, (monMap.get(r.month) ?? 0) + r.postVat) }
+  const monthly = [...monMap.keys()].sort().map(m => ({ key: m, t: monthLabel(m, 'en'), tAr: monthLabel(m, 'ar'), v: Math.round(monMap.get(m)!) }))
+  return {
+    client,
+    summary: {
+      revenue: client.totalRevenue, collected, outstanding, invoices: client.totalOrders, units, products: products.length,
+      avgInvoice: client.totalOrders ? Math.round(client.totalRevenue / client.totalOrders) : 0,
+      firstDate: dates[0] ?? '', lastDate: dates[dates.length - 1] ?? '',
+      collectedPct: client.totalRevenue > 0 ? Math.round((collected / client.totalRevenue) * 100) : 0
+    },
+    credit: creditLine(rows, outstanding, client.paymentTermsDays),
+    products, categories, monthly, invoices: rows
+  }
+}
 
 // ── Orders repointed to REAL sales invoices ──
 export type OrderStatus = 'under_approval' | 'approved' | 'dispatched' | 'on_route' | 'delivered' | 'payment_pending' | 'overdue' | 'paid' | 'cancelled'
