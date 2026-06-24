@@ -562,6 +562,37 @@ export function ordersSummary() {
   return { total: all.length, open, value, avgMargin: Math.round(avgMargin * 10) / 10, overdue }
 }
 
+// ── Operations House (today's operational snapshot) ──
+// MEC warehouse storage capacity, in cartons (set by the business).
+export const WAREHOUSE_CAPACITY = 6000
+export function operationsSnapshot() {
+  const orders = buildOrders()                                  // real sales invoices, newest first
+  const dates = [...new Set(orders.map(o => o.date).filter(Boolean))].sort()
+  const latest = dates[dates.length - 1] || ''
+  const recentDays = dates.slice(-3)
+  const todays = orders.filter(o => o.date === latest)
+  const recent = orders.filter(o => recentDays.includes(o.date))
+  const paid = recent.filter(o => o.status === 'paid')
+  const delayed = orders.filter(o => o.status === 'payment_pending')
+  const col = collectionsSummary()
+  const debtors = salesByClientName().filter(x => x.outstanding > 0).slice(0, 6)
+  // warehouse throughput (latest month) vs storage capacity → turnover
+  const lm = MONTHS[MONTHS.length - 1] || ''
+  const lmCartons = Math.round(sales.filter(s => s.month === lm).reduce((a, s) => a + (s.cartons || 0), 0))
+  const turnover = Math.round((lmCartons / WAREHOUSE_CAPACITY) * 10) / 10
+  const movers = topProducts({ month: lm }, 6)                  // fast movers to watch this month
+  return {
+    latest, latestMonth: lm,
+    todays: { count: todays.length, value: Math.round(todays.reduce((a, o) => a + o.totalAmount, 0)) },
+    recent: { count: recent.length, value: Math.round(recent.reduce((a, o) => a + o.totalAmount, 0)) },
+    completed: { count: paid.length, value: Math.round(paid.reduce((a, o) => a + o.totalAmount, 0)) },
+    delayed: { count: delayed.length, value: Math.round(delayed.reduce((a, o) => a + o.totalAmount, 0)) },
+    payments: { due: Math.round(col.outstanding), collected: Math.round(col.collected), debtors },
+    warehouse: { capacity: WAREHOUSE_CAPACITY, throughput: lmCartons, turnover },
+    movers, todaysList: todays.slice(0, 12), delayedList: delayed.slice(0, 12)
+  }
+}
+
 // ── chart helpers reused by Control Center / Orders ──
 export function revenueByMonth(): { t: string; v: number }[] {
   return salesByMonth().map(m => ({ t: m.t, v: Math.round((m.v / 1_000_000) * 10) / 10 }))

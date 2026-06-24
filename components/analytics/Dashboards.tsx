@@ -22,7 +22,7 @@ const f0 = (n: number) => Math.round(n).toLocaleString('en-US')
 function MonthLine({ filter, locale, title }: P & { title: string }) {
   const data = salesByMonth(filter).map(m => ({ t: locale === 'ar' ? m.tAr : m.t, revenue: Math.round(m.v) }))
   const t = useTranslations('analytics')
-  return <LineChartPanel data={data} series={[{ key: 'revenue', label: t('kRevenue'), accent: true }]} title={title} locale={locale} height={260} valueFormat="sar" />
+  return <LineChartPanel data={data} series={[{ key: 'revenue', label: t('kRevenue'), accent: true }]} title={title} locale={locale} height={260} valueFormat="sar" enableTimeframe />
 }
 
 function CategoryDonut({ filter, locale, title }: P & { title: string }) {
@@ -212,7 +212,7 @@ export function CollectionsDashboard({ filter, locale }: P) {
           <DonutStat centerValue={fmtSAR(c.total)} centerLabel={t('kRevenue')} valueFmt={fmtSAR}
             segments={[{ label: t('collected'), value: Math.max(0, c.collected), accent: true }, { label: t('outstanding'), value: Math.max(0, c.outstanding) }]} />
         </Panel>
-        <LineChartPanel locale={locale} title={t('revByMonth')} valueFormat="sar"
+        <LineChartPanel locale={locale} title={t('revByMonth')} valueFormat="sar" enableTimeframe
           data={monthly.map(m => ({ t: locale === 'ar' ? m.tAr : m.t, v: Math.round(m.v) }))}
           series={[{ key: 'v', label: t('kRevenue'), accent: true }]} height={260} />
       </section>

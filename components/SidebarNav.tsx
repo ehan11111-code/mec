@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, usePathname } from '@/i18n/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { clsx } from 'clsx'
-import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap, Radar, MessageCircle, ClipboardCheck, Inbox, Package } from 'lucide-react'
+import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap, Radar, MessageCircle, ClipboardCheck, Inbox, Package, ShieldAlert, Activity } from 'lucide-react'
 import { BrandLogo } from './BrandLogo'
 import { departmentSeeds } from '@/lib/mock/catalog'
 import { getFirmState } from '@/lib/mock/data'
@@ -25,7 +25,8 @@ export function SidebarNav() {
 
   const sections: Section[] = [
     { key: 'secOverview', items: [
-      { href: '/control-center', label: tNav('controlCenter'), icon: LayoutDashboard, perm: 'dashboard' }
+      { href: '/control-center', label: tNav('controlCenter'), icon: LayoutDashboard, perm: 'dashboard' },
+      { href: '/operations', label: tNav('opsHouse'), icon: Activity, perm: 'dashboard' }
     ] },
     { key: 'secSales', items: [
       { href: '/orders', label: tNav('orders'), icon: ShoppingCart, perm: 'orders' },
@@ -44,7 +45,8 @@ export function SidebarNav() {
       { href: '/total-savings', label: tNav('totalSavings'), icon: Coins, perm: 'savings' }
     ] },
     { key: 'secAdmin', items: [
-      { href: '/automations', label: tNav('automations'), icon: Zap, perm: 'automations' }
+      { href: '/automations', label: tNav('automations'), icon: Zap, perm: 'automations' },
+      { href: '/admin', label: tNav('adminConsole'), icon: ShieldAlert, perm: 'manageData' }
     ] },
     { key: 'secHelp', items: [
       { href: '/academy', label: tNav('academy'), icon: GraduationCap, perm: 'academy' },

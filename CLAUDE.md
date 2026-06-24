@@ -84,6 +84,25 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-24 — Adjustable trend timelines + Admin clear-test-data console + Operations House
+  (increment 2 of the big batch).** **(1) Adjustable chart timelines** — `LineChartPanel` gained an
+  `enableTimeframe` prop (All / 6M / 3M selector that slices the trend); enabled on the Analytics revenue
+  trends. **(2) Admin console** (`/admin`) — CEO + admin only (new **`manageData`** permission) to wipe
+  **test data before launch**: WhatsApp inbox/orders, contact inquiries, internal messages. New
+  **`/api/admin/clear`** (GET counts + POST delete, session-role-gated server-side via `permissionsFor`).
+  **(3) Operations House** (`/operations`) — today's operational snapshot from real data: orders today,
+  **live pending approvals** (WhatsApp), completed, **delayed payments**, **payments due** + top debtors,
+  **warehouse status vs the 6,000-carton capacity** (throughput + turnover ×; latest month 17,643 cartons
+  ≈ 2.9× turns), and a fast-movers stock-watch — **printable**. `WAREHOUSE_CAPACITY = 6000` +
+  `operationsSnapshot()` in `dataset.ts`. Sidebar: Operations House (Overview) + Admin console (Admin).
+  Build green (42 routes), EN/AR parity.
+  - **Note on warehouse:** the procurement sheet under-captures inbound (bought 96k < sold 135k cartons),
+    so point-in-time on-hand isn't reliable yet — Ops House shows honest **throughput/turnover** vs 6,000.
+    True on-hand + per-SKU expiry/ROP come with the inventory-feed increment (next), from `المخزون
+    2025/2026.xlsx`.
+  - **Still queued:** inventory master + expiry (R/Y/G) + ROP; Overview AI review PDF + JARVIS arbitrary
+    report printing; missing-document alerts (WhatsApp group).
+
 - **2026-06-24 — Clickable entities + Product pages + JARVIS typing + PDF pie fix (increment 1 of a big
   batch).** First slice of a large multi-feature request. **(1) Clickable client + product names
   everywhere** — new `components/EntityLink.tsx` (`ClientLink`/`ProductLink`); `dataset.clientIdByName()`

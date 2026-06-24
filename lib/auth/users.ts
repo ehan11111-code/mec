@@ -6,7 +6,7 @@ export type Permission =
   | 'dashboard' | 'analytics' | 'clients' | 'orders' | 'approvals'
   | 'warehouse' | 'logistics' | 'finance' | 'supply' | 'whatsapp'
   | 'documents' | 'departments' | 'savings' | 'academy' | 'contact'
-  | 'messages' | 'notifications' | 'automations' | 'admin'
+  | 'messages' | 'notifications' | 'automations' | 'admin' | 'manageData'
 
 export type Role = 'admin' | 'ceo' | 'commercial' | 'warehouse' | 'finance' | 'sales'
 
@@ -24,8 +24,8 @@ export type RosterUser = {
 const BASE: Permission[] = ['messages', 'notifications', 'academy', 'contact', 'departments']
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-  admin: ['dashboard', 'analytics', 'clients', 'orders', 'approvals', 'warehouse', 'logistics', 'finance', 'supply', 'whatsapp', 'documents', 'departments', 'savings', 'academy', 'contact', 'messages', 'notifications', 'automations', 'admin'],
-  ceo: [...BASE, 'dashboard', 'analytics', 'clients', 'orders', 'approvals', 'warehouse', 'logistics', 'finance', 'supply', 'whatsapp', 'savings'],
+  admin: ['dashboard', 'analytics', 'clients', 'orders', 'approvals', 'warehouse', 'logistics', 'finance', 'supply', 'whatsapp', 'documents', 'departments', 'savings', 'academy', 'contact', 'messages', 'notifications', 'automations', 'admin', 'manageData'],
+  ceo: [...BASE, 'dashboard', 'analytics', 'clients', 'orders', 'approvals', 'warehouse', 'logistics', 'finance', 'supply', 'whatsapp', 'savings', 'manageData'],
   commercial: [...BASE, 'dashboard', 'analytics', 'clients', 'orders', 'approvals', 'supply', 'whatsapp', 'savings'],
   warehouse: [...BASE, 'dashboard', 'orders', 'warehouse', 'logistics', 'supply'],
   finance: [...BASE, 'dashboard', 'analytics', 'clients', 'orders', 'approvals', 'finance', 'savings'],
