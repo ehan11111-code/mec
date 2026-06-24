@@ -84,6 +84,22 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-24 — Openable notification messages + AI reports (overview report + JARVIS prints any report).**
+  **(A) Notifications open into a full message** (`/notifications/[id]`): concerns show the data
+  demonstration (debtors/loss-makers/at-risk tables, inbound-gap figures) + the "Likely cause"
+  justification (`concerns.getConcernEvidence`); WhatsApp orders show line items + Approve/Reject; supply
+  alerts show outlook + sourced risks. Bell + feed now route to it. Login username placeholder is generic
+  ("username"). **(B) Report engine** — `lib/report/builders.ts`: 10 permission-tagged, time-aware
+  builders (executive, revenue by month/salesperson/category, top clients, collections, product margins,
+  inventory status, delayed payments, concerns). New **`/api/report`** (session-gated): maps a free-text
+  request → builder ids + timeframe (e.g. "last 30 days") deterministically, runs only the **permitted**
+  builders, and adds **AI-written improvement suggestions per area** (OpenAI, graceful without a key).
+  New printable **`/report`** viewer. **Control Center** has a **Company report** button (full overview +
+  AI suggestions). **JARVIS prints any report**: ask "print me a report of the last 30 days of revenue per
+  salesperson" → it builds it (honouring your role) and shows an **Open report** button. Verified: overview
+  = 10 sections; 30-day salesperson report returns Mahmoud SAR 1.27M / Tamer / Unassigned. Build green (45
+  routes), EN/AR parity. **Last queued item:** missing-document alerts (WhatsApp group).
+
 - **2026-06-24 — Inventory feed: warehouse ledger → on-hand + expiry (R/Y/G) + reorder points vs 6,000.**
   Parsed the real warehouse ledger. New **`DATA/_inventorygen.js`** reads **`المخزون 2026.xlsx`** (a proper
   in/out movement ledger — positive = received, negative w/ client = issued) and nets each product column

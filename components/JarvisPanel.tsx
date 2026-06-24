@@ -2,14 +2,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
-import { Sparkles, X, Send } from 'lucide-react'
+import { Sparkles, X, Send, FileText } from 'lucide-react'
+import { useRouter } from '@/i18n/navigation'
 import { answer as localAnswer, buildContext } from '@/lib/jarvis/engine'
 
-type Msg = { role: 'user' | 'jarvis'; text: string; rows?: { label: string; value: string }[]; via?: 'data' | 'ai' }
+type Msg = { role: 'user' | 'jarvis'; text: string; rows?: { label: string; value: string }[]; via?: 'data' | 'ai'; report?: boolean }
 
 export function JarvisPanel() {
   const locale = useLocale() as 'en' | 'ar'
   const t = useTranslations('jarvis')
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [phase, setPhase] = useState(0)            // cycles the "thinking / gathering / analysing" status
@@ -31,6 +33,20 @@ export function JarvisPanel() {
     if (!question.trim() || busy) return
     setMsgs(m => [...m, { role: 'user', text: question }])
     setInput(''); setBusy(true); setPhase(0)
+
+    // Report intent → build a printable report honouring the user's permissions.
+    if (/\breport\b|تقرير|اطبع|طباعة/i.test(question)) {
+      try {
+        const r = await fetch('/api/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question, locale }) })
+        if (r.ok) {
+          const d = await r.json()
+          try { sessionStorage.setItem('mec_report', JSON.stringify(d.spec)) } catch { /* ignore */ }
+          setMsgs(m => [...m, { role: 'jarvis', text: t('reportReady', { title: d.spec.title }), via: 'ai', report: true }]); setBusy(false); return
+        }
+        if (r.status === 403) { setMsgs(m => [...m, { role: 'jarvis', text: t('reportNoAccess') }]); setBusy(false); return }
+      } catch { /* fall through to a normal answer */ }
+    }
+
     const local = localAnswer(question, locale)
     try {
       const res = await fetch('/api/jarvis', {
@@ -88,7 +104,12 @@ export function JarvisPanel() {
                       ))}
                     </ul>
                   )}
-                  {m.role === 'jarvis' && m.via && <div className="mt-1.5 text-[10px] text-muted">{m.via === 'ai' ? t('viaAi') : t('viaData')}</div>}
+                  {m.report && (
+                    <button type="button" onClick={() => router.push('/report')} className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-accent text-white px-3 py-1.5 text-xs font-medium hover:bg-accent-strong transition-colors">
+                      <FileText className="h-3.5 w-3.5" strokeWidth={1.9} />{t('openReport')}
+                    </button>
+                  )}
+                  {m.role === 'jarvis' && m.via && !m.report && <div className="mt-1.5 text-[10px] text-muted">{m.via === 'ai' ? t('viaAi') : t('viaData')}</div>}
                 </div>
               </div>
             ))}
