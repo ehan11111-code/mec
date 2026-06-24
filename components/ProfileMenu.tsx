@@ -5,51 +5,60 @@ import { clsx } from 'clsx'
 import { LogOut, Camera, KeyRound, RefreshCw, Check, Copy, Inbox, ChevronDown } from 'lucide-react'
 import { Link, useRouter } from '@/i18n/navigation'
 import { Avatar } from './Avatar'
-import {
-  clearSession, getAvatar, setAvatar, effectivePassword, setPassword, generatePassword
-} from '@/lib/auth'
+import { logout, changePassword, resetPassword, uploadAvatar } from '@/lib/auth'
 import { useCurrentUser } from '@/lib/auth/useCurrentUser'
 
 export function ProfileMenu() {
   const locale = useLocale() as 'en' | 'ar'
   const t = useTranslations('profile')
   const router = useRouter()
-  const { user } = useCurrentUser()
+  const { user, refresh } = useCurrentUser()
   const [open, setOpen] = useState(false)
   const [pane, setPane] = useState<'menu' | 'password'>('menu')
   const [avatar, setAvatarState] = useState<string | null>(null)
-  const [cur, setCur] = useState(''); const [next, setNext] = useState(''); const [msg, setMsg] = useState('')
-  const [generated, setGenerated] = useState(''); const [copied, setCopied] = useState(false)
+  const [cur, setCur] = useState(''); const [next, setNext] = useState(''); const [msg, setMsg] = useState(''); const [err, setErr] = useState('')
+  const [generated, setGenerated] = useState(''); const [copied, setCopied] = useState(false); const [busy, setBusy] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => { if (user) setAvatarState(getAvatar(user.username)) }, [user])
+  useEffect(() => { setAvatarState(user?.avatar ?? null) }, [user])
   useEffect(() => {
-    const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false) } }
+    const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
   }, [])
-  useEffect(() => { if (!open) { setPane('menu'); setMsg(''); setGenerated(''); setCur(''); setNext('') } }, [open])
+  useEffect(() => { if (!open) { setPane('menu'); setMsg(''); setErr(''); setGenerated(''); setCur(''); setNext('') } }, [open])
 
   if (!user) return null
   const name = user.name[locale]
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return
-    if (f.size > 1_500_000) { setMsg(t('tooBig')); return }
+    setMsg(''); setErr('')
+    if (f.size > 1_400_000) { setErr(t('tooBig')); return }
     const reader = new FileReader()
-    reader.onload = () => { const d = String(reader.result); setAvatar(user.username, d); setAvatarState(d); setMsg(t('photoUpdated')) }
+    reader.onload = async () => {
+      const d = String(reader.result)
+      setAvatarState(d)
+      const { ok } = await uploadAvatar(d)
+      if (ok) { setMsg(t('photoUpdated')); refresh() } else setErr(t('saveFailed'))
+    }
     reader.readAsDataURL(f)
   }
-  const changePw = () => {
-    setMsg('')
-    if (effectivePassword(user) !== cur) { setMsg(t('wrongCurrent')); return }
-    if (next.length < 6) { setMsg(t('tooShort')); return }
-    setPassword(user.username, next); setCur(''); setNext(''); setMsg(t('pwChanged'))
+  const doChange = async () => {
+    setMsg(''); setErr(''); setBusy(true)
+    const r = await changePassword(cur, next); setBusy(false)
+    if (r.ok) { setCur(''); setNext(''); setMsg(t('pwChanged')) }
+    else setErr(r.error === 'wrong_current' ? t('wrongCurrent') : r.error === 'too_short' ? t('tooShort') : r.error === 'store_unavailable' ? t('storeUnavailable') : t('saveFailed'))
   }
-  const forgot = () => { const p = generatePassword(); setPassword(user.username, p); setGenerated(p); setCopied(false); setMsg('') }
+  const doForgot = async () => {
+    setMsg(''); setErr(''); setBusy(true)
+    const r = await resetPassword(); setBusy(false)
+    if (r.ok && r.password) { setGenerated(r.password); setCopied(false) }
+    else setErr(r.error === 'store_unavailable' ? t('storeUnavailable') : t('saveFailed'))
+  }
   const copy = () => { navigator.clipboard?.writeText(generated).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800) }).catch(() => {}) }
-  const signOut = () => { clearSession(); router.replace('/login') }
+  const signOut = async () => { await logout(); router.replace('/login') }
 
   return (
     <div className="relative" ref={ref}>
@@ -62,7 +71,7 @@ export function ProfileMenu() {
 
       {open && (
         <div className="absolute end-0 mt-2 w-[300px] max-w-[calc(100vw-2rem)] rounded-soft border border-border bg-surface shadow-float z-50 overflow-hidden animate-fade-in">
-          <div className="flex items-center gap-3 px-4 py-4 border-b border-border bg-gradient-surface">
+          <div className="flex items-center gap-3 px-4 py-4 border-b border-border gradient-surface">
             <Avatar name={name} src={avatar} color={user.color} size={44} />
             <div className="min-w-0">
               <p className="text-sm font-semibold text-text truncate">{name}</p>
@@ -77,7 +86,7 @@ export function ProfileMenu() {
                 <Camera className="h-4 w-4 text-muted" strokeWidth={1.7} />{t('changePhoto')}
               </button>
               <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
-              <button type="button" onClick={() => { setPane('password'); setMsg('') }} className="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm text-text-soft hover:bg-surface-elev transition-colors">
+              <button type="button" onClick={() => { setPane('password'); setMsg(''); setErr('') }} className="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm text-text-soft hover:bg-surface-elev transition-colors">
                 <KeyRound className="h-4 w-4 text-muted" strokeWidth={1.7} />{t('changePassword')}
               </button>
               <Link href="/messages" onClick={() => setOpen(false)} className="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm text-text-soft hover:bg-surface-elev transition-colors">
@@ -88,6 +97,7 @@ export function ProfileMenu() {
                 <LogOut className="h-4 w-4" strokeWidth={1.7} />{t('signOut')}
               </button>
               {msg && <p className="px-3 py-1.5 text-[11px] text-success">{msg}</p>}
+              {err && <p className="px-3 py-1.5 text-[11px] text-accent">{err}</p>}
             </div>
           ) : (
             <div className="p-4 space-y-3">
@@ -97,14 +107,14 @@ export function ProfileMenu() {
               <input type="password" value={next} onChange={e => setNext(e.target.value)} placeholder={t('newPw')} autoComplete="new-password"
                 className="w-full rounded-soft border border-border bg-bg-soft px-3 py-2 text-sm text-text placeholder:text-muted focus:border-accent transition-colors" />
               <div className="flex items-center gap-2">
-                <button type="button" onClick={changePw} className="inline-flex items-center gap-1.5 rounded-full bg-accent text-white px-3.5 py-1.5 text-xs font-medium hover:bg-accent-strong transition-colors">
+                <button type="button" onClick={doChange} disabled={busy} className="inline-flex items-center gap-1.5 rounded-full bg-accent text-white px-3.5 py-1.5 text-xs font-medium hover:bg-accent-strong disabled:opacity-60 transition-colors">
                   <Check className="h-3.5 w-3.5" strokeWidth={2} />{t('save')}
                 </button>
-                <button type="button" onClick={() => { setPane('menu'); setMsg('') }} className="rounded-full border border-border px-3.5 py-1.5 text-xs text-text-soft hover:bg-surface-elev transition-colors">{t('back')}</button>
+                <button type="button" onClick={() => { setPane('menu'); setMsg(''); setErr('') }} className="rounded-full border border-border px-3.5 py-1.5 text-xs text-text-soft hover:bg-surface-elev transition-colors">{t('back')}</button>
               </div>
               <div className="border-t border-border pt-3">
-                <button type="button" onClick={forgot} className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline">
-                  <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.8} />{t('forgot')}
+                <button type="button" onClick={doForgot} disabled={busy} className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline disabled:opacity-60">
+                  <RefreshCw className={clsx('h-3.5 w-3.5', busy && 'animate-spin')} strokeWidth={1.8} />{t('forgot')}
                 </button>
                 {generated && (
                   <div className="mt-2 flex items-center justify-between gap-2 rounded-soft bg-accent-soft px-3 py-2">
@@ -116,6 +126,7 @@ export function ProfileMenu() {
                 )}
               </div>
               {msg && <p className="text-[11px] text-success">{msg}</p>}
+              {err && <p className="text-[11px] text-accent">{err}</p>}
             </div>
           )}
         </div>

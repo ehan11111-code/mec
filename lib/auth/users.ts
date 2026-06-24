@@ -1,6 +1,6 @@
-// MEC employee accounts, roles and per-role permissions. This is a demo portal (no real backend
-// secrets in the frontend per CLAUDE.md §2) — credentials live here and are checked client-side.
-// Passwords can be changed/reset per user; overrides are stored in localStorage (see ../auth.ts).
+// CLIENT-SAFE roster + permission model. NO passwords here — credentials live only in Supabase
+// (hashed) and are verified server-side in /api/auth. This file may be imported by client components
+// (names/roles/colours are not secret); it is the single source of truth for the permission map.
 
 export type Permission =
   | 'dashboard' | 'analytics' | 'clients' | 'orders' | 'approvals'
@@ -12,58 +12,59 @@ export type Role = 'admin' | 'ceo' | 'commercial' | 'warehouse' | 'finance' | 's
 
 export type Bi = { en: string; ar: string }
 
-export type User = {
+export type RosterUser = {
   username: string
-  password: string                 // default password (may be overridden by the user)
   name: Bi
   role: Role
   title: Bi
   email: string
-  color: string                    // avatar fallback tint
+  color: string
 }
 
-// Everything a workspace member always gets.
 const BASE: Permission[] = ['messages', 'notifications', 'academy', 'contact', 'departments']
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-  // JARVIS super-admin — the Jarvis AI team account. Everything, including automations + user admin.
   admin: ['dashboard', 'analytics', 'clients', 'orders', 'approvals', 'warehouse', 'logistics', 'finance', 'supply', 'whatsapp', 'documents', 'departments', 'savings', 'academy', 'contact', 'messages', 'notifications', 'automations', 'admin'],
-  // CEO — full business visibility across every department (but not the automations engine / user admin).
   ceo: [...BASE, 'dashboard', 'analytics', 'clients', 'orders', 'approvals', 'warehouse', 'logistics', 'finance', 'supply', 'whatsapp', 'savings'],
-  // Commercial Manager — sales + purchasing oversight: clients, orders, approvals, market intel, WhatsApp.
   commercial: [...BASE, 'dashboard', 'analytics', 'clients', 'orders', 'approvals', 'supply', 'whatsapp', 'savings'],
-  // Warehouse & logistics — fulfilment: orders, warehouse, logistics, and supply lead-times.
   warehouse: [...BASE, 'dashboard', 'orders', 'warehouse', 'logistics', 'supply'],
-  // Financial — money: collections/finance, client credit, approvals (payment risk), analytics.
   finance: [...BASE, 'dashboard', 'analytics', 'clients', 'orders', 'approvals', 'finance', 'savings'],
-  // Sales team — front line: their clients, orders, order approvals, WhatsApp leads.
   sales: [...BASE, 'dashboard', 'clients', 'orders', 'approvals', 'whatsapp']
 }
 
-// The MEC roster. Usernames are firstInitial.lastname; JARVIS is the admin account for the Jarvis team.
-export const USERS: User[] = [
-  { username: 'jarvis', password: 'Jarvis@MEC2026', role: 'admin', email: 'partners@jarvisksa.com', color: '#F36C34',
+// The MEC roster (no secrets). Passwords for these accounts are seeded into Supabase, hashed.
+export const ROSTER: RosterUser[] = [
+  { username: 'jarvis', role: 'admin', email: 'partners@jarvisksa.com', color: '#F36C34',
     name: { en: 'JARVIS Admin', ar: 'مشرف جارفيس' }, title: { en: 'Jarvis AI · System Administrator', ar: 'جارفيس · مدير النظام' } },
-  { username: 'f.muzaiyen', password: 'Falcon-7392', role: 'ceo', email: 'fauwaz@mec.com.sa', color: '#C7882B',
+  { username: 'f.muzaiyen', role: 'ceo', email: 'fauwaz@mec.com.sa', color: '#C7882B',
     name: { en: 'Fauwaz Al-Muzaiyen', ar: 'فواز المزين' }, title: { en: 'Chief Executive Officer', ar: 'الرئيس التنفيذي' } },
-  { username: 't.saudi', password: 'Cedar-4815', role: 'commercial', email: 'tarek.saudi@mec.com.sa', color: '#3B82A0',
+  { username: 't.saudi', role: 'commercial', email: 'tarek.saudi@mec.com.sa', color: '#3B82A0',
     name: { en: 'Tarek Saudi', ar: 'طارق سعودي' }, title: { en: 'Commercial Manager', ar: 'المدير التجاري' } },
-  { username: 'a.alhatlani', password: 'Harbor-2659', role: 'warehouse', email: 'abdullah.alhatlani@mec.com.sa', color: '#5A8F5A',
+  { username: 'a.alhatlani', role: 'warehouse', email: 'abdullah.alhatlani@mec.com.sa', color: '#5A8F5A',
     name: { en: 'Abdullah Alhatlani', ar: 'عبدالله الحطلاني' }, title: { en: 'Warehouse & Logistics', ar: 'المستودع واللوجستيات' } },
-  { username: 't.habash', password: 'Ledger-3074', role: 'finance', email: 'tarek.habash@mec.com.sa', color: '#8A6FB0',
+  { username: 't.habash', role: 'finance', email: 'tarek.habash@mec.com.sa', color: '#8A6FB0',
     name: { en: 'Tarek Habash', ar: 'طارق حبش' }, title: { en: 'Financial Manager', ar: 'المدير المالي' } },
-  { username: 'm.salamh', password: 'Summit-6128', role: 'sales', email: 'mahmoud.salamh@mec.com.sa', color: '#B0563F',
+  { username: 'm.salamh', role: 'sales', email: 'mahmoud.salamh@mec.com.sa', color: '#B0563F',
     name: { en: 'Mahmoud Salamh', ar: 'محمود سلامة' }, title: { en: 'Sales Team', ar: 'فريق المبيعات' } },
-  { username: 't.najar', password: 'Vertex-5043', role: 'sales', email: 'tamer.najar@mec.com.sa', color: '#4F7CAC',
+  { username: 't.najar', role: 'sales', email: 'tamer.najar@mec.com.sa', color: '#4F7CAC',
     name: { en: 'Tamer Najar', ar: 'تامر نجار' }, title: { en: 'Sales Team', ar: 'فريق المبيعات' } }
 ]
 
-export function findUser(username: string): User | undefined {
+// Backwards-compatible alias (the messaging UI imports USERS for the colleague list).
+export const USERS = ROSTER
+
+export function findUser(username: string): RosterUser | undefined {
   const u = username.trim().toLowerCase()
-  return USERS.find(x => x.username.toLowerCase() === u)
+  return ROSTER.find(x => x.username.toLowerCase() === u)
 }
 export function permissionsFor(role: Role): Permission[] { return ROLE_PERMISSIONS[role] ?? [] }
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/)
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || 'U'
+}
+
+// Public shape returned by /api/auth/me (no secrets).
+export type Me = {
+  username: string; name: Bi; role: Role; title: Bi; email: string; color: string
+  permissions: Permission[]; avatar?: string | null
 }

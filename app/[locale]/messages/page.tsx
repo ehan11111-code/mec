@@ -10,7 +10,6 @@ import { Panel } from '@/components/Panel'
 import { Avatar } from '@/components/Avatar'
 import { EmptyState } from '@/components/EmptyState'
 import { useCurrentUser } from '@/lib/auth/useCurrentUser'
-import { getAvatar } from '@/lib/auth'
 import { USERS } from '@/lib/auth/users'
 
 type Msg = { id: number; from_user: string; to_user: string; body: string; read: boolean; created_at: string }
@@ -88,7 +87,7 @@ export default function MessagesPage() {
                 <li key={c.username}>
                   <button type="button" onClick={() => setActive(c.username)}
                     className={clsx('w-full flex items-center gap-3 px-4 py-3 text-start transition-colors', active === c.username ? 'bg-accent-soft/40' : 'hover:bg-surface-elev')}>
-                    <Avatar name={c.name[locale]} src={getAvatar(c.username)} color={c.color} size={38} />
+                    <Avatar name={c.name[locale]} color={c.color} size={38} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-medium text-text truncate">{c.name[locale]}</span>

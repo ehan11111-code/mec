@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'framer-motion'
 import { useRouter } from '@/i18n/navigation'
-import { authenticate, setSession } from '@/lib/auth'
+import { login } from '@/lib/auth'
 import { BrandLogo } from '@/components/BrandLogo'
 import { Eyebrow } from '@/components/Eyebrow'
 import { DisplayHeading } from '@/components/DisplayHeading'
@@ -12,14 +12,16 @@ import { Field } from '@/components/Field'
 export default function LoginPage() {
   const t = useTranslations('login'); const locale = useLocale() as 'en' | 'ar'
   const router = useRouter()
-  const [username, setUsername] = useState(''); const [password, setPassword] = useState(''); const [error, setError] = useState('')
+  const [username, setUsername] = useState(''); const [password, setPassword] = useState(''); const [error, setError] = useState(''); const [busy, setBusy] = useState(false)
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!username || !password) { setError(t('errorRequired')); return }
-    const user = authenticate(username, password)
-    if (!user) { setError(t('errorInvalid')); return }
-    setSession(user.username); router.replace('/control-center')
+    setError(''); setBusy(true)
+    const { ok } = await login(username, password)
+    setBusy(false)
+    if (!ok) { setError(t('errorInvalid')); return }
+    router.replace('/control-center')
   }
 
   return (
@@ -52,7 +54,7 @@ export default function LoginPage() {
             <Field label={t('username')} value={username} onChange={setUsername} placeholder="f.muzaiyen" autoComplete="username" />
             <Field label={t('password')} type="password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" />
             {error && <p className="text-xs text-accent">{error}</p>}
-            <button type="submit" className="w-full rounded-soft bg-accent text-white text-sm font-medium py-2.5 hover:bg-accent-strong shadow-soft transition-colors">{t('submit')}</button>
+            <button type="submit" disabled={busy} className="w-full rounded-soft bg-accent text-white text-sm font-medium py-2.5 hover:bg-accent-strong shadow-soft transition-colors disabled:opacity-60">{busy ? '…' : t('submit')}</button>
           </form>
           <p className="mt-5 text-xs text-muted">{t('credsHelper')}</p>
         </motion.div>

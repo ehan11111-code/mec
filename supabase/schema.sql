@@ -68,6 +68,23 @@ create table if not exists public.whatsapp_intake (
 );
 alter table public.whatsapp_intake add column if not exists order_status text;
 
+-- App users (secure auth). Passwords are stored ONLY as a scrypt hash (scrypt$salt$hash) — never
+-- plaintext, never sent to the browser. Read/written server-side via /api/auth (service-role).
+create table if not exists public.app_users (
+  username      text primary key,
+  name_en       text,
+  name_ar       text,
+  role          text not null,                 -- admin | ceo | commercial | warehouse | finance | sales
+  title_en      text,
+  title_ar      text,
+  email         text,
+  color         text,
+  password_hash text not null,                 -- scrypt$<salt>$<hash>
+  avatar_url    text,                          -- profile picture (data URL or storage link)
+  updated_at    timestamptz default now()
+);
+alter table public.app_users enable row level security;  -- service-role only (no anon policy)
+
 -- Internal staff messaging (JARVIS inbox) — employees message each other; read/written server-side
 -- via the portal's /api/messages route (service-role).
 create table if not exists public.internal_messages (

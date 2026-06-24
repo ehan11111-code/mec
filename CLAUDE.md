@@ -84,6 +84,25 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-24 — Secure server-side auth (Supabase + hashed passwords + signed cookie).** Replaced the
+  client-side demo auth with real server auth. **Passwords are no longer in the browser bundle** — they
+  live only in Supabase `app_users` as **scrypt hashes** (`scrypt$salt$hash`, dependency-free), verified
+  server-side in **`/api/auth`**. Session is a **signed, httpOnly cookie** (HMAC-SHA256 with `AUTH_SECRET`,
+  7-day, `secure`+`sameSite=lax`) the client JS can't read or forge. New `lib/auth/server.ts`
+  (hash/verify, sign/verify session, Supabase reads, `verifyCredentials/changePassword/resetPassword/
+  setAvatar`); `lib/auth/users.ts` is now a **client-safe roster (no passwords)** + the permission map.
+  Client `lib/auth.ts` is thin async wrappers (`login/logout/getMe/changePassword/resetPassword/
+  uploadAvatar`). Rewired AuthGate, login, ProfileMenu, `useCurrentUser`, root index, messages page.
+  **`/api/messages` now derives identity from the cookie** (no impersonation via params). Avatars persist
+  to `app_users.avatar_url`. `app_users` table added to `schema.sql` (RLS service-role only). New
+  `scripts/seed-users.js` upserts the roster with hashed defaults. `AUTH_SECRET` generated + added to
+  `.env.local` and Vercel. **Pre-seed fallback:** until the table is seeded, login verifies against a
+  server-only default-password map, so login works immediately (password changes need the table). Build
+  green (37 routes).
+  - **User action:** re-run `supabase/schema.sql` (adds `app_users`), then I run `node scripts/seed-users.js`
+    to hash + store the passwords (after that, password change/reset/avatar persist). WaSender is now
+    logged in, so contact/order WhatsApp alerts deliver.
+
 - **2026-06-24 — Roles & accounts, profile menu, JARVIS inbox, sidebar reorg, admin automations, contact
   workflow.** Big multi-part run. **(1) Auth/roles:** new `lib/auth/users.ts` — 7 accounts (6 MEC staff +
   `jarvis` super-admin) with **per-role permissions** (`ROLE_PERMISSIONS`: admin/ceo/commercial/warehouse/
