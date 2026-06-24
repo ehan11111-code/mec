@@ -84,6 +84,20 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-24 — Stock-by-SKU now reconciles with the headline + live warehouse on-hand on every product
+  page.** User: the SKU table and the overall on-hand "don't match" (summing the 45-row on-hand column gave
+  14,888, headline was 3,483) — "no room for errors." Fix: the table adds up to the headline **by
+  construction** — the 8 unreconciled SKUs' on-hand is rendered **struck-through + "excl."** (visibly not
+  counted), and a **totals footer** prints the reconciled on-hand of the *shown* rows (= 3,483 / 58% of
+  6,000 when unfiltered, and stays correct under any filter). New request also shipped: **every product
+  page shows its live warehouse on-hand.** New `warehouseForProduct()` (token-jaccard maps a sold product →
+  its warehouse SKU, threshold 0.5) feeds an **"In the warehouse now"** panel on `/products/[id]` (on-hand,
+  expiry R/Y/G, reorder flag, matched SKU + in/out, unreconciled caveat) and an **On-hand column** on
+  `/products` (unreconciled marked `*` + tooltip; unmatched products honestly show "—"). Audited the
+  cross-page numbers (Explore agent): revenue = collected + receivables, Σ(client revenue) = total sales,
+  and Operations House all read the same source functions and reconcile; the one nuance noted (profit
+  summary is "on priced products") is already labelled. Build green (47 routes), EN/AR parity, deployed.
+
 - **2026-06-24 — Inventory on-hand reconciled (fixed the impossible 14,888).** User flagged that 14,888
   cartons on hand can't be real vs the 6,000 capacity. Root cause: (1) a **clamp bug** — clamping each
   SKU's negative net to 0 then summing inflated 10,079 → 14,888; (2) **the ledger doesn't reconcile** — it
