@@ -34,6 +34,11 @@ export default function InventoryPage() {
       (view === 'all' || (view === 'reorder' && r.needsReorder) || (view === 'expiring' && (r.expiry === 'red' || r.expiry === 'yellow')) || (view === 'gap' && flagged(r))))
   }, [q, cat, view, inv])
 
+  // The reconciled on-hand of the currently-shown rows — equals the headline (3,483) when unfiltered.
+  // Flagged (unreconciled) rows are excluded so the table column always adds up to this figure.
+  const shownReconciled = useMemo(() => rows.filter(r => !r.unreconciled).reduce((a, r) => a + r.onHand, 0), [rows])
+  const shownExcluded = useMemo(() => rows.filter(r => r.unreconciled).length, [rows])
+
   const utilTone = ws.utilization >= 100 ? 'bg-accent' : ws.utilization >= 80 ? 'bg-warn' : 'bg-success'
   const selCls = 'rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-text focus:border-accent transition-colors cursor-pointer'
   const views: { v: typeof view; n: number }[] = [
@@ -128,7 +133,10 @@ export default function InventoryPage() {
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell"><span className="inline-flex items-center rounded-full bg-bg-soft px-2.5 py-0.5 text-[11px] text-text-soft">{categoryLabel(r.category, locale)}</span></td>
                   <td className="px-4 py-3 text-end tabular-nums">
-                    <span className={clsx(r.unreconciled ? 'text-warn' : 'text-text')}>{fmtNum(r.onHand)}</span>
+                    {r.unreconciled
+                      ? <span className="text-muted line-through decoration-warn/60">{fmtNum(r.onHand)}</span>
+                      : <span className="text-text">{fmtNum(r.onHand)}</span>}
+                    {r.unreconciled && <span className="ms-1 text-[10px] font-medium text-warn">{t('excl')}</span>}
                     {(r.unreconciled || r.dataGap) && <div className="text-[10px] text-muted">{t('inOut', { in: fmtNum(r.inbound), out: fmtNum(r.outbound) })}</div>}
                   </td>
                   <td className="px-4 py-3 text-end tabular-nums text-muted hidden lg:table-cell">{fmtNum(r.rop)}</td>
@@ -149,6 +157,16 @@ export default function InventoryPage() {
               ))}
               {rows.length === 0 && <tr><td colSpan={7} className="px-6 py-10 text-center text-sm text-muted">{t('empty')}</td></tr>}
             </tbody>
+            {rows.length > 0 && (
+              <tfoot>
+                <tr className="border-t-2 border-border bg-bg-soft/40">
+                  <td colSpan={7} className="px-5 md:px-6 py-3 text-xs">
+                    <span className="font-semibold text-text">{t('footLabel')}: {fmtNum(shownReconciled)} {t('cartons')}</span>
+                    {shownExcluded > 0 && <span className="text-muted"> · {t('footNote', { excl: shownExcluded })}</span>}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
         <div className="px-5 md:px-6 py-3 border-t border-border text-xs text-muted">{t('showing', { n: rows.length, total: inv.length })}</div>

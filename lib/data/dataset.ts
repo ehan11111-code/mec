@@ -450,9 +450,32 @@ function productSalesIndex(): Map<string, SalesInvoice[]> {
   _prodSalesIndex = idx
   return idx
 }
+// Match a sold product to its WAREHOUSE SKU (token jaccard, same threshold as cost matching) → the live
+// on-hand from the warehouse ledger. Unreconciled SKUs (under-recorded outbound) are returned with the
+// flag so the UI can caveat them exactly as the Inventory page does — never silently show an inflated qty.
+export type ProductWarehouse = { onHand: number; reconciled: boolean; matched: string; inbound: number; outbound: number; expiry: ExpiryStatus; daysToExpiry: number | null; needsReorder: boolean }
+let _invCandidates: { item: string; tok: string[] }[] | null = null
+function invCandidates() {
+  if (_invCandidates) return _invCandidates
+  _invCandidates = inventory.map(r => ({ item: r.item, tok: tokens(r.item) }))
+  return _invCandidates
+}
+export function warehouseForProduct(item: string, nowIso?: string): ProductWarehouse | null {
+  const tk = tokens(item); let best = 0; let match: string | null = null
+  for (const c of invCandidates()) { const s = jaccard(tk, c.tok); if (s > best) { best = s; match = c.item } }
+  if (best < 0.5 || !match) return null
+  const sku = getInventory(nowIso).find(r => r.item === match)
+  if (!sku) return null
+  return {
+    onHand: sku.onHand, reconciled: !sku.unreconciled, matched: sku.item,
+    inbound: sku.inbound, outbound: sku.outbound, expiry: sku.expiry, daysToExpiry: sku.daysToExpiry, needsReorder: sku.needsReorder
+  }
+}
+
 export type ProductListItem = {
   item: string; category: string; categoryAr: string; units: number; revenue: number; orders: number
   clients: number; avgSell: number; unitCost: number | null; marginPct: number | null; belowMin: boolean; confidence: 'high' | 'low' | 'none'
+  onHand: number | null; whReconciled: boolean
 }
 let _productList: ProductListItem[] | null = null
 export function getProductList(): ProductListItem[] {
@@ -460,10 +483,12 @@ export function getProductList(): ProductListItem[] {
   const idx = productSalesIndex()
   _productList = productMargins().map(p => {
     const rows = idx.get(p.item) ?? []
+    const wh = warehouseForProduct(p.item)
     return {
       item: p.item, category: p.category, categoryAr: p.categoryAr, units: p.units, revenue: p.revenue,
       orders: rows.length, clients: new Set(rows.map(r => r.clientName)).size,
-      avgSell: p.avgSell, unitCost: p.unitCost, marginPct: p.marginPct, belowMin: p.belowMin, confidence: p.confidence
+      avgSell: p.avgSell, unitCost: p.unitCost, marginPct: p.marginPct, belowMin: p.belowMin, confidence: p.confidence,
+      onHand: wh ? wh.onHand : null, whReconciled: wh ? wh.reconciled : false
     }
   })
   return _productList
@@ -475,6 +500,7 @@ export type ProductDetail = {
     unitCost: number | null; unitProfit: number | null; marginPct: number | null; minMargin: number; belowMin: boolean
     grossProfit: number | null; firstDate: string; lastDate: string; matchedCost: string; confidence: 'high' | 'low' | 'none'
   }
+  warehouse: ProductWarehouse | null
   monthly: { key: string; t: string; tAr: string; units: number; revenue: number; avgSell: number }[]
   costHistory: { key: string; t: string; tAr: string; cost: number }[]
   topClients: { name: string; units: number; revenue: number }[]
@@ -515,6 +541,7 @@ export function getProductDetail(item: string): ProductDetail | null {
       unitCost: pm.unitCost, unitProfit: pm.unitProfit, marginPct: pm.marginPct, minMargin: pm.minMargin, belowMin: pm.belowMin,
       grossProfit: pm.grossProfit, firstDate: dates[0] ?? '', lastDate: dates[dates.length - 1] ?? '', matchedCost: pm.matchedCost, confidence: pm.confidence
     },
+    warehouse: warehouseForProduct(item),
     monthly, costHistory, topClients
   }
 }

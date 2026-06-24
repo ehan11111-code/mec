@@ -68,6 +68,7 @@ export default function ProductsPage() {
                 <th className="text-end font-medium px-4 py-3 hidden md:table-cell">{t('colOrders')}</th>
                 <th className="text-end font-medium px-4 py-3 hidden lg:table-cell">{t('colSell')}</th>
                 <th className="text-end font-medium px-4 py-3 hidden lg:table-cell">{t('colCost')}</th>
+                <th className="text-end font-medium px-4 py-3 hidden md:table-cell">{t('colOnHand')}</th>
                 <th className="text-end font-medium px-4 py-3">{t('colRevenue')}</th>
                 <th className="text-end font-medium px-5 md:px-6 py-3">{t('colMargin')}</th>
               </tr>
@@ -84,11 +85,15 @@ export default function ProductsPage() {
                   <td className="px-4 py-3 text-end tabular-nums text-text-soft hidden md:table-cell">{p.orders}</td>
                   <td className="px-4 py-3 text-end tabular-nums text-text-soft hidden lg:table-cell">{p.avgSell ? fmtSAR(p.avgSell) : '—'}</td>
                   <td className="px-4 py-3 text-end tabular-nums text-text-soft hidden lg:table-cell">{p.unitCost ? fmtSAR(p.unitCost) : '—'}</td>
+                  <td className="px-4 py-3 text-end tabular-nums hidden md:table-cell">
+                    {p.onHand == null ? <span className="text-muted">—</span>
+                      : <span className={clsx(p.whReconciled ? 'text-text-soft' : 'text-warn')} title={p.whReconciled ? undefined : t('onHandUnrec')}>{fmtNum(p.onHand)}{!p.whReconciled && '*'}</span>}
+                  </td>
                   <td className="px-4 py-3 text-end tabular-nums text-text">{fmtSAR(p.revenue)}</td>
                   <td className={clsx('px-5 md:px-6 py-3 text-end tabular-nums font-medium', marginTone(p.marginPct, p.belowMin))}>{p.marginPct == null ? '—' : `${p.marginPct}%`}</td>
                 </tr>
               ))}
-              {rows.length === 0 && <tr><td colSpan={8} className="px-6 py-10 text-center text-sm text-muted">{t('empty')}</td></tr>}
+              {rows.length === 0 && <tr><td colSpan={9} className="px-6 py-10 text-center text-sm text-muted">{t('empty')}</td></tr>}
             </tbody>
           </table>
         </div>

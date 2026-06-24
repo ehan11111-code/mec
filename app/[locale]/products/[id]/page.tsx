@@ -3,7 +3,7 @@ import { use, useEffect, useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { notFound } from 'next/navigation'
 import { clsx } from 'clsx'
-import { ArrowLeft, Package, TrendingUp, AlertTriangle, Globe, ExternalLink, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Package, TrendingUp, AlertTriangle, Globe, ExternalLink, RefreshCw, Boxes } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { PageShell } from '@/components/PageShell'
 import { DisplayHeading } from '@/components/DisplayHeading'
@@ -98,6 +98,30 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <StatCard label={t('kAvgSell')} value={summary.avgSell ? fmtSAR(summary.avgSell) : '—'} delta={summary.unitCost ? `${t('cost')} ${fmtSAR(summary.unitCost)}` : undefined} infoId="avgSell" index={2} />
             <StatCard label={t('kMargin')} value={winMargin == null ? '—' : `${winMargin}%`} delta={summary.minMargin ? `${t('floor')} ${summary.minMargin}%` : undefined} infoId="grossProfitActual" index={3} accent />
           </section>
+
+          {/* live warehouse on-hand for this product */}
+          {detail.warehouse ? (
+            <Panel className="mb-6" title={<span className="inline-flex items-center gap-2"><Boxes className="h-4 w-4 text-accent" strokeWidth={1.8} />{t('whTitle')}</span>}>
+              <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+                <div>
+                  <div className="text-2xl font-display font-semibold tabular-nums text-text">{fmtNum(detail.warehouse.onHand)} <span className="text-sm font-normal text-muted">{t('cartons')}</span></div>
+                  <div className="text-xs text-muted">{t('whOnHand')}</div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={clsx('inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium',
+                    detail.warehouse.expiry === 'green' ? 'bg-success-soft text-success' : detail.warehouse.expiry === 'yellow' ? 'bg-warn-soft text-warn' : detail.warehouse.expiry === 'red' ? 'bg-accent-soft text-accent' : 'bg-bg-soft text-muted')}>
+                    {detail.warehouse.expiry === 'unknown' ? t('whExpiryNa') : detail.warehouse.daysToExpiry != null && detail.warehouse.daysToExpiry < 0 ? t('whExpired') : t('whExpiry', { days: detail.warehouse.daysToExpiry ?? 0 })}
+                  </span>
+                  {detail.warehouse.needsReorder && <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft text-accent px-2.5 py-0.5 text-[11px] font-medium"><AlertTriangle className="h-3 w-3" strokeWidth={2} />{t('whReorder')}</span>}
+                  {!detail.warehouse.reconciled && <span className="inline-flex items-center gap-1 rounded-full bg-warn-soft text-warn px-2.5 py-0.5 text-[11px] font-medium"><AlertTriangle className="h-3 w-3" strokeWidth={2} />{t('whUnrec')}</span>}
+                </div>
+              </div>
+              <p className="mt-2 text-[11px] text-muted">{t('whMatched', { sku: detail.warehouse.matched })} · {t('inOut', { in: fmtNum(detail.warehouse.inbound), out: fmtNum(detail.warehouse.outbound) })}</p>
+              {!detail.warehouse.reconciled && <NoteCallout tone="warn" className="mt-3">{t('whUnrecNote')}</NoteCallout>}
+            </Panel>
+          ) : (
+            <NoteCallout className="mb-6" title={t('whTitle')}>{t('whNone')}</NoteCallout>
+          )}
 
           <section className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
             {monthly.length > 0 ? (
