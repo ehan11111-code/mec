@@ -1,0 +1,110 @@
+{
+  "name": "MEC · Contact / Inquiry Alert",
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "mec-contact", "responseMode": "responseNode", "options": {} },
+      "id": "webhook",
+      "name": "Contact webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [ 220, 320 ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build the alert text + HTML from the submitted inquiry.\nconst b = ($input.first().json.body) || $input.first().json || {};\nconst name = String(b.name || '').slice(0, 200) || '(no name)';\nconst email = String(b.email || '').slice(0, 200);\nconst phone = String(b.phone || '').slice(0, 40);\nconst message = String(b.message || '').slice(0, 4000) || '(no message)';\nconst esc = (s) => String(s).replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[c]));\nconst wa = `\\uD83D\\uDCE8 *New MEC portal inquiry*\\n\\n\\uD83D\\uDC64 ${name}\\n` + (email?`\\u2709\\uFE0F ${email}\\n`:'') + (phone?`\\uD83D\\uDCDE ${phone}\\n`:'') + `\\n\\uD83D\\uDCAC ${message}`;\nconst html = `<h3>New MEC portal inquiry</h3><p><b>Name:</b> ${esc(name)}</p>` + (email?`<p><b>Email:</b> ${esc(email)}</p>`:'') + (phone?`<p><b>Phone:</b> ${esc(phone)}</p>`:'') + `<p><b>Message:</b><br/>${esc(message).replace(/\\n/g,'<br/>')}</p>`;\nreturn [{ json: { name, email, phone, message, wa, html } }];"
+      },
+      "id": "prep",
+      "name": "Build alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 440, 320 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://wasenderapi.com/api/send-message",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "Authorization", "value": "=Bearer {{ $env.WASENDER_API_TOKEN }}" },
+          { "name": "Content-Type", "value": "application/json" }
+        ] },
+        "sendBody": true, "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ to: '966500900377', text: $json.wa }) }}",
+        "options": {}
+      },
+      "id": "wa1", "name": "WhatsApp · Ehan", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "onError": "continueRegularOutput", "position": [ 660, 200 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://wasenderapi.com/api/send-message",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "Authorization", "value": "=Bearer {{ $env.WASENDER_API_TOKEN }}" },
+          { "name": "Content-Type", "value": "application/json" }
+        ] },
+        "sendBody": true, "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ to: '966556732109', text: $('Build alert').item.json.wa }) }}",
+        "options": {}
+      },
+      "id": "wa2", "name": "WhatsApp · Moe", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "onError": "continueRegularOutput", "position": [ 880, 200 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://wasenderapi.com/api/send-message",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "Authorization", "value": "=Bearer {{ $env.WASENDER_API_TOKEN }}" },
+          { "name": "Content-Type", "value": "application/json" }
+        ] },
+        "sendBody": true, "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ to: '966540747300', text: $('Build alert').item.json.wa }) }}",
+        "options": {}
+      },
+      "id": "wa3", "name": "WhatsApp · Abdulrahman", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "onError": "continueRegularOutput", "position": [ 1100, 200 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://login.microsoftonline.com/{{ $env.MS_OUTLOOK_TENANT_ID }}/oauth2/v2.0/token",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "Content-Type", "value": "application/x-www-form-urlencoded" } ] },
+        "sendBody": true, "specifyBody": "string",
+        "body": "=client_id={{ $env.MS_OUTLOOK_CLIENT_ID }}&client_secret={{ $env.MS_OUTLOOK_CLIENT_SECRET }}&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default&grant_type=client_credentials",
+        "options": {}
+      },
+      "id": "token", "name": "Graph token", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "onError": "continueRegularOutput", "position": [ 1320, 440 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.microsoft.com/v1.0/users/partners@jarvisksa.com/sendMail",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "Authorization", "value": "=Bearer {{ $json.access_token }}" },
+          { "name": "Content-Type", "value": "application/json" }
+        ] },
+        "sendBody": true, "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: { subject: 'New MEC portal inquiry — ' + $('Build alert').item.json.name, body: { contentType: 'HTML', content: $('Build alert').item.json.html }, toRecipients: [{ emailAddress: { address: 'partners@jarvisksa.com' } }] }, saveToSentItems: true }) }}",
+        "options": {}
+      },
+      "id": "mail", "name": "Email Jarvis team", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "onError": "continueRegularOutput", "position": [ 1540, 440 ]
+    },
+    {
+      "parameters": { "respondWith": "text", "responseBody": "ok", "options": {} },
+      "id": "respond", "name": "200 OK", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [ 1760, 320 ]
+    }
+  ],
+  "connections": {
+    "Contact webhook": { "main": [ [ { "node": "Build alert", "type": "main", "index": 0 } ] ] },
+    "Build alert": { "main": [ [ { "node": "WhatsApp · Ehan", "type": "main", "index": 0 } ] ] },
+    "WhatsApp · Ehan": { "main": [ [ { "node": "WhatsApp · Moe", "type": "main", "index": 0 } ] ] },
+    "WhatsApp · Moe": { "main": [ [ { "node": "WhatsApp · Abdulrahman", "type": "main", "index": 0 } ] ] },
+    "WhatsApp · Abdulrahman": { "main": [ [ { "node": "Graph token", "type": "main", "index": 0 } ] ] },
+    "Graph token": { "main": [ [ { "node": "Email Jarvis team", "type": "main", "index": 0 } ] ] },
+    "Email Jarvis team": { "main": [ [ { "node": "200 OK", "type": "main", "index": 0 } ] ] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "active": false
+}

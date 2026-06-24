@@ -1,21 +1,28 @@
 import type { Bi } from '@/lib/mock/types'
 
-// The 10 n8n workflows from the project brief (§9), as an action catalog. Each "Run" button POSTs to
-// the webhook URL in the matching env var; until that's set the UI shows a "Connect n8n" state.
+// The MEC automation catalog (brief §9) — the n8n workflows that run the operation. This is a control
+// surface for the admin: each entry shows its trigger/cadence and live status. There is no manual
+// "Run" — workflows fire on their own schedule or event (the admin can tune a schedule's cadence).
 export type Automation = {
-  id: string; name: Bi; trigger: Bi; dept: string
+  id: string; name: Bi; dept: string
   // internal = runs on MEC's own data/operations (the system uses the output);
   // external = output is pulled from the outside world (intake, market intelligence).
   kind: 'internal' | 'external'
+  // schedule = fires on a timer (admin can change the interval); event = fires when something happens.
+  triggerKind: 'schedule' | 'event'
+  cadenceHours?: number         // default interval for schedule workflows
+  trigger: Bi                   // human description of the event (for event workflows)
+  status: 'live' | 'planned'    // live = deployed + active in n8n now; planned = ships in its phase
+  phase: number                 // brief phase this belongs to (1–7)
   steps: Bi[]
-  webhookEnv: string   // e.g. NEXT_PUBLIC_N8N_EMAIL_INTAKE
+  webhookEnv: string
 }
 
 export const automations: Automation[] = [
   {
-    id: 'erp-sync', dept: 'documents', kind: 'internal', webhookEnv: 'NEXT_PUBLIC_N8N_ERP_SYNC',
+    id: 'erp-sync', dept: 'documents', kind: 'internal', triggerKind: 'schedule', cadenceHours: 6, status: 'planned', phase: 2, webhookEnv: 'NEXT_PUBLIC_N8N_ERP_SYNC',
     name: { en: 'ERP Scheduled Sync', ar: 'مزامنة ERP المجدولة' },
-    trigger: { en: 'Every 6 hours (timer)', ar: 'كل 6 ساعات (مؤقّت)' },
+    trigger: { en: 'On a timer', ar: 'حسب المؤقّت' },
     steps: [
       { en: 'Fetch new ERP records', ar: 'جلب سجلات ERP الجديدة' },
       { en: 'Normalise to portal shape', ar: 'توحيد إلى شكل البوابة' },
@@ -24,9 +31,9 @@ export const automations: Automation[] = [
     ]
   },
   {
-    id: 'supply-intel', dept: 'supplier-planning', kind: 'external', webhookEnv: 'NEXT_PUBLIC_N8N_SUPPLY_INTEL',
+    id: 'supply-intel', dept: 'supplier-planning', kind: 'external', triggerKind: 'schedule', cadenceHours: 12, status: 'live', phase: 6, webhookEnv: 'NEXT_PUBLIC_N8N_SUPPLY_INTEL',
     name: { en: 'Supply-Market Intelligence', ar: 'استخبارات سوق التوريد' },
-    trigger: { en: 'Every 12 hours (timer)', ar: 'كل 12 ساعة (مؤقّت)' },
+    trigger: { en: 'On a timer', ar: 'حسب المؤقّت' },
     steps: [
       { en: 'Gather real news + advisory signals', ar: 'جمع الأخبار والتنبيهات الحقيقية' },
       { en: 'GPT synthesis — forecast + risks', ar: 'تحليل GPT — توقّع + مخاطر' },
@@ -35,9 +42,31 @@ export const automations: Automation[] = [
     ]
   },
   {
-    id: 'email-intake', dept: 'documents', kind: 'external', webhookEnv: 'NEXT_PUBLIC_N8N_EMAIL_INTAKE',
+    id: 'whatsapp-intake', dept: 'documents', kind: 'external', triggerKind: 'event', status: 'live', phase: 2, webhookEnv: 'NEXT_PUBLIC_N8N_WHATSAPP_INTAKE',
+    name: { en: 'WhatsApp Message & Order Intake', ar: 'استقبال رسائل وطلبات واتساب' },
+    trigger: { en: 'New WhatsApp message or media', ar: 'رسالة أو وسائط واتساب جديدة' },
+    steps: [
+      { en: 'Identify sender', ar: 'تحديد المُرسِل' },
+      { en: 'Classify intent + extract order', ar: 'تصنيف النية + استخراج الطلب' },
+      { en: 'Store + push to approval queue', ar: 'حفظ + دفع لقائمة الاعتماد' },
+      { en: 'Auto-acknowledge the sender', ar: 'رد تلقائي على المُرسِل' }
+    ]
+  },
+  {
+    id: 'contact-inquiry', dept: 'documents', kind: 'external', triggerKind: 'event', status: 'live', phase: 1, webhookEnv: 'NEXT_PUBLIC_N8N_CONTACT',
+    name: { en: 'Contact / Inquiry Alert', ar: 'تنبيه التواصل / الاستفسار' },
+    trigger: { en: 'Portal contact form submitted', ar: 'إرسال نموذج التواصل في البوابة' },
+    steps: [
+      { en: 'Capture name + message', ar: 'التقاط الاسم + الرسالة' },
+      { en: 'Notify Jarvis team on WhatsApp', ar: 'إشعار فريق جارفيس على واتساب' },
+      { en: 'Email partners@jarvisksa.com', ar: 'إرسال بريد إلى partners@jarvisksa.com' },
+      { en: 'Log the inquiry', ar: 'تسجيل الاستفسار' }
+    ]
+  },
+  {
+    id: 'email-intake', dept: 'documents', kind: 'external', triggerKind: 'event', status: 'planned', phase: 2, webhookEnv: 'NEXT_PUBLIC_N8N_EMAIL_INTAKE',
     name: { en: 'Email Document Intake', ar: 'استقبال مستندات البريد' },
-    trigger: { en: 'New order-related email with attachment', ar: 'بريد جديد متعلق بطلب مع مرفق' },
+    trigger: { en: 'New order email with attachment', ar: 'بريد جديد متعلق بطلب مع مرفق' },
     steps: [
       { en: 'Fetch email + attachments', ar: 'جلب البريد والمرفقات' },
       { en: 'Classify + OCR parse', ar: 'تصنيف + استخراج ضوئي' },
@@ -46,18 +75,7 @@ export const automations: Automation[] = [
     ]
   },
   {
-    id: 'whatsapp-intake', dept: 'documents', kind: 'external', webhookEnv: 'NEXT_PUBLIC_N8N_WHATSAPP_INTAKE',
-    name: { en: 'WhatsApp Message & Document Intake', ar: 'استقبال رسائل ومستندات واتساب' },
-    trigger: { en: 'New WhatsApp message or media', ar: 'رسالة أو وسائط واتساب جديدة' },
-    steps: [
-      { en: 'Identify sender', ar: 'تحديد المُرسِل' },
-      { en: 'Download media', ar: 'تنزيل الوسائط' },
-      { en: 'Extract order details', ar: 'استخراج تفاصيل الطلب' },
-      { en: 'Create lead / order / task', ar: 'إنشاء عميل / طلب / مهمة' }
-    ]
-  },
-  {
-    id: 'order-approval', dept: 'approvals', kind: 'internal', webhookEnv: 'NEXT_PUBLIC_N8N_ORDER_APPROVAL',
+    id: 'order-approval', dept: 'approvals', kind: 'internal', triggerKind: 'event', status: 'planned', phase: 3, webhookEnv: 'NEXT_PUBLIC_N8N_ORDER_APPROVAL',
     name: { en: 'Order Approval Assistant', ar: 'مساعد اعتماد الطلبات' },
     trigger: { en: 'New order submitted', ar: 'تقديم طلب جديد' },
     steps: [
@@ -68,7 +86,7 @@ export const automations: Automation[] = [
     ]
   },
   {
-    id: 'warehouse-dispatch', dept: 'warehouse', kind: 'internal', webhookEnv: 'NEXT_PUBLIC_N8N_WAREHOUSE_DISPATCH',
+    id: 'warehouse-dispatch', dept: 'warehouse', kind: 'internal', triggerKind: 'event', status: 'planned', phase: 4, webhookEnv: 'NEXT_PUBLIC_N8N_WAREHOUSE_DISPATCH',
     name: { en: 'Warehouse Dispatch', ar: 'إرسال المستودع' },
     trigger: { en: 'Order approved', ar: 'اعتماد الطلب' },
     steps: [
@@ -79,7 +97,7 @@ export const automations: Automation[] = [
     ]
   },
   {
-    id: 'driver-route', dept: 'logistics', kind: 'internal', webhookEnv: 'NEXT_PUBLIC_N8N_DRIVER_ROUTE',
+    id: 'driver-route', dept: 'logistics', kind: 'internal', triggerKind: 'event', status: 'planned', phase: 4, webhookEnv: 'NEXT_PUBLIC_N8N_DRIVER_ROUTE',
     name: { en: 'Driver & Route Status', ar: 'حالة السائق والمسار' },
     trigger: { en: 'Order loaded / dispatched', ar: 'تحميل / إرسال الطلب' },
     steps: [
@@ -90,7 +108,7 @@ export const automations: Automation[] = [
     ]
   },
   {
-    id: 'delivery-note', dept: 'logistics', kind: 'internal', webhookEnv: 'NEXT_PUBLIC_N8N_DELIVERY_NOTE',
+    id: 'delivery-note', dept: 'logistics', kind: 'internal', triggerKind: 'event', status: 'planned', phase: 4, webhookEnv: 'NEXT_PUBLIC_N8N_DELIVERY_NOTE',
     name: { en: 'Delivery Note Processing', ar: 'معالجة إشعار التسليم' },
     trigger: { en: 'Delivery note uploaded', ar: 'رفع إشعار التسليم' },
     steps: [
@@ -101,7 +119,7 @@ export const automations: Automation[] = [
     ]
   },
   {
-    id: 'payment-followup', dept: 'finance', kind: 'internal', webhookEnv: 'NEXT_PUBLIC_N8N_PAYMENT_FOLLOWUP',
+    id: 'payment-followup', dept: 'finance', kind: 'internal', triggerKind: 'event', status: 'planned', phase: 5, webhookEnv: 'NEXT_PUBLIC_N8N_PAYMENT_FOLLOWUP',
     name: { en: 'Payment Deadline & Follow-up', ar: 'مواعيد السداد والمتابعة' },
     trigger: { en: 'Order delivered / scheduled', ar: 'تسليم الطلب / مجدول' },
     steps: [
@@ -112,9 +130,9 @@ export const automations: Automation[] = [
     ]
   },
   {
-    id: 'excel-export', dept: 'finance', kind: 'internal', webhookEnv: 'NEXT_PUBLIC_N8N_EXCEL_EXPORT',
+    id: 'excel-export', dept: 'finance', kind: 'internal', triggerKind: 'schedule', cadenceHours: 24, status: 'planned', phase: 5, webhookEnv: 'NEXT_PUBLIC_N8N_EXCEL_EXPORT',
     name: { en: 'Accounting Excel Export', ar: 'تصدير Excel المحاسبي' },
-    trigger: { en: 'Scheduled / manual export', ar: 'تصدير مجدول / يدوي' },
+    trigger: { en: 'On a timer', ar: 'حسب المؤقّت' },
     steps: [
       { en: 'Fetch orders + payments', ar: 'جلب الطلبات + المدفوعات' },
       { en: 'Build clean XLSX + doc links', ar: 'بناء XLSX نظيف + روابط' },
@@ -123,9 +141,9 @@ export const automations: Automation[] = [
     ]
   },
   {
-    id: 'supplier-planning', dept: 'supplier-planning', kind: 'internal', webhookEnv: 'NEXT_PUBLIC_N8N_SUPPLIER_PLANNING',
+    id: 'supplier-planning', dept: 'supplier-planning', kind: 'internal', triggerKind: 'schedule', cadenceHours: 168, status: 'planned', phase: 6, webhookEnv: 'NEXT_PUBLIC_N8N_SUPPLIER_PLANNING',
     name: { en: 'Supplier Demand Planning', ar: 'تخطيط طلب الموردين' },
-    trigger: { en: 'Scheduled / manual planning', ar: 'تخطيط مجدول / يدوي' },
+    trigger: { en: 'On a timer', ar: 'حسب المؤقّت' },
     steps: [
       { en: 'Analyse sales + inventory', ar: 'تحليل المبيعات + المخزون' },
       { en: 'Recommend order quantities', ar: 'توصية بكميات الطلب' },
@@ -134,7 +152,7 @@ export const automations: Automation[] = [
     ]
   },
   {
-    id: 'learning', dept: 'supplier-planning', kind: 'internal', webhookEnv: 'NEXT_PUBLIC_N8N_LEARNING',
+    id: 'learning', dept: 'supplier-planning', kind: 'internal', triggerKind: 'event', status: 'planned', phase: 7, webhookEnv: 'NEXT_PUBLIC_N8N_LEARNING',
     name: { en: 'System Learning & Improvement', ar: 'تعلّم النظام والتحسين' },
     trigger: { en: 'After each completed cycle', ar: 'بعد كل دورة مكتملة' },
     steps: [
@@ -150,6 +168,7 @@ export const automations: Automation[] = [
 export const webhookUrls: Record<string, string | undefined> = {
   NEXT_PUBLIC_N8N_ERP_SYNC: process.env.NEXT_PUBLIC_N8N_ERP_SYNC,
   NEXT_PUBLIC_N8N_SUPPLY_INTEL: process.env.NEXT_PUBLIC_N8N_SUPPLY_INTEL,
+  NEXT_PUBLIC_N8N_CONTACT: process.env.NEXT_PUBLIC_N8N_CONTACT,
   NEXT_PUBLIC_N8N_EMAIL_INTAKE: process.env.NEXT_PUBLIC_N8N_EMAIL_INTAKE,
   NEXT_PUBLIC_N8N_WHATSAPP_INTAKE: process.env.NEXT_PUBLIC_N8N_WHATSAPP_INTAKE,
   NEXT_PUBLIC_N8N_ORDER_APPROVAL: process.env.NEXT_PUBLIC_N8N_ORDER_APPROVAL,

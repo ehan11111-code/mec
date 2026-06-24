@@ -84,6 +84,30 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-24 — Roles & accounts, profile menu, JARVIS inbox, sidebar reorg, admin automations, contact
+  workflow.** Big multi-part run. **(1) Auth/roles:** new `lib/auth/users.ts` — 7 accounts (6 MEC staff +
+  `jarvis` super-admin) with **per-role permissions** (`ROLE_PERMISSIONS`: admin/ceo/commercial/warehouse/
+  finance/sales). Rewrote `lib/auth.ts` (username sessions, password overrides + `generatePassword`,
+  base64 avatars, `authenticate`/`can`). Login is **username+password** now. **(2) Profile menu** in the
+  TopBar (`ProfileMenu` + `Avatar`): change/upload photo, change password, **forgot→generate new**, JARVIS
+  inbox link, sign out. **(3) Sidebar reorg** into permission-filtered sections (Overview / Sales & clients
+  / Intelligence / Workspace / Admin / Help + Departments) — resolves the two scattered "approvals" (order-
+  approvals under Sales; the Approvals *department* under Departments). Non-permitted items hidden;
+  `PermissionGate` blocks direct-URL access. **(4) JARVIS inbox** — staff messaging: `/messages` page,
+  `/api/messages`, `lib/data/messages.ts`, Supabase `internal_messages` table. **(5) Automations** is now
+  **admin-only**, **no Run button** — per-workflow **cadence editor** (schedule) / event label, enable
+  toggle, live/planned status + brief phase; curated list (12 brief workflows + new contact one, each
+  mapped to its phase). **(6) Academy** marked **Beta · under maintenance**. **(7) Contact workflow** —
+  `/api/contact` + `lib/integrations/notify.ts` fan out every inquiry to the **Jarvis team on WhatsApp
+  (WaSender → 3 numbers)** + **email (MS Graph → partners@jarvisksa.com)** + logs to Supabase; new n8n
+  **`contact-inquiry`** workflow deployed + active (`feBtsUD1FGyZaVmt`, webhook `…/webhook/mec-contact`).
+  Schema adds `internal_messages` + `contact_inquiries`. Build green (37 routes); EN/AR keys in parity.
+  - **User actions:** (a) re-run `supabase/schema.sql` (adds the two new tables); (b) for contact **email**
+    to send, grant the Azure app **Mail.Send (Application)** + admin consent; (c) WhatsApp alerts need the
+    **WaSender session reconnected** (still `logged_out`). **Credentials handed to the user in chat.**
+  - **Security note:** demo auth checks credentials client-side, so passwords ship in the bundle — fine for
+    the demo, but move to real server auth (Supabase Auth) before production, and rotate the shared keys.
+
 - **2026-06-24 — Professional CRM: per-client file + product/value/size filters + drill-through.**
   Rebuilt the Clients (CRM) page into a real directory and added a **per-client detail page**
   (`/clients/[id]`). New data layer in `lib/data/dataset.ts`: `clientSalesIndex()` buckets **every sales

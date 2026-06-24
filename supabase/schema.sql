@@ -68,6 +68,31 @@ create table if not exists public.whatsapp_intake (
 );
 alter table public.whatsapp_intake add column if not exists order_status text;
 
+-- Internal staff messaging (JARVIS inbox) — employees message each other; read/written server-side
+-- via the portal's /api/messages route (service-role).
+create table if not exists public.internal_messages (
+  id          bigint generated always as identity primary key,
+  from_user   text not null,          -- sender username
+  to_user     text not null,          -- recipient username
+  body        text not null,
+  read        boolean default false,
+  created_at  timestamptz default now()
+);
+create index if not exists internal_messages_pair_idx on public.internal_messages (from_user, to_user, created_at);
+alter table public.internal_messages enable row level security;  -- service-role only (no anon policy)
+
+-- Contact / inquiry log — every portal contact-form submission (also fans out to WhatsApp + email).
+create table if not exists public.contact_inquiries (
+  id          bigint generated always as identity primary key,
+  name        text,
+  email       text,
+  phone       text,
+  message     text,
+  source      text default 'portal',
+  created_at  timestamptz default now()
+);
+alter table public.contact_inquiries enable row level security;  -- service-role only
+
 -- Row Level Security ---------------------------------------------------------
 -- supply_intel: portal reads it with the anon key.
 alter table public.supply_intel enable row level security;

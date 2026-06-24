@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'framer-motion'
 import { useRouter } from '@/i18n/navigation'
-import { setSession } from '@/lib/auth'
+import { authenticate, setSession } from '@/lib/auth'
 import { BrandLogo } from '@/components/BrandLogo'
 import { Eyebrow } from '@/components/Eyebrow'
 import { DisplayHeading } from '@/components/DisplayHeading'
@@ -12,12 +12,14 @@ import { Field } from '@/components/Field'
 export default function LoginPage() {
   const t = useTranslations('login'); const locale = useLocale() as 'en' | 'ar'
   const router = useRouter()
-  const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [error, setError] = useState('')
+  const [username, setUsername] = useState(''); const [password, setPassword] = useState(''); const [error, setError] = useState('')
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email || !password) { setError(t('errorRequired')); return }
-    setSession(email); router.replace('/control-center')
+    if (!username || !password) { setError(t('errorRequired')); return }
+    const user = authenticate(username, password)
+    if (!user) { setError(t('errorInvalid')); return }
+    setSession(user.username); router.replace('/control-center')
   }
 
   return (
@@ -47,12 +49,12 @@ export default function LoginPage() {
           <DisplayHeading size="md" className="mt-2" locale={locale}>{t('headline')}</DisplayHeading>
           <p className="mt-2 text-sm text-text-soft">{t('subline')}</p>
           <form onSubmit={submit} className="mt-8 space-y-4">
-            <Field label={t('email')} type="email" value={email} onChange={setEmail} placeholder="name@mec.com" autoComplete="email" />
+            <Field label={t('username')} value={username} onChange={setUsername} placeholder="f.muzaiyen" autoComplete="username" />
             <Field label={t('password')} type="password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" />
             {error && <p className="text-xs text-accent">{error}</p>}
             <button type="submit" className="w-full rounded-soft bg-accent text-white text-sm font-medium py-2.5 hover:bg-accent-strong shadow-soft transition-colors">{t('submit')}</button>
           </form>
-          <p className="mt-5 text-xs text-muted">{t('demoHelper')}</p>
+          <p className="mt-5 text-xs text-muted">{t('credsHelper')}</p>
         </motion.div>
       </div>
     </div>
