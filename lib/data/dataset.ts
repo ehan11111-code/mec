@@ -308,6 +308,17 @@ function clientSalesIndex(): Map<string, SalesInvoice[]> {
 }
 export function getClients(): Client[] { return enrichClients() }
 export function getClient(id: string): Client | undefined { return enrichClients().find(c => c.id === id) }
+// Resolve a sales clientName (exact, or fuzzy contains) to its client id — powers clickable client
+// names everywhere. Returns undefined when the name can't be matched to a client row.
+export function clientIdByName(name: string): string | undefined {
+  enrichClients()
+  if (!name) return undefined
+  const exact = _nameToId!.get(name)
+  if (exact) return exact
+  const n = norm(name)
+  for (const [k, v] of _nameToId!.entries()) { const kn = norm(k); if (kn === n || kn.includes(n) || n.includes(kn)) return v }
+  return undefined
+}
 export function erpClientCount() { return rawClients.length }
 // CRM headline figures read the SAME canonical totals as Analytics/Control Center (no scope drift).
 export function crmSummary() {
@@ -425,6 +436,85 @@ export function getClientDetail(id: string): ClientDetail | null {
     },
     credit: creditLine(rows, outstanding, client.paymentTermsDays),
     products, categories, monthly, invoices: rows
+  }
+}
+
+// ── per-PRODUCT detail (product pages, clickable products) ──
+let _prodSalesIndex: Map<string, SalesInvoice[]> | null = null
+function productSalesIndex(): Map<string, SalesInvoice[]> {
+  if (_prodSalesIndex) return _prodSalesIndex
+  const idx = new Map<string, SalesInvoice[]>()
+  for (const s of sales) { const a = idx.get(s.item); if (a) a.push(s); else idx.set(s.item, [s]) }
+  for (const arr of idx.values()) arr.sort((a, b) => (a.date < b.date ? 1 : -1))
+  _prodSalesIndex = idx
+  return idx
+}
+export type ProductListItem = {
+  item: string; category: string; categoryAr: string; units: number; revenue: number; orders: number
+  clients: number; avgSell: number; unitCost: number | null; marginPct: number | null; belowMin: boolean; confidence: 'high' | 'low' | 'none'
+}
+let _productList: ProductListItem[] | null = null
+export function getProductList(): ProductListItem[] {
+  if (_productList) return _productList
+  const idx = productSalesIndex()
+  _productList = productMargins().map(p => {
+    const rows = idx.get(p.item) ?? []
+    return {
+      item: p.item, category: p.category, categoryAr: p.categoryAr, units: p.units, revenue: p.revenue,
+      orders: rows.length, clients: new Set(rows.map(r => r.clientName)).size,
+      avgSell: p.avgSell, unitCost: p.unitCost, marginPct: p.marginPct, belowMin: p.belowMin, confidence: p.confidence
+    }
+  })
+  return _productList
+}
+export type ProductDetail = {
+  item: string; category: string; categoryAr: string
+  summary: {
+    units: number; revenue: number; orders: number; clients: number; avgSell: number
+    unitCost: number | null; unitProfit: number | null; marginPct: number | null; minMargin: number; belowMin: boolean
+    grossProfit: number | null; firstDate: string; lastDate: string; matchedCost: string; confidence: 'high' | 'low' | 'none'
+  }
+  monthly: { key: string; t: string; tAr: string; units: number; revenue: number; avgSell: number }[]
+  costHistory: { key: string; t: string; tAr: string; cost: number }[]
+  topClients: { name: string; units: number; revenue: number }[]
+}
+export function getProductDetail(item: string): ProductDetail | null {
+  const pm = productMargins().find(p => p.item === item)
+  if (!pm) return null
+  const rows = productSalesIndex().get(item) ?? []
+  const dates = rows.map(r => r.date).filter(Boolean).sort()
+  // monthly demand + revenue + avg sell price
+  const mon = new Map<string, { units: number; revenue: number; priceSum: number; priceN: number }>()
+  for (const r of rows) {
+    if (!r.month) continue
+    const cur = mon.get(r.month) ?? { units: 0, revenue: 0, priceSum: 0, priceN: 0 }
+    cur.units += r.qty; cur.revenue += r.postVat; if (r.unitPrice > 0) { cur.priceSum += r.unitPrice; cur.priceN++ }
+    mon.set(r.month, cur)
+  }
+  const monthly = [...mon.keys()].sort().map(m => { const v = mon.get(m)!; return { key: m, t: monthLabel(m, 'en'), tAr: monthLabel(m, 'ar'), units: Math.round(v.units), revenue: Math.round(v.revenue), avgSell: v.priceN ? Math.round(v.priceSum / v.priceN) : 0 } })
+  // purchase cost history for the matched purchase item
+  const costMon = new Map<string, { sum: number; n: number }>()
+  if (pm.matchedCost) {
+    for (const p of purchases) {
+      if (p.item !== pm.matchedCost || p.unitCost <= 0) continue
+      const mk = p.date ? p.date.slice(0, 7) : ''
+      if (!mk) continue
+      const cur = costMon.get(mk) ?? { sum: 0, n: 0 }; cur.sum += p.unitCost; cur.n++; costMon.set(mk, cur)
+    }
+  }
+  const costHistory = [...costMon.keys()].sort().map(m => ({ key: m, t: monthLabel(m, 'en'), tAr: monthLabel(m, 'ar'), cost: Math.round(costMon.get(m)!.sum / costMon.get(m)!.n) }))
+  // top buyers
+  const byClient = new Map<string, { units: number; revenue: number }>()
+  for (const r of rows) { const cur = byClient.get(r.clientName) ?? { units: 0, revenue: 0 }; cur.units += r.qty; cur.revenue += r.postVat; byClient.set(r.clientName, cur) }
+  const topClients = [...byClient.entries()].map(([name, v]) => ({ name, units: Math.round(v.units), revenue: Math.round(v.revenue) })).sort((a, b) => b.revenue - a.revenue).slice(0, 8)
+  return {
+    item: pm.item, category: pm.category, categoryAr: pm.categoryAr,
+    summary: {
+      units: pm.units, revenue: pm.revenue, orders: rows.length, clients: byClient.size, avgSell: pm.avgSell,
+      unitCost: pm.unitCost, unitProfit: pm.unitProfit, marginPct: pm.marginPct, minMargin: pm.minMargin, belowMin: pm.belowMin,
+      grossProfit: pm.grossProfit, firstDate: dates[0] ?? '', lastDate: dates[dates.length - 1] ?? '', matchedCost: pm.matchedCost, confidence: pm.confidence
+    },
+    monthly, costHistory, topClients
   }
 }
 

@@ -84,6 +84,25 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-24 — Clickable entities + Product pages + JARVIS typing + PDF pie fix (increment 1 of a big
+  batch).** First slice of a large multi-feature request. **(1) Clickable client + product names
+  everywhere** — new `components/EntityLink.tsx` (`ClientLink`/`ProductLink`); `dataset.clientIdByName()`
+  resolves a sales name → client id. Wired into Orders (client + new product column), client-file product
+  table, product top-buyers. **(2) Product pages** — new `/products` (catalog: search + category filter,
+  units/orders/sell/cost/margin, click-through) and `/products/[id]` (per-product page: demand-over-time,
+  **sold-vs-bought price** trend, window-scoped margin with **All/6m/3m timeframe selector**, top buyers).
+  Data: `getProductList()`, `getProductDetail()`, `productSalesIndex()` in `dataset.ts` (reuse
+  `productMargins` + procurement cost). **(3) Product “Market alerts” tab** — pulls live supply-intel and
+  filters to the product’s commodity (daily-refreshed, sourced). **(4) JARVIS interactivity** — animated
+  typing dots + cycling status (“Thinking… / Gathering data… / Analysing… / Composing…”). **(5) PDF pie
+  fix** — donut centre price now shrinks for long values + a `print:` rule so it isn’t oversized on paper.
+  Products added to the sidebar (Sales & clients, `orders` perm). Build green (39 routes), EN/AR parity.
+  - **Still queued from this batch:** adjustable chart timelines (global); CEO/admin clear-test-data
+    (WhatsApp/orders); Today’s Operations House (+printable); Overview AI review PDF + JARVIS arbitrary
+    report printing; inventory master merge from `المخزون 2025/2026.xlsx` + `تقارير الاصناف.xlsx` (prices
+    from procurement) → inventory page with per-SKU expiry R/Y/G + ROP; missing-document alerts (WhatsApp
+    group). Building these in the next increments.
+
 - **2026-06-24 — Secure server-side auth (Supabase + hashed passwords + signed cookie).** Replaced the
   client-side demo auth with real server auth. **Passwords are no longer in the browser bundle** — they
   live only in Supabase `app_users` as **scrypt hashes** (`scrypt$salt$hash`, dependency-free), verified

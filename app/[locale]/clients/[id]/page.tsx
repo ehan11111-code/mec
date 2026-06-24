@@ -14,6 +14,7 @@ import { DonutStat } from '@/components/DonutStat'
 import { LineChartPanel } from '@/components/LineChartPanel'
 import { NoteCallout } from '@/components/NoteCallout'
 import { InfoTooltip } from '@/components/InfoTooltip'
+import { ProductLink } from '@/components/EntityLink'
 import { getClientDetail, clientName, categoryLabel, fmtSAR, fmtNum } from '@/lib/data/dataset'
 
 function riskTone(r: number) { return r >= 60 ? 'text-accent' : r >= 35 ? 'text-warn' : 'text-success' }
@@ -162,7 +163,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
             <tbody className="divide-y divide-border">
               {shownProducts.map((p, i) => (
                 <tr key={i} className="hover:bg-surface-elev transition-colors">
-                  <td className="px-5 md:px-6 py-3 text-text max-w-[280px] truncate">{p.item}</td>
+                  <td className="px-5 md:px-6 py-3 text-text max-w-[280px] truncate"><ProductLink item={p.item} /></td>
                   <td className="px-4 py-3 hidden sm:table-cell"><span className="inline-flex items-center rounded-full bg-bg-soft px-2.5 py-0.5 text-[11px] text-text-soft">{categoryLabel(p.category, locale)}</span></td>
                   <td className="px-4 py-3 text-end tabular-nums text-text-soft">{fmtNum(p.qty)}</td>
                   <td className="px-4 py-3 text-end tabular-nums text-text-soft hidden sm:table-cell">{p.avgPrice ? fmtSAR(p.avgPrice) : '—'}</td>

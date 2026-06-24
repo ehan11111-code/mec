@@ -57,5 +57,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   main { padding: 0 !important; }
   .rounded-soft, section, table { break-inside: avoid; }
   [data-print-header] { display: flex !important; }
+  /* keep the donut centre price from overflowing / looking oversized on paper */
+  .donut-center { font-size: 0.72rem !important; line-height: 1.15 !important; }
+  .donut-center-label { font-size: 0.6rem !important; }
 }
 [data-print-header] { display: none; }

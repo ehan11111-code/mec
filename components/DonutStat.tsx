@@ -28,9 +28,9 @@ export function DonutStat({ segments, centerValue, centerLabel, size = 168, valu
           })}
         </svg>
         {(centerValue || centerLabel) && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center px-2 text-center">
-            {centerValue && <span className="font-display font-semibold text-lg md:text-xl tabular-nums text-text leading-tight">{centerValue}</span>}
-            {centerLabel && <span className="text-[11px] text-muted mt-1">{centerLabel}</span>}
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-3 text-center">
+            {centerValue && <span className={clsx('donut-center font-display font-semibold tabular-nums text-text leading-tight break-words max-w-full', String(centerValue).length > 12 ? 'text-sm md:text-base' : 'text-lg md:text-xl')}>{centerValue}</span>}
+            {centerLabel && <span className="donut-center-label text-[11px] text-muted mt-1">{centerLabel}</span>}
           </div>
         )}
       </div>

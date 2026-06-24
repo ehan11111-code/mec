@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
-import { Sparkles, X, Send, Loader2 } from 'lucide-react'
+import { Sparkles, X, Send } from 'lucide-react'
 import { answer as localAnswer, buildContext } from '@/lib/jarvis/engine'
 
 type Msg = { role: 'user' | 'jarvis'; text: string; rows?: { label: string; value: string }[]; via?: 'data' | 'ai' }
@@ -12,16 +12,25 @@ export function JarvisPanel() {
   const t = useTranslations('jarvis')
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [phase, setPhase] = useState(0)            // cycles the "thinking / gathering / analysing" status
   const [input, setInput] = useState('')
   const [msgs, setMsgs] = useState<Msg[]>([])
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight) }, [msgs, busy])
+  // advance the status phrase while JARVIS is working
+  useEffect(() => {
+    if (!busy) { setPhase(0); return }
+    const id = setInterval(() => setPhase(p => p + 1), 1400)
+    return () => clearInterval(id)
+  }, [busy])
+  const phases = [t('thinking'), t('gathering'), t('analysing'), t('composing')]
+  const statusText = phases[Math.min(phase, phases.length - 1)]
 
   const ask = async (question: string) => {
     if (!question.trim() || busy) return
     setMsgs(m => [...m, { role: 'user', text: question }])
-    setInput(''); setBusy(true)
+    setInput(''); setBusy(true); setPhase(0)
     const local = localAnswer(question, locale)
     try {
       const res = await fetch('/api/jarvis', {
@@ -83,7 +92,18 @@ export function JarvisPanel() {
                 </div>
               </div>
             ))}
-            {busy && <div className="flex justify-start"><div className="bg-bg-soft border border-border rounded-soft px-3.5 py-2.5"><Loader2 className="h-4 w-4 animate-spin text-accent" /></div></div>}
+            {busy && (
+              <div className="flex justify-start">
+                <div className="bg-bg-soft border border-border rounded-soft px-3.5 py-2.5 flex items-center gap-2.5">
+                  <span className="flex items-end gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </span>
+                  <span className="text-xs text-muted">{statusText}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <form onSubmit={e => { e.preventDefault(); ask(input) }} className="border-t border-border p-3 flex items-center gap-2">
