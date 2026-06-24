@@ -34,6 +34,7 @@ export function ConcernsBar() {
           <span className="text-[11px] rounded-full bg-surface/70 border border-border px-2 py-0.5 text-text-soft">{top.title[locale]}</span>
         </div>
         <p className="text-xs text-text-soft mt-1 leading-relaxed line-clamp-2">{top.detail[locale]}</p>
+        <p className="text-[11px] text-muted mt-1 leading-relaxed italic line-clamp-2"><span className="font-medium not-italic">{t('likelyCause')}:</span> {top.conclusion[locale]}</p>
         <Link href="/notifications" className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline">
           {t('viewAll')}<ChevronRight className="h-3.5 w-3.5 flip-rtl" strokeWidth={1.9} />
         </Link>

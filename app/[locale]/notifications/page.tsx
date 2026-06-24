@@ -64,7 +64,7 @@ export default function NotificationsPage() {
                 <Link href={n.link ?? '/notifications'} className={clsx('flex items-start gap-4 px-5 md:px-6 py-4 hover:bg-surface-elev transition-colors', !isRead && 'bg-accent-soft/30')}>
                   <span className={clsx('shrink-0 inline-flex items-center justify-center h-8 w-8 rounded-full', meta.tone)}><Icon className="h-4 w-4" strokeWidth={1.6} /></span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-text leading-snug">{n.title[locale]}</p>
+                    <p className="text-sm text-text leading-snug whitespace-pre-line">{n.title[locale]}</p>
                     <p className="text-xs text-muted mt-0.5">{n.deptName[locale]} · {formatTs(n.ts)}</p>
                   </div>
                   {!isRead && <span className="shrink-0 mt-1.5 h-2 w-2 rounded-full bg-accent" aria-hidden />}

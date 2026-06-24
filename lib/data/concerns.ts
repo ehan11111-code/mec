@@ -7,8 +7,9 @@ export type Severity = 'high' | 'medium' | 'low' | 'info'
 export type Concern = {
   id: string
   severity: Severity
-  title: { en: string; ar: string }   // short label
-  detail: { en: string; ar: string }  // the report (numbers + what to do)
+  title: { en: string; ar: string }       // short label
+  detail: { en: string; ar: string }      // the report (the numbers + what to do)
+  conclusion: { en: string; ar: string }  // likely cause — often a data-entry / recording error, not a real problem
 }
 
 const SUPPLIER_NOISE = /ضريبة|اجمالي|إجمالي|المجموع/
@@ -30,6 +31,10 @@ export function getConcerns(): Concern[] {
       detail: {
         en: `Procurement records ${fmtNum(bought)} cartons in, but sales moved ${fmtNum(sold)} cartons out — inbound is incomplete, so true stock on hand and warehouse load (vs ${fmtNum(WAREHOUSE_CAPACITY)} capacity) can't be reconciled. Wire the warehouse ledger (المخزون 2025/2026) to close the gap.`,
         ar: `سجّلت المشتريات ${fmtNum(bought)} كرتون وارد، بينما باعت المبيعات ${fmtNum(sold)} كرتون — الوارد غير مكتمل، لذا لا يمكن التوفيق بين المخزون الفعلي وحمل المستودع (مقابل سعة ${fmtNum(WAREHOUSE_CAPACITY)}). اربط سجل المستودع (المخزون 2025/2026) لسدّ الفجوة.`
+      },
+      conclusion: {
+        en: 'Most likely a data-entry gap — purchase invoices weren’t all recorded (rather than a real stock shortage). Verify the procurement sheet is complete before acting.',
+        ar: 'الأرجح أنها فجوة في إدخال البيانات — لم تُسجَّل كل فواتير الشراء (وليست نقصًا فعليًا في المخزون). تأكّد من اكتمال ورقة المشتريات قبل اتخاذ أي إجراء.'
       }
     })
   }
@@ -43,6 +48,10 @@ export function getConcerns(): Concern[] {
       detail: {
         en: `${pct}% of revenue (${fmtSAR(s.outstanding)} of ${fmtSAR(s.revenue)}) is still uncollected. Collections are running well behind sales — prioritise the biggest debtors.`,
         ar: `${pct}% من الإيراد (${fmtSAR(s.outstanding)} من ${fmtSAR(s.revenue)}) ما زال غير محصّل. التحصيل متأخّر كثيرًا عن المبيعات — ركّز على أكبر المدينين.`
+      },
+      conclusion: {
+        en: 'Could be a real collection problem — or a data-entry one: payments that were collected but never marked “تم” in the sheet inflate this figure. Confirm the collection status is up to date first.',
+        ar: 'قد تكون مشكلة تحصيل حقيقية — أو خطأ إدخال: مدفوعات حُصّلت لكن لم تُعلَّم «تم» في الورقة ترفع هذا الرقم. تأكّد أولًا من تحديث حالة التحصيل.'
       }
     })
   }
@@ -55,6 +64,10 @@ export function getConcerns(): Concern[] {
       detail: {
         en: `${ps.lossMakers} product(s) have a negative gross margin — each sale loses money. Review their pricing against the matched purchase cost.`,
         ar: `${ps.lossMakers} منتج بهامش إجمالي سالب — كل بيعة تخسر. راجع تسعيرها مقابل تكلفة الشراء المطابقة.`
+      },
+      conclusion: {
+        en: 'Often a data-entry error — a mistyped sell price or purchase cost, or the wrong cost matched to the product — rather than a truly loss-making sale. Check the unit price and cost entries before concluding it’s a real loss.',
+        ar: 'غالبًا خطأ إدخال — سعر بيع أو تكلفة شراء مكتوبة خطأ، أو تكلفة خاطئة طُوبقت بالمنتج — لا خسارة حقيقية. راجع قيود سعر الوحدة والتكلفة قبل الجزم بأنها خسارة فعلية.'
       }
     })
   }
@@ -67,6 +80,10 @@ export function getConcerns(): Concern[] {
       detail: {
         en: `${ps.belowMin} product(s) sell below MEC's minimum-margin floor (meat 3% · chicken 5% · vegetables 6% · potatoes 10%). They need a pricing or approval review.`,
         ar: `${ps.belowMin} منتج يُباع تحت الحد الأدنى لهامش MEC (لحوم 3% · دجاج 5% · خضروات 6% · بطاطس 10%). يحتاج مراجعة تسعير أو اعتماد.`
+      },
+      conclusion: {
+        en: 'May be a genuine thin-margin deal — or a price/cost entry error inflating the gap. Verify the recorded prices before treating it as underpricing.',
+        ar: 'قد تكون صفقة بهامش رفيع فعلًا — أو خطأ في إدخال السعر/التكلفة يضخّم الفارق. تحقّق من الأسعار المسجّلة قبل اعتبارها تسعيرًا منخفضًا.'
       }
     })
   }
@@ -79,6 +96,10 @@ export function getConcerns(): Concern[] {
       detail: {
         en: `${ps.unpriced} product(s) couldn't be matched to a purchase cost, so their margin is unknown. Add their procurement lines to price them.`,
         ar: `${ps.unpriced} منتج لم يُطابَق بتكلفة شراء، لذا هامشه غير معروف. أضِف بنود شرائها لتسعيرها.`
+      },
+      conclusion: {
+        en: 'Almost certainly a data-entry mismatch — the product is named differently in the sales sheet vs the purchase sheet, so they don’t link. Align the naming (or add the missing purchase line).',
+        ar: 'شبه مؤكّد أنه عدم تطابق في الإدخال — اسم المنتج مختلف في ورقة المبيعات عنه في ورقة المشتريات فلا يرتبطان. وحّد التسمية (أو أضف بند الشراء الناقص).'
       }
     })
   }
@@ -91,6 +112,10 @@ export function getConcerns(): Concern[] {
       detail: {
         en: `${crm.atRisk} client(s) carry a high risk score (large share of their sales unpaid). Tighten their credit and chase collection.`,
         ar: `${crm.atRisk} عميل بدرجة مخاطر عالية (نسبة كبيرة من مبيعاتهم غير مسددة). شدِّد ائتمانهم وتابع التحصيل.`
+      },
+      conclusion: {
+        en: 'This is derived from the collection status — if some of their payments simply weren’t marked collected, the risk is overstated. Confirm their payment records before tightening credit.',
+        ar: 'مشتقّة من حالة التحصيل — إن لم تُعلَّم بعض مدفوعاتهم كمحصّلة فإن المخاطر مبالغ فيها. تأكّد من سجلات سدادهم قبل تشديد الائتمان.'
       }
     })
   }
@@ -105,9 +130,13 @@ export type ConcernNote = {
   ts: string; read: boolean; link: string
 }
 export function getConcernNotes(nowIso: string): ConcernNote[] {
+  // The message = the report + a conclusion ("Likely cause: … possibly a data-entry error").
   return getConcerns().map(c => ({
     id: `concern-${c.id}`, type: 'concern' as const,
-    title: c.detail,
+    title: {
+      en: `${c.detail.en}\n\nLikely cause: ${c.conclusion.en}`,
+      ar: `${c.detail.ar}\n\nالسبب المرجّح: ${c.conclusion.ar}`
+    },
     deptName: { en: `Concern · ${c.title.en}`, ar: `تنبيه · ${c.title.ar}` },
     ts: nowIso, read: false, link: '/notifications'
   }))
