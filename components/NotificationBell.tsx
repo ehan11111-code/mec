@@ -67,7 +67,7 @@ export function NotificationBell() {
               const meta = TYPE_META[n.type]; const Icon = meta.icon
               return (
                 <li key={n.id}>
-                  <Link href={n.link ?? '/notifications'} onClick={() => setOpen(false)}
+                  <Link href={`/notifications/${encodeURIComponent(n.id)}`} onClick={() => setOpen(false)}
                     className={clsx('flex items-start gap-3 px-4 py-3 hover:bg-surface-elev transition-colors', !n.read && 'bg-accent-soft/25')}>
                     <span className={clsx('shrink-0 inline-flex items-center justify-center h-7 w-7 rounded-full', meta.tone)}><Icon className="h-3.5 w-3.5" strokeWidth={1.7} /></span>
                     <div className="min-w-0 flex-1">

@@ -61,7 +61,7 @@ export default function NotificationsPage() {
             const meta = TYPE_META[n.type]; const Icon = meta.icon; const isRead = readAll || n.read
             return (
               <li key={n.id}>
-                <Link href={n.link ?? '/notifications'} className={clsx('flex items-start gap-4 px-5 md:px-6 py-4 hover:bg-surface-elev transition-colors', !isRead && 'bg-accent-soft/30')}>
+                <Link href={`/notifications/${encodeURIComponent(n.id)}`} className={clsx('flex items-start gap-4 px-5 md:px-6 py-4 hover:bg-surface-elev transition-colors', !isRead && 'bg-accent-soft/30')}>
                   <span className={clsx('shrink-0 inline-flex items-center justify-center h-8 w-8 rounded-full', meta.tone)}><Icon className="h-4 w-4" strokeWidth={1.6} /></span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-text leading-snug whitespace-pre-line">{n.title[locale]}</p>

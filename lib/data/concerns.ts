@@ -1,7 +1,9 @@
 // Data-integrity / contradiction detector. Scans the real dataset for figures that don't reconcile or
 // that warrant attention, and surfaces them as "concern" notifications + a banner. Each concern is a
 // short report: what's off, the numbers, and what to do. Deterministic, client-safe.
-import { salesSummary, collectionsSummary, profitSummary, crmSummary, getSales, getPurchases, fmtSAR, fmtNum, WAREHOUSE_CAPACITY } from './dataset'
+import { salesSummary, collectionsSummary, profitSummary, crmSummary, getSales, getPurchases, salesByClientName, productMargins, getClients, fmtSAR, fmtNum, WAREHOUSE_CAPACITY } from './dataset'
+
+type Bi = { en: string; ar: string }
 
 export type Severity = 'high' | 'medium' | 'low' | 'info'
 export type Concern = {
@@ -129,6 +131,56 @@ export type ConcernNote = {
   id: string; type: 'concern'; title: { en: string; ar: string }; deptName: { en: string; ar: string }
   ts: string; read: boolean; link: string
 }
+// The supporting data behind a concern — the "demonstration" shown when the message is opened.
+export type ConcernEvidence = {
+  stats?: { label: Bi; value: string }[]
+  table?: { columns: Bi[]; rows: (string | number)[][] }
+}
+const SUPPLIER_NOISE2 = /ضريبة|اجمالي|إجمالي|المجموع/
+export function getConcernById(id: string): Concern | undefined { return getConcerns().find(c => c.id === id) }
+export function getConcernEvidence(id: string): ConcernEvidence {
+  if (id === 'receivables') {
+    const s = salesSummary()
+    const debt = salesByClientName().filter(x => x.outstanding > 0).slice(0, 12)
+    return {
+      stats: [
+        { label: { en: 'Revenue', ar: 'الإيراد' }, value: fmtSAR(s.revenue) },
+        { label: { en: 'Collected', ar: 'المحصّل' }, value: fmtSAR(s.collected) },
+        { label: { en: 'Outstanding', ar: 'المستحق' }, value: fmtSAR(s.outstanding) }
+      ],
+      table: { columns: [{ en: 'Client', ar: 'العميل' }, { en: 'Invoices', ar: 'الفواتير' }, { en: 'Outstanding', ar: 'المستحق' }], rows: debt.map(d => [d.name, d.invoices, fmtSAR(d.outstanding)]) }
+    }
+  }
+  if (id === 'loss-makers') {
+    const list = productMargins().filter(p => p.marginPct != null && p.marginPct < 0).slice(0, 15)
+    return { table: { columns: [{ en: 'Product', ar: 'المنتج' }, { en: 'Sell', ar: 'البيع' }, { en: 'Cost', ar: 'التكلفة' }, { en: 'Margin', ar: 'الهامش' }], rows: list.map(p => [p.item, fmtSAR(p.avgSell), p.unitCost != null ? fmtSAR(p.unitCost) : '—', `${p.marginPct}%`]) } }
+  }
+  if (id === 'below-min') {
+    const list = productMargins().filter(p => p.confidence !== 'none' && p.belowMin).slice(0, 15)
+    return { table: { columns: [{ en: 'Product', ar: 'المنتج' }, { en: 'Margin', ar: 'الهامش' }, { en: 'Floor', ar: 'الحد' }], rows: list.map(p => [p.item, `${p.marginPct}%`, `${p.minMargin}%`]) } }
+  }
+  if (id === 'unpriced') {
+    const list = productMargins().filter(p => p.confidence === 'none').slice(0, 15)
+    return { table: { columns: [{ en: 'Product', ar: 'المنتج' }, { en: 'Units', ar: 'الوحدات' }, { en: 'Revenue', ar: 'الإيراد' }], rows: list.map(p => [p.item, fmtNum(p.units), fmtSAR(p.revenue)]) } }
+  }
+  if (id === 'at-risk-clients') {
+    const list = getClients().filter(c => c.riskScore >= 60 && c.totalRevenue > 0).sort((a, b) => b.overdueAmount - a.overdueAmount).slice(0, 12)
+    return { table: { columns: [{ en: 'Client', ar: 'العميل' }, { en: 'Risk', ar: 'المخاطر' }, { en: 'Overdue', ar: 'المتأخّر' }], rows: list.map(c => [c.nameAr, `${c.riskScore}%`, fmtSAR(c.overdueAmount)]) } }
+  }
+  if (id === 'inbound-gap') {
+    const sold = Math.round(getSales().reduce((a, r) => a + (r.cartons || 0), 0))
+    const bought = Math.round(getPurchases().filter(p => !SUPPLIER_NOISE2.test(p.supplier)).reduce((a, p) => a + (p.cartons || 0), 0))
+    return {
+      stats: [
+        { label: { en: 'Cartons purchased (in)', ar: 'كراتين مشتراة (وارد)' }, value: fmtNum(bought) },
+        { label: { en: 'Cartons sold (out)', ar: 'كراتين مباعة (صادر)' }, value: fmtNum(sold) },
+        { label: { en: 'Unexplained gap', ar: 'فجوة غير مفسّرة' }, value: fmtNum(sold - bought) }
+      ]
+    }
+  }
+  return {}
+}
+
 export function getConcernNotes(nowIso: string): ConcernNote[] {
   // The message = the report + a conclusion ("Likely cause: … possibly a data-entry error").
   return getConcerns().map(c => ({

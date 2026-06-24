@@ -51,7 +51,7 @@ export default function LoginPage() {
           <DisplayHeading size="md" className="mt-2" locale={locale}>{t('headline')}</DisplayHeading>
           <p className="mt-2 text-sm text-text-soft">{t('subline')}</p>
           <form onSubmit={submit} className="mt-8 space-y-4">
-            <Field label={t('username')} value={username} onChange={setUsername} placeholder="f.muzaiyen" autoComplete="username" />
+            <Field label={t('username')} value={username} onChange={setUsername} placeholder={t('usernamePh')} autoComplete="username" />
             <Field label={t('password')} type="password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" />
             {error && <p className="text-xs text-accent">{error}</p>}
             <button type="submit" disabled={busy} className="w-full rounded-soft bg-accent text-white text-sm font-medium py-2.5 hover:bg-accent-strong shadow-soft transition-colors disabled:opacity-60">{busy ? '…' : t('submit')}</button>
