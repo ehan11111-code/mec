@@ -20,7 +20,8 @@ export default function NotificationDetailPage({ params }: { params: Promise<{ i
   const id = decodeURIComponent(raw)
   const tNav = useTranslations('nav'); const t = useTranslations('notifDetail'); const locale = useLocale() as 'en' | 'ar'
 
-  const kind = id.startsWith('concern-') ? 'concern' : id.startsWith('wa-order-') ? 'order' : id.startsWith('si-') ? 'supply' : 'other'
+  const kind = id.startsWith('concern-') ? 'concern' : (id.startsWith('wa-order-') || id.startsWith('doc-')) ? 'order' : id.startsWith('si-') ? 'supply' : 'other'
+  const orderId = id.startsWith('doc-') ? id.slice('doc-'.length) : id.slice('wa-order-'.length)
 
   return (
     <PageShell breadcrumbs={[{ label: tNav('notifications') }, { label: t('message') }]}>
@@ -28,7 +29,7 @@ export default function NotificationDetailPage({ params }: { params: Promise<{ i
         <ArrowLeft className="h-3.5 w-3.5 flip-rtl" strokeWidth={1.7} />{t('back')}
       </Link>
       {kind === 'concern' ? <ConcernView cid={id.slice('concern-'.length)} />
-        : kind === 'order' ? <OrderView messageId={id.slice('wa-order-'.length)} />
+        : kind === 'order' ? <OrderView messageId={orderId} />
           : kind === 'supply' ? <SupplyView id={id} />
             : <OtherView id={id} />}
     </PageShell>

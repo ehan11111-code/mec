@@ -64,9 +64,11 @@ create table if not exists public.whatsapp_intake (
   raw           jsonb,
   verified      boolean default false,
   order_status  text,            -- pending | approved | rejected (for messages classified as orders)
+  doc_type      text,            -- po | invoice | delivery_note | payment | other (for document/image messages)
   received_at   timestamptz default now()
 );
 alter table public.whatsapp_intake add column if not exists order_status text;
+alter table public.whatsapp_intake add column if not exists doc_type text;
 
 -- App users (secure auth). Passwords are stored ONLY as a scrypt hash (scrypt$salt$hash) — never
 -- plaintext, never sent to the browser. Read/written server-side via /api/auth (service-role).

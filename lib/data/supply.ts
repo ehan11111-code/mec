@@ -35,6 +35,7 @@ export type WhatsappMsg = {
   products: { name: string; qty?: number | null; unit?: string | null }[]
   verified: boolean; received_at: string
   order_status?: 'pending' | 'approved' | 'rejected' | null
+  doc_type?: 'po' | 'invoice' | 'delivery_note' | 'payment' | 'other' | null
 }
 
 function cfg() {

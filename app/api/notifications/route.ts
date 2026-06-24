@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getSupplyIntel, getWhatsappOrders } from '@/lib/data/supply'
+import { getSupplyIntel, getWhatsappOrders, getWhatsappIntake } from '@/lib/data/supply'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,11 +8,27 @@ type Note = { id: string; type: 'urgent' | 'attention' | 'update' | 'info' | 'ap
 
 const DEPT: Bi = { en: 'Supply intelligence', ar: 'استخبارات التوريد' }
 const ORDERS: Bi = { en: 'Order approvals', ar: 'اعتماد الطلبات' }
+const DOCS: Bi = { en: 'Documents', ar: 'المستندات' }
+const REQ = ['invoice', 'delivery_note', 'payment']
 
-// Derive live notifications from the supply-intelligence feed + pending WhatsApp orders.
+// Derive live notifications from the supply-intelligence feed + pending WhatsApp orders + missing docs.
 export async function GET() {
-  const [rows, orders] = await Promise.all([getSupplyIntel(), getWhatsappOrders(50)])
+  const [rows, orders, intake] = await Promise.all([getSupplyIntel(), getWhatsappOrders(50), getWhatsappIntake(300)])
   const notes: Note[] = []
+
+  // Missing-document alerts: an order's PO is in, but a required document hasn't arrived yet.
+  const docMsgs = intake.filter(m => m.doc_type && REQ.includes(m.doc_type))
+  for (const o of intake.filter(m => m.intent === 'order')) {
+    const received = new Set(docMsgs.filter(d => d.phone === o.phone && d.received_at >= o.received_at).map(d => d.doc_type))
+    const missing = REQ.filter(r => !received.has(r as any))
+    if (missing.includes('invoice')) {
+      notes.push({
+        id: `doc-${o.message_id}`, type: 'attention',
+        title: { en: `Missing invoice — order from ${o.push_name || o.phone}`, ar: `فاتورة ناقصة — طلب من ${o.push_name || o.phone}` },
+        deptName: DOCS, ts: o.received_at, read: false, link: '/documents'
+      })
+    }
+  }
   for (const o of orders) {
     if ((o.order_status || 'pending') !== 'pending') continue
     const items = (o.products || []).map(p => `${p.name}${p.qty ? ` ×${p.qty}` : ''}`).join(', ')

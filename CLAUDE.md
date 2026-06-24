@@ -84,6 +84,22 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-24 — Missing-document alerts (order compliance) — final item of the big batch.** Every order
+  needs its **PO → invoice → delivery note → payment proof**; the system tracks which have arrived and
+  flags what's missing. The order/WhatsApp message is the PO; invoice/delivery/payment are matched from
+  later document messages by the same sender. New **`/api/documents`** (builds per-order doc compliance)
+  + **`/documents`** page — a checklist per order (✓/✗ per doc), filters (Needs documents / All), KPIs
+  (orders, missing, complete, **invoice missing**), auto-refresh. **`/api/notifications` now pushes a
+  "Missing invoice" alert** for any order whose invoice hasn't arrived (the PO-uploaded-invoice-missing
+  case), opening the order. Schema + `WhatsappMsg` gain **`doc_type`**; the **n8n WhatsApp intake now
+  classifies document type** (po/invoice/delivery_note/payment) and stores it (redeployed
+  `NzuuId3FYrcqaAkb`). `documents` permission added to every role (BASE) so all ops staff see compliance.
+  Sidebar: Documents (Intelligence). Build green (47 routes), EN/AR parity. **This completes the batch.**
+  - **User actions:** re-run `supabase/schema.sql` (adds `doc_type`). Real document classification fills
+    in once **JARVIS is added to the MEC WhatsApp group** (the page + alerts are ready for that feed);
+    until then orders show PO ✓ with invoice/delivery/payment pending. OCR-grade doc typing (Vision) is a
+    later enhancement.
+
 - **2026-06-24 — Openable notification messages + AI reports (overview report + JARVIS prints any report).**
   **(A) Notifications open into a full message** (`/notifications/[id]`): concerns show the data
   demonstration (debtors/loss-makers/at-risk tables, inbound-gap figures) + the "Likely cause"

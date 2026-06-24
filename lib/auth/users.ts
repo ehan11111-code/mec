@@ -21,7 +21,7 @@ export type RosterUser = {
   color: string
 }
 
-const BASE: Permission[] = ['messages', 'notifications', 'academy', 'contact', 'departments']
+const BASE: Permission[] = ['messages', 'notifications', 'academy', 'contact', 'departments', 'documents']
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   admin: ['dashboard', 'analytics', 'clients', 'orders', 'approvals', 'warehouse', 'logistics', 'finance', 'supply', 'whatsapp', 'documents', 'departments', 'savings', 'academy', 'contact', 'messages', 'notifications', 'automations', 'admin', 'manageData'],

@@ -35,7 +35,7 @@
         ] },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  model: $env.OPENAI_BATCH_MODEL || 'gpt-4o-mini',\n  temperature: 0,\n  response_format: { type: 'json_object' },\n  messages: [\n    { role: 'system', content: 'You triage inbound WhatsApp messages for MEC, a food distributor in Saudi Arabia. The text may be Arabic or English. Return STRICT JSON: {\"intent\":\"order|inquiry|complaint|other\",\"products\":[{\"name\":string,\"qty\":number|null,\"unit\":string|null}],\"summary\":string}. Extract products only if clearly an order. Never invent.' },\n    { role: 'user', content: String($json.body || '(no text)') }\n  ]\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  model: $env.OPENAI_BATCH_MODEL || 'gpt-4o-mini',\n  temperature: 0,\n  response_format: { type: 'json_object' },\n  messages: [\n    { role: 'system', content: 'You triage inbound WhatsApp messages for MEC, a food distributor in Saudi Arabia. The text may be Arabic or English. Return STRICT JSON: {\"intent\":\"order|inquiry|complaint|other\",\"products\":[{\"name\":string,\"qty\":number|null,\"unit\":string|null}],\"doc_type\":\"po|invoice|delivery_note|payment|other|null\",\"summary\":string}. Extract products only if clearly an order. Set doc_type when the message is or accompanies a document/image of that kind (purchase order, invoice/فاتورة, delivery note/إشعار تسليم, payment receipt/إيصال دفع); otherwise null. Never invent.' },\n    { role: 'user', content: \"type=\" + String($json.message_type || \"text\") + \" | \" + String($json.body || \"(no text)\") }\n  ]\n}) }}",
         "options": {}
       },
       "id": "classify",
@@ -46,7 +46,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Merge extraction + classification into the Supabase row.\nlet cls = {};\ntry { cls = JSON.parse($json.choices[0].message.content); } catch (e) {}\nconst src = $('Verify + extract').item.json;\nreturn [{ json: {\n  message_id: src.message_id,\n  phone: src.phone,\n  push_name: src.push_name,\n  body: src.body,\n  message_type: src.message_type,\n  media_url: src.media_url,\n  intent: cls.intent || 'other',\n  products: cls.products || [],\n  raw: src.raw,\n  verified: src.verified,\n  received_at: $now.toISO()\n}}];"
+        "jsCode": "// Merge extraction + classification into the Supabase row.\nlet cls = {};\ntry { cls = JSON.parse($json.choices[0].message.content); } catch (e) {}\nconst src = $('Verify + extract').item.json;\nreturn [{ json: {\n  message_id: src.message_id,\n  phone: src.phone,\n  push_name: src.push_name,\n  body: src.body,\n  message_type: src.message_type,\n  media_url: src.media_url,\n  intent: cls.intent || 'other',\n  products: cls.products || [],\n  doc_type: (src.message_type === 'document' || src.message_type === 'image') ? (cls.doc_type && cls.doc_type !== 'null' ? cls.doc_type : 'other') : null,\n  raw: src.raw,\n  verified: src.verified,\n  received_at: $now.toISO()\n}}];"
       },
       "id": "merge",
       "name": "Build row",
