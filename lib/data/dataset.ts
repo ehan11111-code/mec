@@ -1,6 +1,7 @@
 import { clients as rawClients, type Client } from './clients'
 import { sales, type SalesInvoice } from './sales'
 import { purchases, type PurchaseRow } from './purchases'
+import { inventory, INVENTORY_MONTHS, type InventoryRow } from './inventory'
 import { categoryLabel } from './categorize'
 
 export type { Client, SalesInvoice, PurchaseRow }
@@ -581,6 +582,7 @@ export function operationsSnapshot() {
   const lmCartons = Math.round(sales.filter(s => s.month === lm).reduce((a, s) => a + (s.cartons || 0), 0))
   const turnover = Math.round((lmCartons / WAREHOUSE_CAPACITY) * 10) / 10
   const movers = topProducts({ month: lm }, 6)                  // fast movers to watch this month
+  const ws = warehouseStock()
   return {
     latest, latestMonth: lm,
     todays: { count: todays.length, value: Math.round(todays.reduce((a, o) => a + o.totalAmount, 0)) },
@@ -588,8 +590,74 @@ export function operationsSnapshot() {
     completed: { count: paid.length, value: Math.round(paid.reduce((a, o) => a + o.totalAmount, 0)) },
     delayed: { count: delayed.length, value: Math.round(delayed.reduce((a, o) => a + o.totalAmount, 0)) },
     payments: { due: Math.round(col.outstanding), collected: Math.round(col.collected), debtors },
-    warehouse: { capacity: WAREHOUSE_CAPACITY, throughput: lmCartons, turnover },
+    warehouse: { capacity: WAREHOUSE_CAPACITY, throughput: lmCartons, turnover, onHand: ws.onHand, utilization: ws.utilization, skus: ws.skus, reorder: ws.reorder, expiring: ws.red + ws.yellow },
     movers, todaysList: todays.slice(0, 12), delayedList: delayed.slice(0, 12)
+  }
+}
+
+// ── Inventory (warehouse stock ledger → on-hand, expiry, reorder point) ──
+export type { InventoryRow }
+export { INVENTORY_MONTHS }
+// Indicative shelf life (days) per category — until real batch/expiry dates are wired, expiry is
+// estimated from the last receipt date + the category's typical frozen shelf life.
+const SHELF_LIFE_DAYS: Record<string, number> = { Beef: 540, Lamb: 540, Poultry: 365, Processed: 270, Dairy: 180, Vegetables: 365, Other: 365 }
+const LEAD_TIME_DAYS = 30   // default supplier lead time used for the reorder point
+
+// Average purchase cost per item (token-matched), reused for inventory stock valuation.
+let _purCandidates: { item: string; cost: number; tok: string[] }[] | null = null
+function purCandidates() {
+  if (_purCandidates) return _purCandidates
+  const m = new Map<string, { cost: number; n: number; tok: string[] }>()
+  for (const p of purchases) { if (isSupplierNoise(p.supplier) || p.unitCost <= 0) continue; const cur = m.get(p.item) ?? { cost: 0, n: 0, tok: tokens(p.item) }; cur.cost += p.unitCost; cur.n++; m.set(p.item, cur) }
+  _purCandidates = [...m.entries()].map(([item, v]) => ({ item, cost: v.cost / v.n, tok: v.tok }))
+  return _purCandidates
+}
+function costForItem(item: string): number | null {
+  const tk = tokens(item); let best = 0; let cost: number | null = null
+  for (const c of purCandidates()) { const s = jaccard(tk, c.tok); if (s > best) { best = s; cost = c.cost } }
+  return best >= 0.5 && cost != null ? Math.round(cost) : null
+}
+
+export type ExpiryStatus = 'green' | 'yellow' | 'red' | 'unknown'
+export type InventorySku = InventoryRow & {
+  unitCost: number | null; stockValue: number | null
+  shelfLifeDays: number; expiryDate: string; daysToExpiry: number | null; expiry: ExpiryStatus
+  avgMonthlyOut: number; rop: number; needsReorder: boolean; dataGap: boolean
+}
+const DAY = 86400000
+function addDays(iso: string, days: number): string { if (!iso) return ''; const t = Date.parse(iso); if (isNaN(t)) return ''; return new Date(t + days * DAY).toISOString().slice(0, 10) }
+
+export function getInventory(nowIso?: string): InventorySku[] {
+  const now = nowIso ? Date.parse(nowIso) : Date.parse('2026-06-30')
+  const months = Math.max(1, INVENTORY_MONTHS.length)
+  return inventory.map(r => {
+    const unitCost = costForItem(r.item)
+    const shelfLifeDays = SHELF_LIFE_DAYS[r.category] ?? 365
+    const expiryDate = addDays(r.lastIn, shelfLifeDays)
+    const daysToExpiry = expiryDate ? Math.round((Date.parse(expiryDate) - now) / DAY) : null
+    const expiry: ExpiryStatus = daysToExpiry == null ? 'unknown' : daysToExpiry <= 30 ? 'red' : daysToExpiry <= 90 ? 'yellow' : 'green'
+    const avgMonthlyOut = Math.round(r.outbound / months)
+    const rop = Math.round(1.5 * avgMonthlyOut * (LEAD_TIME_DAYS / 30))   // demand over lead time + 50% safety
+    return {
+      ...r, unitCost, stockValue: unitCost != null ? Math.round(r.onHand * unitCost) : null,
+      shelfLifeDays, expiryDate, daysToExpiry, expiry,
+      avgMonthlyOut, rop, needsReorder: r.onHand < rop, dataGap: r.rawNet < 0
+    }
+  }).sort((a, b) => b.onHand - a.onHand)
+}
+
+export function warehouseStock(nowIso?: string) {
+  const inv = getInventory(nowIso)
+  const onHand = inv.reduce((a, r) => a + r.onHand, 0)
+  const value = inv.reduce((a, r) => a + (r.stockValue ?? 0), 0)
+  const util = Math.round((onHand / WAREHOUSE_CAPACITY) * 100)
+  return {
+    skus: inv.length, onHand, value, capacity: WAREHOUSE_CAPACITY, utilization: util,
+    red: inv.filter(r => r.expiry === 'red').length,
+    yellow: inv.filter(r => r.expiry === 'yellow').length,
+    green: inv.filter(r => r.expiry === 'green').length,
+    reorder: inv.filter(r => r.needsReorder).length,
+    dataGaps: inv.filter(r => r.dataGap).length
   }
 }
 

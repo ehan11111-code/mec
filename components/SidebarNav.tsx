@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, usePathname } from '@/i18n/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { clsx } from 'clsx'
-import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap, Radar, MessageCircle, ClipboardCheck, Inbox, Package, ShieldAlert, Activity } from 'lucide-react'
+import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap, Radar, MessageCircle, ClipboardCheck, Inbox, Package, ShieldAlert, Activity, Boxes } from 'lucide-react'
 import { BrandLogo } from './BrandLogo'
 import { departmentSeeds } from '@/lib/mock/catalog'
 import { getFirmState } from '@/lib/mock/data'
@@ -26,7 +26,8 @@ export function SidebarNav() {
   const sections: Section[] = [
     { key: 'secOverview', items: [
       { href: '/control-center', label: tNav('controlCenter'), icon: LayoutDashboard, perm: 'dashboard' },
-      { href: '/operations', label: tNav('opsHouse'), icon: Activity, perm: 'dashboard' }
+      { href: '/operations', label: tNav('opsHouse'), icon: Activity, perm: 'dashboard' },
+      { href: '/inventory', label: tNav('inventory'), icon: Boxes, perm: 'orders' }
     ] },
     { key: 'secSales', items: [
       { href: '/orders', label: tNav('orders'), icon: ShoppingCart, perm: 'orders' },

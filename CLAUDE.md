@@ -84,6 +84,24 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-24 — Inventory feed: warehouse ledger → on-hand + expiry (R/Y/G) + reorder points vs 6,000.**
+  Parsed the real warehouse ledger. New **`DATA/_inventorygen.js`** reads **`المخزون 2026.xlsx`** (a proper
+  in/out movement ledger — positive = received, negative w/ client = issued) and nets each product column
+  to **cartons on hand**, joining **`تقارير الاصناف.xlsx`** for unit/barcode (its prices are inaccurate,
+  so ignored — **cost always from procurement**). Writes **`lib/data/inventory.ts`** (45 SKUs). New
+  inventory model in `dataset.ts`: `getInventory()` + `warehouseStock()` — per-SKU **on-hand**, **stock
+  value** (procurement cost × on-hand, 44/45 priced), **indicative expiry R/Y/G** (last receipt + category
+  frozen shelf-life), **reorder point** (1.5× monthly demand over lead time) + reorder flag, and a
+  **data-gap** flag (negative net = issues recorded without their receipt). New **`/inventory`** page —
+  KPIs, **capacity bar vs 6,000** (utilization), green/yellow/red expiry legend, filters (All / Reorder /
+  Expiring / Data gaps), search, **printable**. **Operations House warehouse tile now shows real on-hand**
+  (+ utilization, reorder count) alongside turnover. Sidebar: Inventory (Overview). On-hand total ≈ 14,888
+  cartons (248% of capacity — inflated by 19 data-gap SKUs, surfaced honestly + ties to the inbound
+  concern). Build green (43 routes), EN/AR parity.
+  - **Honest caveats:** absolute on-hand is indicative (unrecorded issues inflate it); expiry is shelf-life
+    estimated until real batch dates exist. Both are labelled in-app. Regenerate: `node DATA/_inventorygen.js`.
+  - **Still queued:** Overview AI review PDF + JARVIS arbitrary report printing; missing-document alerts.
+
 - **2026-06-24 — Data-integrity concerns: notification bar + concern notifications.** New
   `lib/data/concerns.ts` (`getConcerns`) scans the real dataset for contradictions / things that don't
   reconcile and reports each as a short message (numbers + what to do). Currently surfaces **6**: high —

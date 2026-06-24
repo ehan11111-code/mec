@@ -76,9 +76,9 @@ export default function OperationsPage() {
       <section className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
         <Panel title={<span className="inline-flex items-center gap-2"><Warehouse className="h-4 w-4 text-accent" strokeWidth={1.8} />{t('warehouse')}</span>} subtitle={t('warehouseSub')}>
           <div className="grid grid-cols-3 gap-3 mb-4">
-            <div><div className="text-[11px] text-muted">{t('capacity')}</div><div className="text-lg font-display font-semibold tabular-nums text-text mt-0.5">{fmtNum(w.capacity)}</div></div>
-            <div><div className="text-[11px] text-muted">{t('throughput')}</div><div className="text-lg font-display font-semibold tabular-nums text-text mt-0.5">{fmtNum(w.throughput)}</div></div>
-            <div><div className="text-[11px] text-muted">{t('turnover')}</div><div className={clsx('text-lg font-display font-semibold tabular-nums mt-0.5', turnTone)}>{w.turnover}×</div></div>
+            <div><div className="text-[11px] text-muted">{t('onHand')}</div><div className={clsx('text-lg font-display font-semibold tabular-nums mt-0.5', w.utilization >= 100 ? 'text-accent' : 'text-text')}>{fmtNum(w.onHand)}</div><div className="text-[10px] text-muted">{w.utilization}% {t('ofCapacity')}</div></div>
+            <div><div className="text-[11px] text-muted">{t('throughput')}</div><div className="text-lg font-display font-semibold tabular-nums text-text mt-0.5">{fmtNum(w.throughput)}</div><div className="text-[10px] text-muted">{w.turnover}× {t('turnover')}</div></div>
+            <div><div className="text-[11px] text-muted">{t('reorderSkus')}</div><div className={clsx('text-lg font-display font-semibold tabular-nums mt-0.5', w.reorder > 0 ? 'text-warn' : 'text-success')}>{w.reorder}</div><div className="text-[10px] text-muted">{w.skus} {t('skus')}</div></div>
           </div>
           <div className="h-2.5 w-full rounded-full bg-bg-soft overflow-hidden flex">
             {Array.from({ length: Math.min(6, Math.ceil(w.turnover)) }).map((_, i) => (

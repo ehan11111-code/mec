@@ -1,0 +1,53 @@
+// AUTO-GENERATED from DATA/المخزون 2026.xlsx (warehouse in/out ledger) + DATA/تقارير الاصناف.xlsx
+// (units/barcodes only — its prices are inaccurate; cost comes from procurement). On hand = net of all
+// recorded movements per product in the 2026 ledger (received − issued). Regenerate: node DATA/_inventorygen.js
+export type InventoryRow = { item: string; category: string; categoryAr: string; onHand: number; rawNet: number; inbound: number; outbound: number; lastIn: string; lastMove: string; unit: string; barcode: string }
+
+export const INVENTORY_MONTHS: string[] = ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"]
+export const inventory: InventoryRow[] = [
+  { item: 'شاورما دجاج لارا  2.5ك', category: 'Poultry', categoryAr: 'دواجن', onHand: 4731, rawNet: 4731, inbound: 123441, outbound: 118710, lastIn: '2026-06-22', lastMove: '2026-06-23', unit: 'كرتون', barcode: '' },
+  { item: 'بوبي فيل هندي الكامل 23 وزن 18ك', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 3908, rawNet: 3908, inbound: 4083, outbound: 175, lastIn: '2026-03-16', lastMove: '2026-06-22', unit: 'كرتون', barcode: '' },
+  { item: 'فيل ليج الممتاز', category: 'Poultry', categoryAr: 'دواجن', onHand: 698, rawNet: 698, inbound: 698, outbound: 0, lastIn: '2026-04-30', lastMove: '2026-04-30', unit: 'كرتون', barcode: '' },
+  { item: 'فيل ليجز صاحبة', category: 'Poultry', categoryAr: 'دواجن', onHand: 594, rawNet: 594, inbound: 594, outbound: 0, lastIn: '2026-02-09', lastMove: '2026-02-09', unit: 'كرتون', barcode: '' },
+  { item: 'فيل ليج هندي نواكو', category: 'Poultry', categoryAr: 'دواجن', onHand: 485, rawNet: 485, inbound: 570, outbound: 85, lastIn: '2026-01-01', lastMove: '2026-01-14', unit: 'كرتون', barcode: '' },
+  { item: 'فيل ليج هندي العالي 18ك', category: 'Poultry', categoryAr: 'دواجن', onHand: 442, rawNet: 442, inbound: 625, outbound: 183, lastIn: '2026-04-02', lastMove: '2026-04-09', unit: 'كرتون', barcode: '' },
+  { item: 'شاورما دجاج ايفا', category: 'Poultry', categoryAr: 'دواجن', onHand: 429, rawNet: 429, inbound: 1001, outbound: 572, lastIn: '2026-02-25', lastMove: '2026-03-04', unit: 'كرتون', barcode: '' },
+  { item: 'فور كوارتر سلايس هندي الكامل', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 421, rawNet: 421, inbound: 1262, outbound: 841, lastIn: '2026-03-17', lastMove: '2026-05-11', unit: 'كرتون', barcode: '' },
+  { item: 'بوبي فيل ثمرة', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 399, rawNet: 399, inbound: 1000, outbound: 601, lastIn: '2026-02-22', lastMove: '2026-04-02', unit: 'كرتون', barcode: '' },
+  { item: 'بوبي فيل الممتاز', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 382, rawNet: 382, inbound: 390, outbound: 8, lastIn: '', lastMove: '2026-06-16', unit: 'كرتون', barcode: '' },
+  { item: 'سلفر سايد هندي الكامل', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 349, rawNet: 349, inbound: 687, outbound: 338, lastIn: '2026-02-21', lastMove: '2026-05-05', unit: 'كرتون', barcode: '' },
+  { item: 'ثك فلانك هندي الكامل', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 333, rawNet: 333, inbound: 333, outbound: 0, lastIn: '2026-01-01', lastMove: '2026-01-01', unit: 'كرتون', barcode: '' },
+  { item: 'فيل ليجز هندي مينت', category: 'Poultry', categoryAr: 'دواجن', onHand: 309, rawNet: 309, inbound: 570, outbound: 261, lastIn: '2026-01-15', lastMove: '2026-02-16', unit: 'كرتون', barcode: '' },
+  { item: 'رامب ستيك هندي ثمره*20ك', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 274, rawNet: 274, inbound: 334, outbound: 60, lastIn: '2026-01-01', lastMove: '2026-01-04', unit: 'كرتون', barcode: '' },
+  { item: 'رامب ستيك هندي الكامل', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 243, rawNet: 243, inbound: 333, outbound: 90, lastIn: '2026-01-01', lastMove: '2026-02-01', unit: 'كرتون', barcode: '' },
+  { item: 'بوبي فيل هندي نواكو', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 214, rawNet: 214, inbound: 314, outbound: 100, lastIn: '2026-01-01', lastMove: '2026-03-30', unit: 'كرتون', barcode: '' },
+  { item: 'فور كوارتر رول عمبر', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 150, rawNet: 150, inbound: 150, outbound: 0, lastIn: '2026-02-26', lastMove: '2026-02-26', unit: 'كرتون', barcode: '' },
+  { item: 'توب سايد هندي الكامل', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 101, rawNet: 101, inbound: 391, outbound: 290, lastIn: '2026-01-01', lastMove: '2026-01-13', unit: 'كرتون', barcode: '' },
+  { item: 'فور كوارتر هندي الكامل', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 86, rawNet: 86, inbound: 577, outbound: 491, lastIn: '2026-04-19', lastMove: '2026-06-18', unit: 'كرتون', barcode: '' },
+  { item: 'سلفر سايد رستم', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 80, rawNet: 80, inbound: 80, outbound: 0, lastIn: '2026-03-31', lastMove: '2026-03-31', unit: 'كرتون', barcode: '' },
+  { item: 'رامب ستيك رستم', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 72, rawNet: 72, inbound: 74, outbound: 2, lastIn: '2026-03-31', lastMove: '2026-04-11', unit: 'كرتون', barcode: '' },
+  { item: 'ارجل دجاج أصول', category: 'Poultry', categoryAr: 'دواجن', onHand: 63, rawNet: 63, inbound: 95, outbound: 32, lastIn: '2026-01-08', lastMove: '2026-03-09', unit: 'كرتون', barcode: '' },
+  { item: 'فيل ليجز هندي الفاروق', category: 'Poultry', categoryAr: 'دواجن', onHand: 59, rawNet: 59, inbound: 150, outbound: 91, lastIn: '2026-02-19', lastMove: '2026-04-09', unit: 'كرتون', barcode: '' },
+  { item: 'فيليه عجل الممتاز', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 50, rawNet: 50, inbound: 50, outbound: 0, lastIn: '2026-04-30', lastMove: '2026-04-30', unit: 'كرتون', barcode: '' },
+  { item: 'فيل ليجز ALM', category: 'Poultry', categoryAr: 'دواجن', onHand: 16, rawNet: 16, inbound: 50, outbound: 34, lastIn: '2026-01-15', lastMove: '2026-02-16', unit: 'كرتون', barcode: '' },
+  { item: 'فيل ليج هندي الكامل 18ك', category: 'Poultry', categoryAr: 'دواجن', onHand: 0, rawNet: -300, inbound: 36, outbound: 336, lastIn: '2026-01-01', lastMove: '2026-01-11', unit: 'كرتون', barcode: '' },
+  { item: 'فيليه عجل هندي الكامل (99)', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 0, rawNet: -395, inbound: 190, outbound: 585, lastIn: '2026-04-14', lastMove: '2026-05-16', unit: 'كرتون', barcode: '' },
+  { item: 'سيلفر سايد هندي ثمره *20ك', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 0, rawNet: -155, inbound: 54, outbound: 209, lastIn: '2026-01-01', lastMove: '2026-03-08', unit: 'كرتون', barcode: '' },
+  { item: 'تندر ليون فيليه نواكو', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 0, rawNet: -30, inbound: 31, outbound: 61, lastIn: '2026-01-01', lastMove: '2026-01-14', unit: 'كرتون', barcode: '' },
+  { item: 'فيليه بقر هندي الكامل (31)', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 0, rawNet: 0, inbound: 6, outbound: 6, lastIn: '2026-01-01', lastMove: '2026-01-18', unit: 'كرتون', barcode: '' },
+  { item: 'شاورما AJC', category: 'Processed', categoryAr: 'منتجات مصنّعة', onHand: 0, rawNet: -615, inbound: 0, outbound: 615, lastIn: '', lastMove: '2026-03-14', unit: 'كرتون', barcode: '' },
+  { item: 'فيل ليجز هندي المرجان', category: 'Poultry', categoryAr: 'دواجن', onHand: 0, rawNet: -23, inbound: 0, outbound: 23, lastIn: '', lastMove: '2026-02-23', unit: 'كرتون', barcode: '' },
+  { item: 'بوبي فيل هندي منت', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 0, rawNet: -219, inbound: 200, outbound: 419, lastIn: '2026-01-15', lastMove: '2026-04-14', unit: 'كرتون', barcode: '' },
+  { item: 'تندر لاين هندي ALM', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 0, rawNet: -421, inbound: 0, outbound: 421, lastIn: '', lastMove: '2026-03-04', unit: 'كرتون', barcode: '' },
+  { item: 'صدور دجاج برازيلي مجمد', category: 'Poultry', categoryAr: 'دواجن', onHand: 0, rawNet: -822, inbound: 3414, outbound: 4236, lastIn: '2026-04-14', lastMove: '2026-05-11', unit: 'كرتون', barcode: '' },
+  { item: 'فيل ليجز الزوق', category: 'Poultry', categoryAr: 'دواجن', onHand: 0, rawNet: -93, inbound: 102, outbound: 195, lastIn: '2026-02-09', lastMove: '2026-04-07', unit: 'كرتون', barcode: '' },
+  { item: 'بوبي فيل التمام', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 0, rawNet: -250, inbound: 0, outbound: 250, lastIn: '', lastMove: '2026-04-22', unit: 'كرتون', barcode: '' },
+  { item: 'صدور دجاج ايفا', category: 'Poultry', categoryAr: 'دواجن', onHand: 0, rawNet: -432, inbound: 0, outbound: 432, lastIn: '', lastMove: '2026-03-04', unit: 'كرتون', barcode: '' },
+  { item: 'فيليه عجل هندي صاحبة ( 99)', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 0, rawNet: -20, inbound: 0, outbound: 20, lastIn: '', lastMove: '2026-02-23', unit: 'كرتون', barcode: '' },
+  { item: 'لحم تندر ليون المارية', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 0, rawNet: -1, inbound: 0, outbound: 1, lastIn: '', lastMove: '2026-02-25', unit: 'كرتون', barcode: '' },
+  { item: 'صدور دجاج AJC', category: 'Poultry', categoryAr: 'دواجن', onHand: 0, rawNet: -575, inbound: 0, outbound: 575, lastIn: '', lastMove: '2026-03-08', unit: 'كرتون', barcode: '' },
+  { item: 'فور كوارتر رستم', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 0, rawNet: -228, inbound: 0, outbound: 228, lastIn: '', lastMove: '2026-05-13', unit: 'كرتون', barcode: '' },
+  { item: 'بطاطس مايسترو', category: 'Vegetables', categoryAr: 'خضروات', onHand: 0, rawNet: -185, inbound: 0, outbound: 185, lastIn: '', lastMove: '2026-05-23', unit: 'كرتون', barcode: '' },
+  { item: 'لحم حمل مع العظم', category: 'Beef', categoryAr: 'لحوم بقري', onHand: 0, rawNet: -35, inbound: 0, outbound: 35, lastIn: '', lastMove: '2026-05-13', unit: 'كجم', barcode: '' },
+  { item: 'صدور فيليه المراعي', category: 'Poultry', categoryAr: 'دواجن', onHand: 0, rawNet: -10, inbound: 0, outbound: 10, lastIn: '', lastMove: '2026-05-09', unit: 'كرتون', barcode: '' }
+]
