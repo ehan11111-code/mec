@@ -22,7 +22,7 @@ export type Department = {
   slug: string; name: Bi; contextLine: Bi; kpis: KPI[]
   solutions: Solution[]; activity: ActivityEvent[]; status: Status; openExceptions: number
 }
-export type NotificationType = 'urgent' | 'approval' | 'attention' | 'update' | 'info'
+export type NotificationType = 'urgent' | 'approval' | 'attention' | 'update' | 'info' | 'concern'
 export type Notification = {
   id: string; type: NotificationType; deptSlug: string; deptName: Bi
   title: Bi; body?: Bi; ts: string; link?: string; read: boolean

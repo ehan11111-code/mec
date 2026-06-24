@@ -84,6 +84,18 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-24 — Data-integrity concerns: notification bar + concern notifications.** New
+  `lib/data/concerns.ts` (`getConcerns`) scans the real dataset for contradictions / things that don't
+  reconcile and reports each as a short message (numbers + what to do). Currently surfaces **6**: high —
+  **80% of revenue uncollected**, **products sold below cost**; medium — **inbound stock under-recorded**
+  (procurement 96k vs sales 135k cartons → on-hand can't reconcile vs the 6,000 capacity), **products
+  below min-margin floor**, **high-risk clients**; low — **products with unknown margin** (no matched
+  cost). New **`ConcernsBar`** (dismissible notification bar) on Control Center + Operations House, and a
+  new **`concern`** notification type (AlertOctagon) merged into the **bell + notifications feed** (with a
+  Concerns filter). Each concern's full report is the notification message. Build green (42 routes), EN/AR
+  parity. **Next:** inventory feed (true on-hand + expiry R/Y/G + ROP) which also resolves the inbound-gap
+  concern.
+
 - **2026-06-24 — Adjustable trend timelines + Admin clear-test-data console + Operations House
   (increment 2 of the big batch).** **(1) Adjustable chart timelines** — `LineChartPanel` gained an
   `enableTimeframe` prop (All / 6M / 3M selector that slices the trend); enabled on the Analytics revenue

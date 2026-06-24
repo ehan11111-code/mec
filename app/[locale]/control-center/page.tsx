@@ -3,6 +3,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'framer-motion'
 import { Workflow } from 'lucide-react'
 import { PageShell } from '@/components/PageShell'
+import { ConcernsBar } from '@/components/ConcernsBar'
 import { DisplayHeading } from '@/components/DisplayHeading'
 import { DeptHeatStrip } from '@/components/DeptHeatStrip'
 import { StatCard } from '@/components/StatCard'
@@ -24,6 +25,7 @@ export default function ControlCenterPage() {
 
   return (
     <PageShell breadcrumbs={[{ label: tNav('operations') }, { label: tNav('controlCenter') }]}>
+      <ConcernsBar />
       <motion.header initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         className="mb-8 md:mb-10 max-w-3xl rounded-soft gradient-hero p-6 md:p-8 border border-border">
         <div className="inline-flex items-center gap-2 rounded-full bg-success-soft text-success px-3 py-1 text-xs font-medium"><span className="inline-block h-1.5 w-1.5 rounded-full bg-success animate-pulse" />{t('eyebrow')}</div>

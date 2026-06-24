@@ -9,6 +9,7 @@ import { Eyebrow } from '@/components/Eyebrow'
 import { Panel } from '@/components/Panel'
 import { NoteCallout } from '@/components/NoteCallout'
 import { StatusBadge } from '@/components/StatusBadge'
+import { ConcernsBar } from '@/components/ConcernsBar'
 import { ClientLink, ProductLink } from '@/components/EntityLink'
 import { printReport } from '@/lib/export/exporters'
 import { operationsSnapshot, categoryLabel, fmtSAR, fmtNum } from '@/lib/data/dataset'
@@ -42,6 +43,8 @@ export default function OperationsPage() {
         <div><div className="text-lg font-bold">MEC · {t('headline')}</div><div className="text-xs">{t('printSub', { date: fmtDate(snap.latest) })}</div></div>
         <div className="text-xs">Jarvis AI</div>
       </div>
+
+      <ConcernsBar />
 
       <header className="mb-7 flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-2xl">
