@@ -75,6 +75,9 @@ alter table public.whatsapp_intake add column if not exists group_type text;    
 alter table public.whatsapp_intake add column if not exists salesperson text;         -- sender name = who brought the order
 alter table public.whatsapp_intake add column if not exists quoted_message_id text;   -- reply target (threads approve/reject/adjust)
 alter table public.whatsapp_intake add column if not exists decision text;            -- approve | reject | adjust (on a reply)
+alter table public.whatsapp_intake add column if not exists order_no text;            -- order / invoice / reference number
+alter table public.whatsapp_intake add column if not exists client_name text;         -- client/company named on the order or document
+alter table public.whatsapp_intake add column if not exists recipient text;           -- receiver / driver (المستلم) on a delivery note
 
 -- Email intake (one row per inbound company email; written by n8n/email-intake.json via the Gmail node).
 create table if not exists public.email_intake (

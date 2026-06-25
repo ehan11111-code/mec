@@ -12,7 +12,7 @@ import { NoteCallout } from '@/components/NoteCallout'
 import { EmptyState } from '@/components/EmptyState'
 
 type DocType = 'invoice' | 'delivery_note' | 'payment'
-type Row = { message_id: string; sender: string; phone: string; received_at: string; order_status: string; products: { name: string; qty?: number | null }[]; received: DocType[]; missing: DocType[]; complete: boolean }
+type Row = { message_id: string; orderNo: string | null; client: string | null; sender: string; phone: string; recipient: string | null; units: number; received_at: string; order_status: string; products: { name: string; qty?: number | null }[]; received: DocType[]; missing: DocType[]; complete: boolean }
 const DOCS: ('po' | DocType)[] = ['po', 'invoice', 'delivery_note', 'payment']
 
 export default function DocumentsPage() {
@@ -86,8 +86,19 @@ export default function DocumentsPage() {
                   return (
                     <tr key={r.message_id} className="hover:bg-surface-elev transition-colors">
                       <td className="px-5 md:px-6 py-3">
-                        <div className="text-text leading-snug flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5 text-accent shrink-0" strokeWidth={1.7} />{r.sender}</div>
-                        <div className="text-[11px] text-muted truncate max-w-[260px]">{items || r.phone} · {fmt(r.received_at)}</div>
+                        <div className="text-text leading-snug flex items-center gap-1.5">
+                          <MessageCircle className="h-3.5 w-3.5 text-accent shrink-0" strokeWidth={1.7} />
+                          <span className="font-medium">{r.orderNo ? t('orderNo', { no: r.orderNo }) : (r.client || r.sender)}</span>
+                        </div>
+                        <div className="text-[11px] text-muted truncate max-w-[280px]">
+                          {r.client ? `${r.client} · ` : ''}{items || r.phone}
+                        </div>
+                        <div className="text-[11px] text-muted mt-0.5 flex flex-wrap gap-x-3">
+                          <span>{t('bySalesperson', { name: r.sender })}</span>
+                          {r.units > 0 && <span>{t('unitsLabel', { n: r.units })}</span>}
+                          {r.recipient && <span>{t('recipientLabel', { name: r.recipient })}</span>}
+                          <span>{fmt(r.received_at)}</span>
+                        </div>
                       </td>
                       {DOCS.map(d => (
                         <td key={d} className="px-3 py-3 text-center">

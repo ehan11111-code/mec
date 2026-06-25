@@ -95,9 +95,14 @@ export default function ApprovalsPage() {
             <Panel key={o.message_id}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h3 className="text-sm font-semibold text-text flex items-center gap-2"><MessageCircle className="h-4 w-4 text-accent" strokeWidth={1.8} />{o.push_name || o.phone}</h3>
+                  <h3 className="text-sm font-semibold text-text flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4 text-accent shrink-0" strokeWidth={1.8} />
+                    {o.order_no ? t('orderNo', { no: o.order_no }) : (o.client_name || o.push_name || o.phone)}
+                  </h3>
+                  {o.client_name && <p className="text-xs text-text-soft mt-0.5">{o.client_name}</p>}
                   <p className="text-[11px] text-muted mt-0.5 tabular-nums">{o.phone} · {fmt(o.received_at)}</p>
                   {(o.salesperson || o.push_name) && <p className="text-[11px] text-accent mt-1 font-medium">{t('broughtBy', { name: o.salesperson || o.push_name })}</p>}
+                  {o.recipient && <p className="text-[11px] text-text-soft mt-0.5">{t('recipient', { name: o.recipient })}</p>}
                 </div>
                 <span className={clsx('shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-medium capitalize',
                   st(o) === 'approved' ? 'bg-success-soft text-success' : st(o) === 'rejected' ? 'bg-bg-soft text-muted' : 'bg-warn-soft text-warn')}>{t(`tab_${st(o)}`)}</span>
