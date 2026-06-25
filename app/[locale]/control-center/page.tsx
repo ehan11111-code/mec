@@ -38,10 +38,10 @@ export default function ControlCenterPage() {
       </motion.header>
 
       <section className="mb-8 md:mb-10 grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
-        <StatCard label={tAna('kRevenue')} value={fmtSAR(sales.revenue)} accent infoId="revenue" index={0} />
+        <StatCard label={tAna('kRevenue')} amount={sales.revenue} accent infoId="revenue" index={0} />
         <StatCard label={tOrd('kTotal')} value={String(ord.total)} infoId="ordersTotal" index={1} />
         <StatCard label={tCli('kTotal')} value={String(crm.total)} infoId="clientsTotal" index={2} />
-        <StatCard label={tAna('kReceivables')} value={fmtSAR(sales.outstanding)} accent infoId="receivables" index={3} />
+        <StatCard label={tAna('kReceivables')} amount={sales.outstanding} accent infoId="receivables" index={3} />
       </section>
 
       <section className="mb-8 md:mb-10 grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
