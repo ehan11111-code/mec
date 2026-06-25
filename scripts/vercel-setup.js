@@ -24,7 +24,14 @@ async function main() {
   if (!proj) { console.error('Could not find a "mec" project. Projects:', projects.map(p => p.name).join(', ')); process.exit(1) }
   console.log('Project:', proj.name, '· id', proj.id)
 
-  const wanted = ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'OPENAI_API_KEY', 'OPENAI_MODEL', 'OPENAI_BATCH_MODEL']
+  const wanted = [
+    'NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY',
+    'OPENAI_API_KEY', 'OPENAI_MODEL', 'OPENAI_BATCH_MODEL', 'AUTH_SECRET',
+    'WASENDER_API_TOKEN', 'WASENDER_WEBHOOK_SECRET',
+    'N8N_API_KEY', 'N8N_API_BASE_URL',
+    'VERCEL_TOKEN', 'VERCEL_PROJECT_ID', 'PORTAL_BASE_URL',
+    'MS_OUTLOOK_TENANT_ID', 'MS_OUTLOOK_CLIENT_ID', 'MS_OUTLOOK_CLIENT_SECRET', 'MS_OUTLOOK_SENDER', 'GOOGLE_VISION_API_KEY'
+  ]
   for (const key of wanted) {
     const value = env[key]
     if (!value) { console.log(`skip ${key} (not in .env.local)`); continue }
