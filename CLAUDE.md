@@ -84,6 +84,28 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-25 — Tarek's WhatsApp files ingested: Credit (المديونية) as the receivables truth + Inventory
+  (المخزون) count reconciliation + a portal-wide per-number VAT toggle + credit/inventory doc types.**
+  Tarek sends two PDFs to the docs group; new `scripts/wa-download.js` decrypts WhatsApp media by
+  message_id (HKDF+AES-256-CBC) so I can read them. **(1) Credit:** `lib/data/credit.ts` = the parsed
+  المديونية statement (14 invoices, **SAR 601,296.55**, per-client + aging). Per the user, this is now the
+  **source of truth** — `dataset.ts` no longer zeroes receivables; outstanding is driven by the statement,
+  assigned to exactly one client each so **revenue (31,084,511) = collected + outstanding** still
+  reconciles (verified) and Σ(client overdue) = the statement total. New **/credit** page (KPIs, aging
+  buckets, by-client, by-invoice, printable, EN/AR). **(2) Inventory:** `lib/data/inventory-count.ts` =
+  the المخزون physical count (7 SKUs), matched to the ledger by name similarity with a variance column on
+  the Inventory page (e.g. شاورما لارا counted 2,298 vs ledger 4,731 → flagged). **(3) VAT toggle:**
+  `components/Money.tsx` — every amount gets a tappable chip to switch VAT-inclusive ⇄ exclusive (15%);
+  wired into `StatCard` + Control Center revenue/receivables, the whole Credit page, and the count panel
+  (KPIs-first rollout; tables/charts next). **(4) Doc types:** `credit` + `inventory` added to the
+  classifier — n8n DOC_PROMPT updated + redeployed (`NzuuId3FYrcqaAkb`); the two existing files
+  reclassified in Supabase. Build green (48 routes), EN/AR parity. Decrypted PDFs are gitignored
+  (`DATA/inbox/`) — real client financials, never committed.
+  - **Next for VAT:** extend the per-number chip to the analytics MetricCards, CRM/orders/products tables
+    and charts (currently on KPI StatCards + Credit + inventory-count). The credit/inventory data refresh
+    when a newer file arrives — re-run `wa-download.js` on the new message and update `credit.ts` /
+    `inventory-count.ts` (later: auto-extract in the workflow).
+
 - **2026-06-25 — Test data archived (not deleted → kept in the automation log) + automated private-repo
   backup + cloud-drive backup-of-backup.** Two-part run. **(1) Clear test data, keep the audit trail:** the
   WhatsApp orders/approvals/documents we ran while testing now **archive** instead of delete. New

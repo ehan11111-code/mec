@@ -13,3 +13,4 @@ reports
 .git/COMMIT_MSG.tmp
 scripts/backup.config.json
 *.bundle
+DATA/inbox/
