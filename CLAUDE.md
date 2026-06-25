@@ -99,12 +99,20 @@ next ledger item → re-build → update the ledger below → commit + push. See
   deploy), writes a full **`git bundle`** to a synced **cloud-drive** folder, copies `.env.local` to
   drive `/secrets` (never GitHub), and prunes old bundles. `scripts/backup-install.ps1` registers a
   **Windows Scheduled Task** so it runs automatically. Config `scripts/backup.config.json` (gitignored);
-  full guide in `BACKUP.md`. Build green (47 routes), EN/AR parity.
-  - **User actions:** (a) re-run `supabase/schema.sql` (adds `archived`), then `node
-    scripts/archive-whatsapp-test.js` (or click **Clear** in the admin console) to archive the test rows;
-    (b) create a private GitHub backup repo + add it as the `backup` remote, pick a cloud-drive folder,
-    copy `backup.config.example.json` → `backup.config.json` and fill it, then run `backup-install.ps1`
-    (see `BACKUP.md`). Awaiting the user's choice of GitHub-repo method, drive, and cadence.
+  full guide in `BACKUP.md`. **Backup is now LIVE:** wired the `backup` remote to the user's private repo
+  `github.com/ehan11111-code/BackUP_MEC`, Google Drive for Desktop mounts at `G:\My Drive` (bundles +
+  `secrets/.env.local` land in `G:\My Drive\MEC-Portal-Backup`), and the **Windows Scheduled Task "MEC
+  Portal Backup" runs every 15 min** (verified: commits → pushes → bundles → copies secrets). One gotcha
+  fixed along the way: the Write tool saved the `.ps1` files as **BOM-less UTF-8 with em-dashes**, which
+  Windows PowerShell 5.1 misreads (it assumes Windows-1252) so only the script's last statement ran —
+  re-saved ASCII-only **with a BOM**; also judge `git push` success by **exit code**, not stderr (git's
+  normal output goes to stderr). Build green (47 routes), EN/AR parity.
+  - **User action (one left):** re-run `supabase/schema.sql` (adds `archived`), then `node
+    scripts/archive-whatsapp-test.js` (or click **Clear** in the admin console) to archive the existing
+    WhatsApp test rows. After that the portal is clean and the automation log keeps the audit trail.
+  - **Backup is hands-off now:** the scheduled task captures every change. To check it:
+    `Get-Content backup.log -Tail 8`; to change cadence: `backup-install.ps1 -IntervalMinutes N`; to stop:
+    `backup-install.ps1 -Remove`.
 
 - **2026-06-25 — Receivables zeroed + margins made 100% consistent + WhatsApp TWO-group intake (orders +
   docs), sender→salesperson, reply threading, no auto-reply.** Three-part run. **(1) Zero receivables:**
