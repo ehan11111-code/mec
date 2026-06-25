@@ -35,7 +35,7 @@ export type WhatsappMsg = {
   products: { name: string; qty?: number | null; unit?: string | null }[]
   verified: boolean; received_at: string
   order_status?: 'pending' | 'approved' | 'rejected' | null
-  doc_type?: 'po' | 'invoice' | 'delivery_note' | 'payment' | 'other' | null
+  doc_type?: 'po' | 'invoice' | 'delivery_note' | 'payment' | 'credit' | 'inventory' | 'other' | null
   group_jid?: string | null
   group_type?: 'orders' | 'docs' | 'dm' | null
   salesperson?: string | null              // sender display name — who brought the order

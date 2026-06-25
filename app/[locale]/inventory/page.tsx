@@ -11,6 +11,7 @@ import { Panel } from '@/components/Panel'
 import { NoteCallout } from '@/components/NoteCallout'
 import { printReport } from '@/lib/export/exporters'
 import { getInventory, warehouseStock, categoryLabel, fmtSAR, fmtNum, type InventorySku, type ExpiryStatus } from '@/lib/data/dataset'
+import { getInventoryCount } from '@/lib/data/inventory-count'
 
 const EXP_TONE: Record<ExpiryStatus, string> = {
   green: 'bg-success-soft text-success', yellow: 'bg-warn-soft text-warn', red: 'bg-accent-soft text-accent', unknown: 'bg-bg-soft text-muted'
@@ -22,6 +23,8 @@ export default function InventoryPage() {
   useEffect(() => { setNow(new Date().toISOString()) }, [])
   const inv = useMemo(() => getInventory(now), [now])
   const ws = useMemo(() => warehouseStock(now), [now])
+  const cnt = useMemo(() => getInventoryCount(), [])
+  const fmtCountDate = (d: string) => { try { return new Date(d).toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-GB', { day: '2-digit', month: 'short' }) } catch { return d } }
 
   const cats = useMemo(() => [...new Set(inv.map(r => r.category))], [inv])
   const [q, setQ] = useState(''); const [cat, setCat] = useState(''); const [view, setView] = useState<'all' | 'reorder' | 'expiring' | 'gap'>('all')
@@ -86,6 +89,38 @@ export default function InventoryPage() {
           <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-accent" />{t('expRed')} {ws.red}</span>
         </div>
         <NoteCallout className="mt-4" tone="warn" title={t('noteTitle')}>{t('note', { excluded: ws.unreconciled })}</NoteCallout>
+      </Panel>
+
+      {/* Physical count from Tarek (المخزون) vs the ledger on-hand */}
+      <Panel className="mb-6" bodyClassName="px-0 pb-0" title={t('countTitle')} subtitle={t('countSub', { date: fmtCountDate(cnt.asOf), n: cnt.rows.length })}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="text-[11px] uppercase tracking-wide text-muted border-b border-border">
+              <th className="text-start font-medium px-5 md:px-6 py-2.5">{t('colProduct')}</th>
+              <th className="text-end font-medium px-3 py-2.5">{t('countCounted')}</th>
+              <th className="text-end font-medium px-3 py-2.5">{t('countLedger')}</th>
+              <th className="text-end font-medium px-5 md:px-6 py-2.5">{t('countVariance')}</th>
+            </tr></thead>
+            <tbody>
+              {cnt.rows.map((r, i) => (
+                <tr key={i} className="border-b border-border/60 hover:bg-surface-elev transition-colors">
+                  <td className="px-5 md:px-6 py-2.5 font-medium text-text">{r.item}{r.matched && r.matched !== r.item && <span className="block text-[10px] text-muted">≈ {r.matched}</span>}</td>
+                  <td className="px-3 py-2.5 text-end tabular-nums text-text">{fmtNum(r.cartons)}</td>
+                  <td className="px-3 py-2.5 text-end tabular-nums text-text-soft">{r.ledgerOnHand != null ? fmtNum(r.ledgerOnHand) : <span className="text-muted">{t('countNoMatch')}</span>}</td>
+                  <td className={clsx('px-5 md:px-6 py-2.5 text-end tabular-nums font-medium', r.variance == null ? 'text-muted' : Math.abs(r.variance) > Math.max(50, r.cartons * 0.15) ? 'text-accent' : 'text-success')}>
+                    {r.variance == null ? '—' : `${r.variance > 0 ? '+' : ''}${fmtNum(r.variance)}`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot><tr className="font-semibold border-t-2 border-border">
+              <td className="px-5 md:px-6 py-3">{t('countTotal')}</td>
+              <td className="px-3 py-3 text-end tabular-nums">{fmtNum(cnt.total)}</td>
+              <td colSpan={2} />
+            </tr></tfoot>
+          </table>
+        </div>
+        <div className="px-5 md:px-6 pb-4"><NoteCallout tone="info" title={t('countNoteTitle')}>{t('countNote')}</NoteCallout></div>
       </Panel>
 
       <Panel bodyClassName="px-0 pb-0"
