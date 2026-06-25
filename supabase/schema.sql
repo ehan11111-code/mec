@@ -81,6 +81,16 @@ alter table public.whatsapp_intake add column if not exists recipient text;     
 alter table public.whatsapp_intake add column if not exists archived boolean not null default false; -- test/cleared rows: hidden from the portal, kept in the automation audit log
 alter table public.whatsapp_intake add column if not exists extracted jsonb;     -- structured rows extracted from a credit/inventory statement (table → JSON), refreshes the portal
 
+-- Error log — every reported portal/automation error (written by lib/integrations/errors.ts + n8n).
+create table if not exists public.error_log (
+  id          bigint generated always as identity primary key,
+  source      text not null,
+  message     text,
+  context     text,
+  created_at  timestamptz not null default now()
+);
+alter table public.error_log enable row level security;
+
 -- Email intake (one row per inbound company email; written by n8n/email-intake.json via the Gmail node).
 create table if not exists public.email_intake (
   message_id     text primary key,            -- Gmail message id

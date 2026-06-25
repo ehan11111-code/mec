@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { reportError } from '@/lib/integrations/errors'
 
 export const runtime = 'nodejs'
 
@@ -43,6 +44,7 @@ ${context}`
     const answer = completion.choices[0]?.message?.content?.trim() || ''
     return NextResponse.json({ answer })
   } catch (e) {
+    reportError('api/jarvis', e, 'JARVIS chat (OpenAI)').catch(() => {})
     return NextResponse.json({ error: 'openai_error', detail: String(e instanceof Error ? e.message : e) }, { status: 502 })
   }
 }

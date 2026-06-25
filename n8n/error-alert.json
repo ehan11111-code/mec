@@ -1,0 +1,28 @@
+{
+  "name": "MEC · Error Alert (auto)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "errtrigger",
+      "name": "On workflow error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Any MEC automation that fails (and lists this as its error workflow) lands here → alert the team\n// via the portal, which WhatsApps everyone + logs to Supabase error_log.\nconst e = $json || {};\nconst wf = (e.workflow && e.workflow.name) || 'unknown workflow';\nconst node = (e.execution && e.execution.lastNodeExecuted) || '';\nconst err = (e.execution && e.execution.error) || {};\nconst msg = err.message || err.description || JSON.stringify(e).slice(0, 600);\nconst base = $env.PORTAL_BASE_URL;\nconst secret = $env.WASENDER_WEBHOOK_SECRET;\ntry {\n  await this.helpers.httpRequest({ method: 'POST', url: base + '/api/report-error?key=' + encodeURIComponent(secret), body: { source: 'n8n:' + wf, message: String(msg), context: node ? ('node ' + node) : 'n8n automation' }, json: true });\n} catch (err2) {}\nreturn [{ json: { reported: true, workflow: wf } }];"
+      },
+      "id": "report",
+      "name": "Alert team",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 320]
+    }
+  ],
+  "connections": {
+    "On workflow error": { "main": [[{ "node": "Alert team", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "active": true
+}
