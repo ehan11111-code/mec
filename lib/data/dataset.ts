@@ -1,10 +1,21 @@
 import { clients as rawClients, type Client } from './clients'
-import { sales, type SalesInvoice } from './sales'
+import { sales as _salesRaw, type SalesInvoice } from './sales'
 import { purchases, type PurchaseRow } from './purchases'
 import { inventory, INVENTORY_MONTHS, type InventoryRow } from './inventory'
 import { categoryLabel } from './categorize'
 
 export type { Client, SalesInvoice, PurchaseRow }
+
+// ── Receivables policy ──────────────────────────────────────────────────────────────────────────
+// Business decision (2026-06-25): all historical receivables are settled. Every historical invoice is
+// treated as COLLECTED, so outstanding receivables read ZERO everywhere the portal computes them
+// (Control Center, Analytics → Collections, CRM client balances/risk, Operations House payments-due,
+// and the data-integrity concerns). New receivables accrue going forward from live WhatsApp orders.
+// This is the single source of truth — flip RECEIVABLES_ZEROED to false to restore the workbook values.
+const RECEIVABLES_ZEROED = true
+const sales: SalesInvoice[] = RECEIVABLES_ZEROED
+  ? _salesRaw.map(s => ({ ...s, collected: true, collectionStatus: 'تم' }))
+  : _salesRaw
 
 // ── formatting / helpers ──
 // Full comma-grouped figures (e.g. "SAR 31,084,511") — millions must read as millions.
@@ -136,27 +147,25 @@ export function procurementSummary() {
   return { spend, suppliers, lines, avgLine: lines ? spend / lines : 0 }
 }
 
-// ── margin: avg sell unit price vs avg buy unit cost per category ──
+// ── margin per category — derived from the per-product gross profit so it reconciles exactly with the
+// product-level numbers and the overall margin. avgSell/avgCost are QUANTITY-WEIGHTED over the priced
+// products in the category (avgSell = priced pre-VAT revenue ÷ priced units; avgCost = COGS ÷ priced
+// units); marginPct = (priced revenue − COGS) ÷ priced revenue. `revenue` is the category's full pre-VAT
+// sales (priced + unpriced) so it still ranks category size correctly.
 export function marginByCategory(): { key: string; ar: string; en: string; avgSell: number; avgCost: number; marginPct: number; revenue: number }[] {
-  const sell = new Map<string, { ar: string; sum: number; n: number; rev: number }>()
-  for (const r of sales) {
-    if (r.unitPrice <= 0) continue
-    const cur = sell.get(r.category) ?? { ar: r.categoryAr, sum: 0, n: 0, rev: 0 }
-    cur.sum += r.unitPrice; cur.n++; cur.rev += r.postVat; sell.set(r.category, cur)
-  }
-  const cost = new Map<string, { sum: number; n: number }>()
-  for (const p of purchases) {
-    if (isSupplierNoise(p.supplier) || p.unitCost <= 0) continue
-    const cur = cost.get(p.category) ?? { sum: 0, n: 0 }
-    cur.sum += p.unitCost; cur.n++; cost.set(p.category, cur)
+  const postVatByCat = new Map(salesByCategory().map(c => [c.key, c.v]))   // category post-VAT sales (display)
+  const agg = new Map<string, { ar: string; pricedRev: number; cogs: number; pricedUnits: number }>()
+  for (const pm of productMargins()) {
+    const cur = agg.get(pm.category) ?? { ar: pm.categoryAr, pricedRev: 0, cogs: 0, pricedUnits: 0 }
+    if (pm.cogs != null && pm.grossProfit != null) { cur.pricedRev += pm.revenue; cur.cogs += pm.cogs; cur.pricedUnits += pm.units }
+    agg.set(pm.category, cur)
   }
   const out: { key: string; ar: string; en: string; avgSell: number; avgCost: number; marginPct: number; revenue: number }[] = []
-  for (const [key, v] of sell.entries()) {
-    const avgSell = v.sum / v.n
-    const c = cost.get(key)
-    const avgCost = c && c.n ? c.sum / c.n : 0
-    const marginPct = avgSell > 0 && avgCost > 0 ? ((avgSell - avgCost) / avgSell) * 100 : 0
-    out.push({ key, ar: v.ar, en: key, avgSell: Math.round(avgSell), avgCost: Math.round(avgCost), marginPct: Math.round(marginPct * 10) / 10, revenue: Math.round(v.rev) })
+  for (const [key, v] of agg.entries()) {
+    const avgSell = v.pricedUnits > 0 ? v.pricedRev / v.pricedUnits : 0
+    const avgCost = v.pricedUnits > 0 ? v.cogs / v.pricedUnits : 0
+    const marginPct = v.pricedRev > 0 ? ((v.pricedRev - v.cogs) / v.pricedRev) * 100 : 0
+    out.push({ key, ar: v.ar, en: key, avgSell: Math.round(avgSell), avgCost: Math.round(avgCost), marginPct: Math.round(marginPct * 10) / 10, revenue: Math.round(postVatByCat.get(key) ?? 0) })
   }
   return out.sort((a, b) => b.revenue - a.revenue)
 }
@@ -186,24 +195,27 @@ export type ProductMargin = {
 let _prodMargins: ProductMargin[] | null = null
 export function productMargins(): ProductMargin[] {
   if (_prodMargins) return _prodMargins
-  // purchase cost candidates (token sets) — average cost per identical purchase item
-  const purItems = new Map<string, { cost: number; n: number; tok: string[] }>()
+  // purchase cost candidates (token sets) — QUANTITY-WEIGHTED average cost per identical purchase item
+  // (weighting by cartons bought so a big shipment counts more than a tiny one — the true unit cost).
+  const purItems = new Map<string, { cost: number; qty: number; tok: string[] }>()
   for (const p of purchases) {
     if (isSupplierNoise(p.supplier) || p.unitCost <= 0) continue
-    const cur = purItems.get(p.item) ?? { cost: 0, n: 0, tok: tokens(p.item) }
-    cur.cost += p.unitCost; cur.n++; purItems.set(p.item, cur)
+    const w = p.qtyIn > 0 ? p.qtyIn : 1
+    const cur = purItems.get(p.item) ?? { cost: 0, qty: 0, tok: tokens(p.item) }
+    cur.cost += p.unitCost * w; cur.qty += w; purItems.set(p.item, cur)
   }
-  const purList = [...purItems.entries()].map(([item, v]) => ({ item, cost: v.cost / v.n, tok: v.tok }))
+  const purList = [...purItems.entries()].map(([item, v]) => ({ item, cost: v.qty > 0 ? v.cost / v.qty : 0, tok: v.tok }))
   // aggregate sales per product (pre-VAT basis for a true margin)
-  const prod = new Map<string, { category: string; categoryAr: string; units: number; revenue: number; priceSum: number; n: number; tok: string[] }>()
+  const prod = new Map<string, { category: string; categoryAr: string; units: number; revenue: number; tok: string[] }>()
   for (const r of sales) {
     if (r.preVat <= 0) continue
-    const cur = prod.get(r.item) ?? { category: r.category, categoryAr: r.categoryAr, units: 0, revenue: 0, priceSum: 0, n: 0, tok: tokens(r.item) }
-    cur.units += r.qty; cur.revenue += r.preVat; cur.priceSum += r.unitPrice; cur.n++; prod.set(r.item, cur)
+    const cur = prod.get(r.item) ?? { category: r.category, categoryAr: r.categoryAr, units: 0, revenue: 0, tok: tokens(r.item) }
+    cur.units += r.qty; cur.revenue += r.preVat; prod.set(r.item, cur)
   }
   const out: ProductMargin[] = []
   for (const [item, p] of prod.entries()) {
-    const avgSell = p.n ? p.priceSum / p.n : 0
+    // realized average sell price = pre-VAT revenue ÷ units (quantity-weighted, not a mean of list prices)
+    const avgSell = p.units > 0 ? p.revenue / p.units : 0
     let best: { item: string; cost: number } | null = null; let bs = 0
     for (const pu of purList) { const s = jaccard(p.tok, pu.tok); if (s > bs) { bs = s; best = pu } }
     const min = minMarginFor(p.category, item)
@@ -634,9 +646,9 @@ const LEAD_TIME_DAYS = 30   // default supplier lead time used for the reorder p
 let _purCandidates: { item: string; cost: number; tok: string[] }[] | null = null
 function purCandidates() {
   if (_purCandidates) return _purCandidates
-  const m = new Map<string, { cost: number; n: number; tok: string[] }>()
-  for (const p of purchases) { if (isSupplierNoise(p.supplier) || p.unitCost <= 0) continue; const cur = m.get(p.item) ?? { cost: 0, n: 0, tok: tokens(p.item) }; cur.cost += p.unitCost; cur.n++; m.set(p.item, cur) }
-  _purCandidates = [...m.entries()].map(([item, v]) => ({ item, cost: v.cost / v.n, tok: v.tok }))
+  const m = new Map<string, { cost: number; qty: number; tok: string[] }>()
+  for (const p of purchases) { if (isSupplierNoise(p.supplier) || p.unitCost <= 0) continue; const w = p.qtyIn > 0 ? p.qtyIn : 1; const cur = m.get(p.item) ?? { cost: 0, qty: 0, tok: tokens(p.item) }; cur.cost += p.unitCost * w; cur.qty += w; m.set(p.item, cur) }
+  _purCandidates = [...m.entries()].map(([item, v]) => ({ item, cost: v.qty > 0 ? v.cost / v.qty : 0, tok: v.tok }))
   return _purCandidates
 }
 function costForItem(item: string): number | null {
