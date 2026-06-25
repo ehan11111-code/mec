@@ -16,23 +16,39 @@ export type OrderDocStatus = {
   recipient: string | null; units: number; products: WhatsappMsg['products']; received_at: string; body: string
   order_status: string
   received: DocType[]; missing: DocType[]; complete: boolean
-  docMsgs: DocMessage[]                       // the actual document messages, so each can be opened/viewed
+  docMsgs: DocMessage[]
 }
 
 const sumUnits = (ps: WhatsappMsg['products']) => (ps || []).reduce((s, p) => s + (Number(p.qty) || 0), 0)
 
-// Per-order document compliance. The order message is the order; invoice / delivery note / payment proof
-// arrive as later DOCUMENT (PDF/photo) messages, matched by order number when both have one, else by the
-// same sender after the order's time. A document (intent !== 'order') is never listed as an order.
+// Per-order document compliance. Documents (invoice / delivery note / payment) can be sent by ANYONE in
+// the group — not only the salesperson who placed the order. Each document is attached to its order by
+// ORDER NUMBER when available, otherwise to the most recent order at/before its time (preferring the same
+// group). A document (intent !== 'order') is never itself listed as an order.
 export async function GET() {
   const msgs = await getWhatsappIntake(300)
-  const orders = msgs.filter(m => m.intent === 'order')
+  const orders = msgs.filter(m => m.intent === 'order').sort((a, b) => (a.received_at < b.received_at ? -1 : 1)) // oldest → newest
   const docs = msgs.filter(m => m.doc_type && (REQUIRED as readonly string[]).includes(m.doc_type))
+
+  // Assign each document to exactly one order (by number, else the latest preceding order — any sender).
+  const assigned = new Map<string, WhatsappMsg[]>()
+  for (const d of docs) {
+    let target: WhatsappMsg | undefined
+    if (d.order_no) target = orders.find(o => o.order_no && o.order_no === d.order_no)
+    if (!target) {
+      const before = orders.filter(o => o.received_at <= d.received_at)
+      const sameGroup = before.filter(o => o.group_jid && d.group_jid && o.group_jid === d.group_jid)
+      const pool = sameGroup.length ? sameGroup : before
+      target = pool[pool.length - 1]                 // most recent order at/before the document
+    }
+    if (target) {
+      const a = assigned.get(target.message_id) || []
+      a.push(d); assigned.set(target.message_id, a)
+    }
+  }
+
   const rows: OrderDocStatus[] = orders.map(o => {
-    const matched = docs.filter(d => {
-      if (o.order_no && d.order_no) return d.order_no === o.order_no
-      return d.phone === o.phone && d.received_at >= o.received_at
-    })
+    const matched = assigned.get(o.message_id) || []
     const received = [...new Set(matched.map(d => d.doc_type as DocType))]
     const missing = REQUIRED.filter(r => !received.includes(r))
     const dn = matched.find(d => d.doc_type === 'delivery_note')
