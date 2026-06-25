@@ -59,7 +59,9 @@ if ($hasRemote) {
   $pushOut = (git push $remote $branch 2>&1 | Out-String)
   $code = $LASTEXITCODE
   $ErrorActionPreference = $eap
-  foreach ($l in ($pushOut -split "`r?`n" | Where-Object { $_.Trim() -ne '' })) { Log "  git: $($l.Trim())" }
+  # keep real git lines; drop PowerShell's NativeCommandError decoration (stderr is normal for git)
+  $noise = '^(At |\+ |\s*~|CategoryInfo|FullyQualifiedErrorId|git : )'
+  foreach ($l in ($pushOut -split "`r?`n" | Where-Object { $_.Trim() -ne '' -and $_ -notmatch $noise })) { Log "  git: $($l.Trim())" }
   if ($code -eq 0) { Log "Pushed $branch to '$remote'." } else { Log "Push to '$remote' FAILED (git exit $code)." }
 } else {
   Log "Remote '$remote' not configured - skipping GitHub push. Add it with: git remote add $remote <url>"
