@@ -3,7 +3,7 @@ import { sales as _salesRaw, type SalesInvoice } from './sales'
 import { purchases, type PurchaseRow } from './purchases'
 import { inventory, INVENTORY_MONTHS, type InventoryRow } from './inventory'
 import { categoryLabel } from './categorize'
-import { creditByClientName, creditTotal, CREDIT_AS_OF } from './credit'
+import { creditByClientName, creditTotal, CREDIT_ROWS, CREDIT_AS_OF } from './credit'
 
 export type { Client, SalesInvoice, PurchaseRow }
 export { CREDIT_AS_OF }
@@ -26,6 +26,16 @@ function creditByNorm(): Map<string, number> {
   for (const [name, amt] of creditByClientName()) m.set(norm(name), amt)
   _creditByNormCache = m
   return m
+}
+// Credit outstanding for a sales filter. Credit isn't categorised, so a category filter doesn't narrow it
+// (it's attributed by month + salesperson only). No active filter → the full statement total. This keeps
+// receivables ALIGNED (never zero) across the default views and the month/salesperson slices.
+function creditForFilter(f?: SalesFilter): number {
+  if (!f || (!f.month && !f.salesperson)) return creditTotal()
+  return Math.round(CREDIT_ROWS.filter(r =>
+    (!f.month || r.date.slice(0, 7) === f.month) &&
+    (!f.salesperson || r.salespersonAr === f.salesperson)
+  ).reduce((s, r) => s + r.amount, 0))
 }
 // Outstanding owed by a client, matched to the statement by name (exact, then fuzzy contains). 0 if current.
 function creditOutstandingForName(name: string): number {
@@ -85,9 +95,10 @@ export function salesSummary(f?: SalesFilter) {
   const revenue = rows.reduce((s, r) => s + r.postVat, 0)
   const preVat = rows.reduce((s, r) => s + r.preVat, 0)
   const vat = rows.reduce((s, r) => s + r.vat, 0)
-  // outstanding is driven by the credit statement (current snapshot), so it only applies unfiltered.
-  const outstanding = f ? Math.max(0, revenue - rows.filter(r => r.collected).reduce((s, r) => s + r.postVat, 0)) : creditTotal()
-  const collected = revenue - outstanding
+  // receivables always come from the credit statement (attributed to the filter), never the row flags —
+  // so every page reads the same outstanding and none of them show zero.
+  const outstanding = creditForFilter(f)
+  const collected = Math.max(0, revenue - outstanding)
   const invoices = rows.length
   const clientsCount = new Set(rows.map(r => r.clientName)).size
   return { revenue, preVat, vat, collected, outstanding, invoices, clients: clientsCount, avgInvoice: invoices ? revenue / invoices : 0 }
@@ -119,9 +130,9 @@ export function salesByClientName(f?: SalesFilter): { name: string; revenue: num
     const cur = map.get(r.clientName) ?? { revenue: 0, n: 0, collected: 0 }
     cur.revenue += r.postVat; cur.n++; if (r.collected) cur.collected += r.postVat; map.set(r.clientName, cur)
   }
-  // per-client outstanding comes from the credit statement (unfiltered snapshot); collected = revenue - that.
+  // per-client outstanding comes from the credit statement (so it's identical on every page); collected = revenue - that.
   return [...map.entries()].map(([name, v]) => {
-    const outstanding = f ? Math.max(0, v.revenue - v.collected) : Math.min(v.revenue, creditOutstandingForName(name))
+    const outstanding = Math.min(v.revenue, creditOutstandingForName(name))
     return { name, revenue: Math.round(v.revenue), invoices: v.n, collected: Math.round(v.revenue - outstanding), outstanding: Math.round(outstanding) }
   }).sort((a, b) => b.revenue - a.revenue)
 }
@@ -139,8 +150,8 @@ export function collectionsSummary(f?: SalesFilter) {
   const cash = rows.filter(r => /كاش|cash/i.test(r.payMethod)).reduce((s, r) => s + r.postVat, 0)
   const bank = rows.filter(r => /تحويل|بنك|bank/i.test(r.payMethod)).reduce((s, r) => s + r.postVat, 0)
   const total = rows.reduce((s, r) => s + r.postVat, 0)
-  const outstanding = f ? Math.max(0, total - collected.reduce((s, r) => s + r.postVat, 0)) : creditTotal()
-  return { collected: total - outstanding, outstanding, collectedCount: collected.length, total, cash, bank }
+  const outstanding = creditForFilter(f)
+  return { collected: Math.max(0, total - outstanding), outstanding, collectedCount: collected.length, total, cash, bank }
 }
 
 // ── purchases aggregates ──

@@ -9,6 +9,7 @@ import { Eyebrow } from '@/components/Eyebrow'
 import { StatCard } from '@/components/StatCard'
 import { Panel } from '@/components/Panel'
 import { NoteCallout } from '@/components/NoteCallout'
+import { JarvisNotes, type JarvisNote } from '@/components/JarvisNotes'
 import { printReport } from '@/lib/export/exporters'
 import { getInventory, warehouseStock, categoryLabel, fmtSAR, fmtNum, type InventorySku, type ExpiryStatus } from '@/lib/data/dataset'
 import { getInventoryCount } from '@/lib/data/inventory-count'
@@ -206,6 +207,18 @@ export default function InventoryPage() {
         </div>
         <div className="px-5 md:px-6 py-3 border-t border-border text-xs text-muted">{t('showing', { n: rows.length, total: inv.length })}</div>
       </Panel>
+
+      {(() => {
+        const bigVar = cnt.rows.filter(r => r.variance != null && Math.abs(r.variance) > Math.max(50, r.cartons * 0.15))
+        const worst = [...bigVar].sort((a, b) => Math.abs(b.variance!) - Math.abs(a.variance!))[0]
+        const noMatch = cnt.rows.filter(r => !r.matched).length
+        const notes: JarvisNote[] = []
+        if (worst) notes.push({ tone: 'issue', title: t('n_var_t', { n: bigVar.length, item: worst.item, v: (worst.variance! > 0 ? '+' : '') + fmtNum(worst.variance!) }), body: t('n_var_b') })
+        if (ws.unreconciled > 0) notes.push({ tone: 'issue', title: t('n_unrec_t', { n: ws.unreconciled }), body: t('n_unrec_b') })
+        if (noMatch > 0) notes.push({ tone: 'tip', title: t('n_nomatch_t', { n: noMatch }), body: t('n_nomatch_b') })
+        if (ws.reorder > 0) notes.push({ tone: 'tip', title: t('n_reorder_t', { n: ws.reorder }), body: t('n_reorder_b') })
+        return <JarvisNotes title={t('jarvisTitle')} intro={t('jarvisIntro')} notes={notes} />
+      })()}
     </PageShell>
   )
 }

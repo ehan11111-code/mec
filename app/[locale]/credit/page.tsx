@@ -8,8 +8,10 @@ import { Eyebrow } from '@/components/Eyebrow'
 import { Panel } from '@/components/Panel'
 import { NoteCallout } from '@/components/NoteCallout'
 import { Money } from '@/components/Money'
+import { JarvisNotes, type JarvisNote } from '@/components/JarvisNotes'
 import { ClientLink } from '@/components/EntityLink'
 import { printReport } from '@/lib/export/exporters'
+import { fmtSAR } from '@/lib/data/dataset'
 import { getCredit } from '@/lib/data/credit'
 
 export default function CreditPage() {
@@ -31,6 +33,13 @@ export default function CreditPage() {
     { key: 'over60', v: c.buckets.over60, tone: 'bg-accent' },
   ].filter(b => b.v > 0)
   const ageTone = (d: number) => d > 30 ? 'text-accent' : d > 7 ? 'text-warn' : 'text-muted'
+
+  // JARVIS — potential issues + suggestions, derived from the statement.
+  const top = c.byClient[0]
+  const notes: JarvisNote[] = []
+  if (c.overdueCount > 0) notes.push({ tone: 'issue', title: t('n_overdue_t', { n: c.overdueCount, amt: fmtSAR(c.overdueAmount) }), body: t('n_overdue_b') })
+  if (top && top.pct >= 0.25) notes.push({ tone: 'issue', title: t('n_conc_t', { client: top.client, pct: Math.round(top.pct * 100) }), body: t('n_conc_b') })
+  notes.push({ tone: 'tip', title: t('n_tip_t'), body: t('n_tip_b') })
 
   return (
     <PageShell requires="finance" breadcrumbs={[{ label: tNav('credit') }]}>
@@ -138,6 +147,8 @@ export default function CreditPage() {
           </table>
         </div>
       </Panel>
+
+      <JarvisNotes title={t('jarvisTitle')} intro={t('jarvisIntro')} notes={notes} />
     </PageShell>
   )
 }

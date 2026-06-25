@@ -61,8 +61,8 @@ export default function ClientsPage() {
 
       <section className="mb-8 grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         <StatCard label={t('kTotal')} value={String(sum.total)} infoId="clientsTotal" index={0} accent />
-        <StatCard label={t('kRevenue')} value={fmtSAR(sum.revenue)} infoId="revenue" index={1} />
-        <StatCard label={t('kOverdue')} value={fmtSAR(sum.overdue)} infoId="overdue" index={2} />
+        <StatCard label={t('kRevenue')} amount={sum.revenue} infoId="revenue" index={1} />
+        <StatCard label={t('kOverdue')} amount={sum.overdue} infoId="overdue" index={2} />
         <StatCard label={t('kAtRisk')} value={String(sum.atRisk)} delta={`avg risk ${sum.avgRisk}%`} infoId="atRisk" index={3} />
       </section>
 

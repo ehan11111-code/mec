@@ -72,16 +72,16 @@ export function OverviewDashboard({ filter, locale }: P) {
     <div className="space-y-6 md:space-y-8">
       {/* Revenue = Collected + Receivables (reconciles on screen). VAT shown separately. */}
       <section className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
-        <StatCard label={t('kRevenue')} value={fmtSAR(s.revenue)} accent infoId="revenue" index={0} />
-        <StatCard label={t('collected')} value={fmtSAR(s.collected)} infoId="collected" index={1} />
-        <StatCard label={t('kReceivables')} value={fmtSAR(s.outstanding)} accent infoId="receivables" index={2} />
+        <StatCard label={t('kRevenue')} amount={s.revenue} accent infoId="revenue" index={0} />
+        <StatCard label={t('collected')} amount={s.collected} infoId="collected" index={1} />
+        <StatCard label={t('kReceivables')} amount={s.outstanding} accent infoId="receivables" index={2} />
         <StatCard label={t('kVat')} value={fmtSAR(s.vat)} infoId="vat" index={3} />
       </section>
       <section className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         <StatCard label={t('kInvoices')} value={f0(s.invoices)} infoId="invoices" index={0} />
         <StatCard label={t('kActiveClients')} value={f0(s.clients)} infoId="clients" index={1} />
-        <StatCard label={t('kAvgInvoice')} value={fmtSAR(s.avgInvoice)} infoId="avgInvoice" index={2} />
-        <StatCard label={t('kSpend')} value={fmtSAR(proc.spend)} infoId="procurement" index={3} />
+        <StatCard label={t('kAvgInvoice')} amount={s.avgInvoice} infoId="avgInvoice" index={2} />
+        <StatCard label={t('kSpend')} amount={proc.spend} infoId="procurement" index={3} />
       </section>
       <NoteCallout tone="info">{t('reconcileNote')}</NoteCallout>
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
@@ -117,7 +117,7 @@ export function ProcurementDashboard({ locale }: P) {
   return (
     <div className="space-y-6 md:space-y-8">
       <section className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-3">
-        <StatCard label={t('kSpend')} value={fmtSAR(proc.spend)} accent infoId="procurement" index={0} />
+        <StatCard label={t('kSpend')} amount={proc.spend} accent infoId="procurement" index={0} />
         <StatCard label={t('kSuppliers')} value={f0(proc.suppliers)} infoId="suppliers" index={1} />
         <StatCard label={t('kPurchaseLines')} value={f0(proc.lines)} infoId="purchaseLines" index={2} />
       </section>
@@ -202,10 +202,10 @@ export function CollectionsDashboard({ filter, locale }: P) {
   return (
     <div className="space-y-6 md:space-y-8">
       <section className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
-        <StatCard label={t('collected')} value={fmtSAR(c.collected)} accent infoId="collected" index={0} />
-        <StatCard label={t('outstanding')} value={fmtSAR(c.outstanding)} infoId="outstanding" index={1} />
-        <StatCard label={t('cash')} value={fmtSAR(c.cash)} infoId="cash" index={2} />
-        <StatCard label={t('bank')} value={fmtSAR(c.bank)} infoId="bank" index={3} />
+        <StatCard label={t('collected')} amount={c.collected} accent infoId="collected" index={0} />
+        <StatCard label={t('outstanding')} amount={c.outstanding} infoId="outstanding" index={1} />
+        <StatCard label={t('cash')} amount={c.cash} infoId="cash" index={2} />
+        <StatCard label={t('bank')} amount={c.bank} infoId="bank" index={3} />
       </section>
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
         <Panel title={t('collectedVsOutstanding')}>
