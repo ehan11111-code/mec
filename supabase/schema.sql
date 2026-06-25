@@ -79,6 +79,7 @@ alter table public.whatsapp_intake add column if not exists order_no text;      
 alter table public.whatsapp_intake add column if not exists client_name text;         -- client/company named on the order or document
 alter table public.whatsapp_intake add column if not exists recipient text;           -- receiver / driver (المستلم) on a delivery note
 alter table public.whatsapp_intake add column if not exists archived boolean not null default false; -- test/cleared rows: hidden from the portal, kept in the automation audit log
+alter table public.whatsapp_intake add column if not exists extracted jsonb;     -- structured rows extracted from a credit/inventory statement (table → JSON), refreshes the portal
 
 -- Email intake (one row per inbound company email; written by n8n/email-intake.json via the Gmail node).
 create table if not exists public.email_intake (

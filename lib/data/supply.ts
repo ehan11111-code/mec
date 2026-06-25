@@ -45,6 +45,7 @@ export type WhatsappMsg = {
   client_name?: string | null              // client/company named on the order or document
   recipient?: string | null                // receiver / driver (المستلم) on a delivery note
   archived?: boolean | null                // test/cleared row — hidden from the portal, kept in the audit log
+  extracted?: unknown                      // structured rows parsed from a credit/inventory statement
   raw?: unknown                            // full original webhook payload (admin debug / audit)
 }
 

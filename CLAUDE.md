@@ -84,6 +84,28 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-25 — Receivables aligned everywhere (no more zeros) + JARVIS notes in every report + credit/
+  inventory made auto-refreshing.** Three fixes. **(1) Alignment:** Analytics/Collections passed an empty
+  filter object `{}` (truthy) so receivables read **0** there while Control Center read 601k — fixed:
+  receivables are now ALWAYS sourced from the credit statement via `creditForFilter()` (attributed by
+  month/salesperson when a slice is active), so every default view shows **SAR 601,297** and the figure
+  reconciles on every page (verified). VAT toggle also extended to the Analytics + Clients money KPIs.
+  **(2) JARVIS notes:** new `components/JarvisNotes.tsx` renders data-derived **potential issues +
+  suggestions** (print-visible, so every downloaded report carries them) — wired into Credit (overdue
+  invoices, client concentration) and Inventory (variance vs ledger, unreconciled SKUs, reorder); the
+  `/report` engine already adds AI suggestions per area. **(3) Auto-refresh:** credit/inventory data moved
+  out of hardcoded TS into `lib/data/*.generated.json`; the n8n intake now **extracts the credit/inventory
+  table into `whatsapp_intake.extracted`** (DOC_PROMPT updated, redeployed `NzuuId3FYrcqaAkb`), and
+  `scripts/refresh-statements.js` rewrites those JSONs from the latest extracted statement — one run
+  updates receivables + Credit page + Inventory count + all KPIs together, aligned. Orders/invoices/docs
+  were already fully live (Supabase + client-fetch auto-refresh on every page). Build green (48 routes),
+  EN/AR parity.
+  - **User action:** re-run `supabase/schema.sql` (now also adds `extracted` + the earlier `archived`).
+    Then each new المديونية/المخزون file auto-extracts; run `node scripts/refresh-statements.js` (or
+    schedule it) → commit/push → the whole portal refreshes in alignment. Full zero-touch (no command) for
+    the server-rendered global receivables would need the async data layer or a scheduled refresh+deploy —
+    offered as a next step.
+
 - **2026-06-25 — Tarek's WhatsApp files ingested: Credit (المديونية) as the receivables truth + Inventory
   (المخزون) count reconciliation + a portal-wide per-number VAT toggle + credit/inventory doc types.**
   Tarek sends two PDFs to the docs group; new `scripts/wa-download.js` decrypts WhatsApp media by

@@ -15,25 +15,13 @@ export type CreditRow = {
   ageDays: number         // days the receivable has been outstanding (اعمار الذمم)
 }
 
-export const CREDIT_AS_OF = '2026-06-25'
+// The data lives in credit.generated.json so it can be refreshed automatically from the latest WhatsApp
+// statement (scripts/refresh-statements.js reads the n8n-extracted rows from Supabase and rewrites it).
+// Editing that JSON — by hand or by the refresh script — updates receivables across the WHOLE portal.
+import generated from './credit.generated.json'
 
-// Source: المديونية حتي تاريخ 25-06-2026.pdf (Tarek Habbash → docs group). Total = SAR 601,296.55.
-export const CREDIT_ROWS: CreditRow[] = [
-  { date: '2026-05-16', invoiceNo: '324', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة الأغذية المتميزة التجارية', amount: 96973.00, ageDays: 40 },
-  { date: '2026-05-23', invoiceNo: '335', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة الأغذية المتميزة التجارية', amount: 87434.50, ageDays: 33 },
-  { date: '2026-06-14', invoiceNo: '365', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة سامح العربية للوجبات السريعة', amount: 10350.00, ageDays: 11 },
-  { date: '2026-06-17', invoiceNo: '375', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة سامح العربية للوجبات السريعة', amount: 20700.00, ageDays: 8 },
-  { date: '2026-06-18', invoiceNo: '378', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة سامح العربية للوجبات السريعة', amount: 103500.00, ageDays: 7 },
-  { date: '2026-06-20', invoiceNo: '380', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة مجمدات الريف التجارية', amount: 99476.50, ageDays: 5 },
-  { date: '2026-06-22', invoiceNo: '387', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة مجمدات الريف التجارية', amount: 31314.50, ageDays: 3 },
-  { date: '2026-06-24', invoiceNo: '391', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة فخر الأطعمة التجارية', amount: 14835.00, ageDays: 1 },
-  { date: '2026-06-24', invoiceNo: '392', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة دجاج اسيا لخدمات الاعاشة', amount: 48472.50, ageDays: 1 },
-  { date: '2026-06-24', invoiceNo: '393', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة جوهرة الحياة التجارية', amount: 6573.30, ageDays: 1 },
-  { date: '2026-06-24', invoiceNo: '395', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'مؤسسة كنز المحيط للتجارة', amount: 2277.00, ageDays: 1 },
-  { date: '2026-06-25', invoiceNo: '396', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة فخر الأطعمة التجارية', amount: 14789.00, ageDays: 0 },
-  { date: '2026-06-25', invoiceNo: '397', salespersonAr: 'تامر', salespersonEn: 'Tamer', client: 'شركة الزاهر الوطنية التجارية ( الحلقة )', amount: 51347.50, ageDays: 0 },
-  { date: '2026-06-25', invoiceNo: '398', salespersonAr: 'تامر', salespersonEn: 'Tamer', client: 'شركة نصيب جرين للتجارة', amount: 13253.75, ageDays: 0 },
-]
+export const CREDIT_AS_OF: string = (generated as any).asOf || '2026-06-25'
+export const CREDIT_ROWS: CreditRow[] = ((generated as any).rows || []) as CreditRow[]
 
 const VAT_RATE = 0.15
 const round2 = (n: number) => Math.round(n * 100) / 100

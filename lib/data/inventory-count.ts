@@ -2,21 +2,15 @@
 // Used to reconcile the warehouse LEDGER on-hand (lib/data/inventory.ts, net of recorded movements)
 // against an actual physical count. Latest: 2026-06-25, from المخزون حتي تاريخ 25-06-2026.pdf.
 import { inventory } from './inventory'
+// Data lives in inventory-count.generated.json so it refreshes automatically from the latest WhatsApp
+// stock file (scripts/refresh-statements.js rewrites it from the n8n-extracted rows in Supabase).
+import generated from './inventory-count.generated.json'
 
-export const INVENTORY_COUNT_AS_OF = '2026-06-25'
+export const INVENTORY_COUNT_AS_OF: string = (generated as any).asOf || '2026-06-25'
 
 export type CountRow = { item: string; cartons: number; supplier: string }
 
-// Source: المخزون حتي تاريخ 25-06-2026.pdf (Tarek Habbash → docs group). Quantities in cartons.
-export const INVENTORY_COUNT: CountRow[] = [
-  { item: 'بوبي فيل الممتاز', cartons: 340, supplier: 'عاصمة الدجاج' },
-  { item: 'فيليه عجل الممتاز', cartons: 5, supplier: 'عاصمة الدجاج' },
-  { item: 'رامب ستيك رستم', cartons: 9, supplier: 'عاصمة الدجاج' },
-  { item: 'توب سايد هندي الكامل', cartons: 14, supplier: 'عاصمة الدجاج' },
-  { item: 'فور كوارتر هندي الكامل', cartons: 1500, supplier: '' },
-  { item: 'شاورما دجاج لارا 2.5ك', cartons: 2298, supplier: 'عاصمة الدجاج' },
-  { item: 'صدور دجاج برازيلي مجمد', cartons: 2685, supplier: '' },
-]
+export const INVENTORY_COUNT: CountRow[] = ((generated as any).rows || []) as CountRow[]
 
 const norm = (s: string) => String(s || '').replace(/[ـ]/g, '').replace(/[.،,0-9]/g, '').replace(/\s+/g, ' ').trim()
 const tokens = (s: string) => new Set(norm(s).split(' ').filter(w => w.length > 1 && !['ك', 'كرتون', 'هندي', 'برازيلي'].includes(w)))
