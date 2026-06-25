@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
-import { FileCheck2, FileText, Check, X, RefreshCw, AlertTriangle, MessageCircle } from 'lucide-react'
+import { FileCheck2, FileText, Check, X, RefreshCw, AlertTriangle, MessageCircle, FileType2, ExternalLink } from 'lucide-react'
 import { PageShell } from '@/components/PageShell'
 import { DisplayHeading } from '@/components/DisplayHeading'
 import { Eyebrow } from '@/components/Eyebrow'
@@ -12,14 +12,22 @@ import { NoteCallout } from '@/components/NoteCallout'
 import { EmptyState } from '@/components/EmptyState'
 
 type DocType = 'invoice' | 'delivery_note' | 'payment'
-type Row = { message_id: string; orderNo: string | null; client: string | null; sender: string; phone: string; recipient: string | null; units: number; received_at: string; order_status: string; products: { name: string; qty?: number | null }[]; received: DocType[]; missing: DocType[]; complete: boolean }
+type DocMessage = { message_id: string; doc_type: string; filename: string; body: string; media_url: string; message_type: string; sender: string; received_at: string }
+type Row = { message_id: string; orderNo: string | null; client: string | null; sender: string; phone: string; recipient: string | null; units: number; received_at: string; body: string; order_status: string; products: { name: string; qty?: number | null; unit?: string | null }[]; received: DocType[]; missing: DocType[]; complete: boolean; docMsgs: DocMessage[] }
 const DOCS: ('po' | DocType)[] = ['po', 'invoice', 'delivery_note', 'payment']
+type Opened = { kind: 'po'; row: Row } | { kind: DocType; row: Row; doc: DocMessage }
 
 export default function DocumentsPage() {
   const tNav = useTranslations('nav'); const t = useTranslations('documents'); const locale = useLocale() as 'en' | 'ar'
   const [rows, setRows] = useState<Row[] | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [view, setView] = useState<'all' | 'missing'>('missing')
+  const [opened, setOpened] = useState<Opened | null>(null)
+  const openDoc = (row: Row, d: 'po' | DocType) => {
+    if (d === 'po') { setOpened({ kind: 'po', row }); return }
+    const doc = row.docMsgs.find(m => m.doc_type === d)
+    if (doc) setOpened({ kind: d, row, doc })
+  }
 
   const load = useCallback(async (manual = false) => {
     if (manual) setRefreshing(true)
@@ -103,7 +111,8 @@ export default function DocumentsPage() {
                       {DOCS.map(d => (
                         <td key={d} className="px-3 py-3 text-center">
                           {has(r, d)
-                            ? <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-success-soft text-success"><Check className="h-3.5 w-3.5" strokeWidth={2.4} /></span>
+                            ? <button type="button" onClick={() => openDoc(r, d)} title={t('viewDoc')}
+                                className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-success-soft text-success hover:ring-2 hover:ring-success/40 transition-shadow cursor-pointer"><Check className="h-3.5 w-3.5" strokeWidth={2.4} /></button>
                             : <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-accent-soft text-accent"><X className="h-3.5 w-3.5" strokeWidth={2.4} /></span>}
                         </td>
                       ))}
@@ -120,6 +129,62 @@ export default function DocumentsPage() {
           </div>
         )}
       </Panel>
+
+      {opened && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setOpened(null)} />
+          <div className="relative w-full max-w-lg max-h-[85vh] overflow-auto scrollbar-soft rounded-2xl border border-border bg-surface shadow-xl">
+            <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+              <h3 className="text-sm font-semibold text-text inline-flex items-center gap-2">
+                {opened.kind === 'po' ? <MessageCircle className="h-4 w-4 text-accent" strokeWidth={1.8} /> : <FileType2 className="h-4 w-4 text-accent" strokeWidth={1.8} />}
+                {opened.kind === 'po' ? t('doc_po') : t(`doc_${opened.kind}`)}
+              </h3>
+              <button type="button" onClick={() => setOpened(null)} className="text-muted hover:text-text transition-colors"><X className="h-4 w-4" strokeWidth={2} /></button>
+            </div>
+            <div className="px-5 py-4 space-y-3 text-sm">
+              {opened.kind === 'po' ? (
+                <>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-soft">
+                    {opened.row.orderNo && <span className="text-text font-medium">{t('orderNo', { no: opened.row.orderNo })}</span>}
+                    {opened.row.client && <span>{opened.row.client}</span>}
+                    <span>{t('bySalesperson', { name: opened.row.sender })}</span>
+                    {opened.row.recipient && <span>{t('recipientLabel', { name: opened.row.recipient })}</span>}
+                    <span>{fmt(opened.row.received_at)}</span>
+                  </div>
+                  {opened.row.products.length > 0 && (
+                    <ul className="rounded-soft border border-border divide-y divide-border">
+                      {opened.row.products.map((p, i) => (
+                        <li key={i} className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
+                          <span className="text-text">{p.name}</span>
+                          <span className="text-text-soft tabular-nums">{p.qty ?? ''}{p.unit ? ` ${p.unit}` : ''}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {opened.row.body && <p className="text-xs text-text-soft leading-relaxed border-s-2 border-border ps-2.5 whitespace-pre-wrap">{opened.row.body}</p>}
+                </>
+              ) : (
+                <>
+                  <div className="flex items-start gap-3 rounded-soft bg-bg-soft px-3 py-3">
+                    <FileText className="h-8 w-8 text-accent shrink-0" strokeWidth={1.5} />
+                    <div className="min-w-0">
+                      <p className="text-text font-medium break-words">{opened.doc.filename || t(`doc_${opened.kind}`)}</p>
+                      <p className="text-[11px] text-muted mt-0.5">{t('docFrom', { name: opened.doc.sender })} · {fmt(opened.doc.received_at)}</p>
+                    </div>
+                  </div>
+                  {opened.doc.media_url
+                    ? <a href={`/api/wa-file?id=${encodeURIComponent(opened.doc.message_id)}`} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-accent text-white px-4 py-2 text-xs font-medium hover:opacity-90 transition-opacity">
+                        <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} />{t('openFile')}
+                      </a>
+                    : <p className="text-xs text-muted">{t('noFile')}</p>}
+                  <p className="text-[11px] text-muted leading-relaxed">{t('fileNote')}</p>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </PageShell>
   )
 }
