@@ -84,6 +84,25 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-25 — "HI JARVIS" WhatsApp status bot + automatic error alerts + auto-extract live.** Two new
+  capabilities. **(1) Status bot:** new **`/api/jarvis-status`** health-checks every platform (Vercel,
+  Supabase, n8n via its API, WaSender, OpenAI) + lists live automations + recent activity (orders,
+  receivables, inventory, concerns) → a WhatsApp-formatted report; `?send=1&to=` delivers it. The
+  whatsapp-intake workflow now detects a greeting/`report` DM from an **owner number** (966500900377 etc.)
+  and calls the portal to send the report back via WaSender (PORTAL_BASE_URL injected at deploy).
+  **Verified end-to-end** — live report sent to 966500900377 (WaSender ok), n8n shows 6/25 active, Vercel
+  READY. **(2) Error alerts:** `lib/integrations/errors.reportError` WhatsApps the team + logs to Supabase
+  `error_log` (throttled); **`/api/report-error`** endpoint; a client **error boundary** (`app/[locale]/
+  error.tsx`) auto-reports UI crashes; wired into `/api/jarvis`; new **`n8n/error-alert.json`** (Error
+  Trigger) is set as the **error workflow on all 4 active automations**, so any automation failure pings
+  the team. **(3) Auto-extract proven:** backfilled the two existing statements' `extracted` data and ran
+  `refresh-statements.js` → regenerates the credit/inventory JSON from Supabase (dates preserved; DOC_PROMPT
+  now also extracts the invoice date). All portal env (n8n/Vercel/WaSender/Graph/PORTAL_BASE_URL) pushed to
+  Vercel via `vercel-setup.js`. Build green (50 routes), EN/AR parity.
+  - **How to use:** WhatsApp **"hi jarvis"** or **"report"** from your number → full status reply. Errors
+    anywhere (UI, API, or any automation) now WhatsApp the team automatically. New credit/inventory files
+    auto-extract → `node scripts/refresh-statements.js` → commit/push refreshes the whole portal.
+
 - **2026-06-25 — Receivables aligned everywhere (no more zeros) + JARVIS notes in every report + credit/
   inventory made auto-refreshing.** Three fixes. **(1) Alignment:** Analytics/Collections passed an empty
   filter object `{}` (truthy) so receivables read **0** there while Control Center read 601k — fixed:
