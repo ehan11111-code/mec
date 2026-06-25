@@ -57,7 +57,7 @@
     "subline": "Orders captured from WhatsApp via WaSender, parsed by JARVIS — approve or reject each before it goes to the warehouse.",
     "kPending": "Pending", "kApproved": "Approved", "kRejected": "Rejected", "kTotal": "Total orders",
     "tab_pending": "Pending", "tab_approved": "Approved", "tab_rejected": "Rejected",
-    "approve": "Approve", "reject": "Reject", "refresh": "Refresh", "noProducts": "No products parsed — review the message.",
+    "approve": "Approve", "reject": "Reject", "refresh": "Refresh", "noProducts": "No products parsed — review the message.", "broughtBy": "Salesperson: {name}",
     "empty_pending": "No orders awaiting approval", "empty_approved": "No approved orders yet", "empty_rejected": "No rejected orders",
     "emptyHint": "New WhatsApp orders appear here automatically, parsed into line items, ready to approve.",
     "source": "Source: WhatsApp (WaSender) → JARVIS classification → Supabase whatsapp_intake",

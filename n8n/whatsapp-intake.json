@@ -16,7 +16,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Verify WaSender secret + extract the inbound message. Drop non-message events.\nconst crypto = require('crypto');\nconst secret = $env.WASENDER_WEBHOOK_SECRET || '';\nconst item = $input.first().json;\nconst headers = item.headers || {};\nconst body = item.body || item;\n\n// Signature check (WaSender sends the secret / HMAC in x-webhook-signature). Lenient: flag, don't hard-block.\nconst sig = headers['x-webhook-signature'] || headers['X-Webhook-Signature'] || '';\nlet verified = false;\ntry {\n  const hmac = crypto.createHmac('sha256', secret).update(JSON.stringify(body)).digest('hex');\n  verified = Boolean(sig && (sig === secret || sig === hmac));\n} catch (e) { verified = false; }\n\n// Find the message across common WaSender shapes.\nconst ev = body.data || body;\nconst msg = ev.messages || ev.message || (ev.event === 'messages.upsert' ? ev.data : null) || ev;\nconst m = Array.isArray(msg) ? msg[0] : msg;\nif (!m) return [];\n\nconst remoteJid = (m.key && m.key.remoteJid) || m.from || m.chatId || ev.from || '';\nif (m.key && m.key.fromMe) return [];           // ignore our own outgoing\nif (/status@broadcast|@g\\.us/.test(remoteJid)) return [];  // ignore status + groups\n\nconst content = m.message || {};\nconst text = content.conversation\n  || (content.extendedTextMessage && content.extendedTextMessage.text)\n  || (content.imageMessage && content.imageMessage.caption)\n  || m.text || m.body || '';\nlet type = 'text';\nif (content.imageMessage || m.type === 'image') type = 'image';\nelse if (content.documentMessage) type = 'document';\nelse if (content.audioMessage) type = 'audio';\n\nreturn [{ json: {\n  message_id: (m.key && m.key.id) || m.id || `${remoteJid}-${m.messageTimestamp || ''}`,\n  phone: String(remoteJid).replace(/@s\\.whatsapp\\.net$/, ''),\n  push_name: m.pushName || ev.pushName || '',\n  body: text,\n  message_type: type,\n  media_url: m.mediaUrl || '',\n  verified,\n  raw: body\n}}];"
+        "jsCode": "// Verify WaSender secret + extract the message. Two MEC groups are processed (set their JIDs in env):\n//   MEC_ORDERS_GROUP_JID = the daily orders/chat group  -> group_type 'orders'\n//   MEC_DOCS_GROUP_JID    = the invoices/documents group -> group_type 'docs'\n// Direct messages stay group_type 'dm'. Any OTHER group is ignored. In a group the real author is\n// key.participant (the sender) — that person is the SALESPERSON who brought the order.\nconst crypto = require('crypto');\nconst secret = $env.WASENDER_WEBHOOK_SECRET || '';\nconst ordersJid = String($env.MEC_ORDERS_GROUP_JID || '').trim();\nconst docsJid = String($env.MEC_DOCS_GROUP_JID || '').trim();\nconst item = $input.first().json;\nconst headers = item.headers || {};\nconst body = item.body || item;\n\nconst sig = headers['x-webhook-signature'] || headers['X-Webhook-Signature'] || '';\nlet verified = false;\ntry { const hmac = crypto.createHmac('sha256', secret).update(JSON.stringify(body)).digest('hex'); verified = Boolean(sig && (sig === secret || sig === hmac)); } catch (e) { verified = false; }\n\nconst ev = body.data || body;\nconst msg = ev.messages || ev.message || (ev.event === 'messages.upsert' ? ev.data : null) || ev;\nconst m = Array.isArray(msg) ? msg[0] : msg;\nif (!m) return [];\nif (m.key && m.key.fromMe) return [];            // ignore our own outgoing\n\nconst remoteJid = (m.key && m.key.remoteJid) || m.from || m.chatId || ev.from || '';\nif (/status@broadcast/.test(remoteJid)) return [];\nconst isGroup = /@g\\.us/.test(remoteJid);\n\nlet group_type = 'dm';\nif (isGroup) {\n  if (ordersJid && remoteJid === ordersJid) group_type = 'orders';\n  else if (docsJid && remoteJid === docsJid) group_type = 'docs';\n  else group_type = 'unknown';                    // record it so its group_jid shows in the inbox (setup), but don't process as an order/doc\n}\n\nconst participant = (m.key && m.key.participant) || m.participant || '';\nconst senderJid = isGroup ? participant : remoteJid;\nconst senderPhone = String(senderJid).replace(/@s\\.whatsapp\\.net$/, '').replace(/@g\\.us$/, '');\nconst senderName = m.pushName || ev.pushName || '';\n\nconst content = m.message || {};\nconst text = content.conversation\n  || (content.extendedTextMessage && content.extendedTextMessage.text)\n  || (content.imageMessage && content.imageMessage.caption)\n  || (content.documentMessage && content.documentMessage.caption)\n  || m.text || m.body || '';\nlet type = 'text';\nif (content.imageMessage || m.type === 'image') type = 'image';\nelse if (content.documentMessage) type = 'document';\nelse if (content.audioMessage) type = 'audio';\n\n// Quoted/replied message id — threads an approval / rejection / quantity adjustment back to the order.\nconst ctx = (content.extendedTextMessage && content.extendedTextMessage.contextInfo)\n  || (content.imageMessage && content.imageMessage.contextInfo)\n  || (content.documentMessage && content.documentMessage.contextInfo) || {};\nconst quoted_message_id = ctx.stanzaId || ctx.quotedMessageId || '';\n\nreturn [{ json: {\n  message_id: (m.key && m.key.id) || m.id || `${remoteJid}-${m.messageTimestamp || ''}`,\n  group_jid: isGroup ? remoteJid : '',\n  group_type,\n  phone: senderPhone,\n  push_name: senderName,\n  salesperson: senderName,\n  body: text,\n  message_type: type,\n  media_url: m.mediaUrl || '',\n  quoted_message_id,\n  verified,\n  raw: body\n}}];"
       },
       "id": "extract",
       "name": "Verify + extract",
@@ -35,7 +35,7 @@
         ] },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  model: $env.OPENAI_BATCH_MODEL || 'gpt-4o-mini',\n  temperature: 0,\n  response_format: { type: 'json_object' },\n  messages: [\n    { role: 'system', content: 'You triage inbound WhatsApp messages for MEC, a food distributor in Saudi Arabia. The text may be Arabic or English. Return STRICT JSON: {\"intent\":\"order|inquiry|complaint|other\",\"products\":[{\"name\":string,\"qty\":number|null,\"unit\":string|null}],\"doc_type\":\"po|invoice|delivery_note|payment|other|null\",\"summary\":string}. Extract products only if clearly an order. Set doc_type when the message is or accompanies a document/image of that kind (purchase order, invoice/فاتورة, delivery note/إشعار تسليم, payment receipt/إيصال دفع); otherwise null. Never invent.' },\n    { role: 'user', content: \"type=\" + String($json.message_type || \"text\") + \" | \" + String($json.body || \"(no text)\") }\n  ]\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  model: $env.OPENAI_BATCH_MODEL || 'gpt-4o-mini',\n  temperature: 0,\n  response_format: { type: 'json_object' },\n  messages: [\n    { role: 'system', content: 'You triage inbound WhatsApp messages for MEC, a food distributor in Saudi Arabia. Text may be Arabic or English. Return STRICT JSON: {\"intent\":\"order|inquiry|complaint|approval|other\",\"products\":[{\"name\":string,\"qty\":number|null,\"unit\":string|null}],\"doc_type\":\"po|invoice|delivery_note|payment|other|null\",\"decision\":\"approve|reject|adjust|null\",\"summary\":string}. In the orders group a message with products and quantities is intent=order. If the message is a REPLY to an earlier order (reply_to=yes) that approves it (موافق/تمام/تم/approved/اعتمد), set decision=approve; if it rejects (مرفوض/لا/rejected/إلغاء), decision=reject; if it changes the quantities, decision=adjust and put the NEW quantities in products. Otherwise decision=null. In the docs group set doc_type for the document/image (purchase order=po, invoice/فاتورة=invoice, delivery note/إشعار تسليم/سند تسليم=delivery_note, payment receipt/إيصال دفع/تحويل=payment) else other. Extract products only for an order or an adjustment. Never invent.' },\n    { role: 'user', content: \"group=\" + String($json.group_type || \"dm\") + \" | reply_to=\" + (String($json.quoted_message_id || \"\") ? \"yes\" : \"no\") + \" | type=\" + String($json.message_type || \"text\") + \" | \" + String($json.body || \"(no text)\") }\n  ]\n}) }}",
         "options": {}
       },
       "id": "classify",
@@ -46,7 +46,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Merge extraction + classification into the Supabase row.\nlet cls = {};\ntry { cls = JSON.parse($json.choices[0].message.content); } catch (e) {}\nconst src = $('Verify + extract').item.json;\nreturn [{ json: {\n  message_id: src.message_id,\n  phone: src.phone,\n  push_name: src.push_name,\n  body: src.body,\n  message_type: src.message_type,\n  media_url: src.media_url,\n  intent: cls.intent || 'other',\n  products: cls.products || [],\n  doc_type: (src.message_type === 'document' || src.message_type === 'image') ? (cls.doc_type && cls.doc_type !== 'null' ? cls.doc_type : 'other') : null,\n  raw: src.raw,\n  verified: src.verified,\n  received_at: $now.toISO()\n}}];"
+        "jsCode": "// Merge extraction + classification into the Supabase row.\nlet cls = {};\ntry { cls = JSON.parse($json.choices[0].message.content); } catch (e) {}\nconst src = $('Verify + extract').item.json;\nconst isDoc = (src.message_type === 'document' || src.message_type === 'image');\nconst decision = (cls.decision && cls.decision !== 'null') ? cls.decision : null;\n// A brand-new order (orders group, no reply, no decision) starts pending. A decision reply does not\n// open a new order — it updates the quoted one (handled in 'Apply order decision').\nlet order_status = null;\nif (src.group_type === 'orders' && cls.intent === 'order' && !decision && !src.quoted_message_id) order_status = 'pending';\nreturn [{ json: {\n  message_id: src.message_id,\n  group_jid: src.group_jid || null,\n  group_type: src.group_type,\n  phone: src.phone,\n  push_name: src.push_name,\n  salesperson: src.salesperson || src.push_name || null,\n  body: src.body,\n  message_type: src.message_type,\n  media_url: src.media_url,\n  intent: cls.intent || 'other',\n  products: cls.products || [],\n  doc_type: (src.group_type === 'docs' || isDoc) ? (cls.doc_type && cls.doc_type !== 'null' ? cls.doc_type : 'other') : null,\n  quoted_message_id: src.quoted_message_id || null,\n  decision,\n  order_status,\n  raw: src.raw,\n  verified: src.verified,\n  received_at: $now.toISO()\n}}];"
       },
       "id": "merge",
       "name": "Build row",
@@ -78,24 +78,23 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "https://wasenderapi.com/api/send-message",
-        "sendHeaders": true,
-        "headerParameters": { "parameters": [
-          { "name": "Authorization", "value": "=Bearer {{ $env.WASENDER_API_TOKEN }}" },
-          { "name": "Content-Type", "value": "application/json" }
-        ] },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ to: $('Build row').item.json.phone, text: 'تم استلام رسالتك ✅ سيتواصل معك فريق MEC قريبًا. / Your message was received — MEC will get back to you shortly.' }) }}",
-        "options": {}
+        "jsCode": "// If this message is a REPLY that approves / rejects / adjusts an order, patch the quoted order row\n// so the portal's approval queue updates automatically (the same as pressing Approve/Reject in-app).\nconst row = $('Build row').item.json;\nconst base = String($env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\\/+$/, '');\nconst key = $env.SUPABASE_SERVICE_ROLE_KEY || '';\nif (row.decision && row.quoted_message_id && base && key) {\n  const patch = {};\n  if (row.decision === 'approve') patch.order_status = 'approved';\n  else if (row.decision === 'reject') patch.order_status = 'rejected';\n  else if (row.decision === 'adjust') { patch.order_status = 'pending'; if ((row.products || []).length) patch.products = row.products; }\n  if (Object.keys(patch).length) {\n    try {\n      await this.helpers.httpRequest({\n        method: 'PATCH',\n        url: base + '/rest/v1/whatsapp_intake?message_id=eq.' + encodeURIComponent(row.quoted_message_id),\n        headers: { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json', Prefer: 'return=minimal' },\n        body: JSON.stringify(patch)\n      });\n    } catch (e) {}\n  }\n}\nreturn [{ json: row }];"
+      },
+      "id": "decision",
+      "name": "Apply order decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 1320, 320 ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Auto-reply is DISABLED for now — JARVIS listens silently and never sends a WhatsApp message,\n// in groups OR direct chats. It only reads/records. To re-enable a DM-only acknowledgement later, set\n// env WASENDER_AUTO_REPLY=1 (it will still never reply inside a group).\nconst row = $('Build row').item.json;\nconst replyOn = String($env.WASENDER_AUTO_REPLY || '') === '1';\nif (replyOn && row.group_type === 'dm' && row.phone) {\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: 'https://wasenderapi.com/api/send-message',\n      headers: { Authorization: 'Bearer ' + ($env.WASENDER_API_TOKEN || ''), 'Content-Type': 'application/json' },\n      body: JSON.stringify({ to: row.phone, text: 'تم استلام رسالتك ✅ سيتواصل معك فريق MEC قريبًا. / Your message was received — MEC will get back to you shortly.' })\n    });\n  } catch (e) {}\n}\nreturn [{ json: row }];"
       },
       "id": "ack",
-      "name": "Auto-acknowledge",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "onError": "continueRegularOutput",
-      "position": [ 1320, 320 ]
+      "name": "Acknowledge (DM only)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 1540, 320 ]
     },
     {
       "parameters": { "respondWith": "text", "responseBody": "ok", "options": {} },
@@ -103,7 +102,7 @@
       "name": "200 OK",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [ 1540, 320 ]
+      "position": [ 1760, 320 ]
     }
   ],
   "connections": {
@@ -111,8 +110,9 @@
     "Verify + extract": { "main": [ [ { "node": "Classify (GPT mini)", "type": "main", "index": 0 } ] ] },
     "Classify (GPT mini)": { "main": [ [ { "node": "Build row", "type": "main", "index": 0 } ] ] },
     "Build row": { "main": [ [ { "node": "Store → Supabase", "type": "main", "index": 0 } ] ] },
-    "Store → Supabase": { "main": [ [ { "node": "Auto-acknowledge", "type": "main", "index": 0 } ] ] },
-    "Auto-acknowledge": { "main": [ [ { "node": "200 OK", "type": "main", "index": 0 } ] ] }
+    "Store → Supabase": { "main": [ [ { "node": "Apply order decision", "type": "main", "index": 0 } ] ] },
+    "Apply order decision": { "main": [ [ { "node": "Acknowledge (DM only)", "type": "main", "index": 0 } ] ] },
+    "Acknowledge (DM only)": { "main": [ [ { "node": "200 OK", "type": "main", "index": 0 } ] ] }
   },
   "settings": { "executionOrder": "v1" },
   "active": false

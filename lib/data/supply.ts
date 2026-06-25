@@ -31,11 +31,16 @@ export type SupplyHistory = {
 export type WhatsappMsg = {
   message_id: string; phone: string; push_name: string; body: string
   message_type: string; media_url: string
-  intent: 'order' | 'inquiry' | 'complaint' | 'other'
+  intent: 'order' | 'inquiry' | 'complaint' | 'approval' | 'other'
   products: { name: string; qty?: number | null; unit?: string | null }[]
   verified: boolean; received_at: string
   order_status?: 'pending' | 'approved' | 'rejected' | null
   doc_type?: 'po' | 'invoice' | 'delivery_note' | 'payment' | 'other' | null
+  group_jid?: string | null
+  group_type?: 'orders' | 'docs' | 'dm' | null
+  salesperson?: string | null              // sender display name — who brought the order
+  quoted_message_id?: string | null        // reply target (threads approve/reject/adjust)
+  decision?: 'approve' | 'reject' | 'adjust' | null
 }
 
 function cfg() {

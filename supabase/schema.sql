@@ -69,6 +69,12 @@ create table if not exists public.whatsapp_intake (
 );
 alter table public.whatsapp_intake add column if not exists order_status text;
 alter table public.whatsapp_intake add column if not exists doc_type text;
+-- Two-group intake (orders group + documents group), sender→salesperson attribution, reply threading.
+alter table public.whatsapp_intake add column if not exists group_jid text;          -- which WhatsApp group
+alter table public.whatsapp_intake add column if not exists group_type text;         -- orders | docs | dm
+alter table public.whatsapp_intake add column if not exists salesperson text;         -- sender name = who brought the order
+alter table public.whatsapp_intake add column if not exists quoted_message_id text;   -- reply target (threads approve/reject/adjust)
+alter table public.whatsapp_intake add column if not exists decision text;            -- approve | reject | adjust (on a reply)
 
 -- App users (secure auth). Passwords are stored ONLY as a scrypt hash (scrypt$salt$hash) — never
 -- plaintext, never sent to the browser. Read/written server-side via /api/auth (service-role).

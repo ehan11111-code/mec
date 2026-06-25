@@ -57,7 +57,7 @@
     "subline": "طلبات ملتقَطة من واتساب عبر WaSender ومُحلّلة بواسطة جارفيس — اعتمد أو ارفض كل طلب قبل توجيهه للمستودع.",
     "kPending": "قيد الانتظار", "kApproved": "معتمد", "kRejected": "مرفوض", "kTotal": "إجمالي الطلبات",
     "tab_pending": "قيد الانتظار", "tab_approved": "معتمد", "tab_rejected": "مرفوض",
-    "approve": "اعتماد", "reject": "رفض", "refresh": "تحديث", "noProducts": "لم تُحلَّل منتجات — راجع الرسالة.",
+    "approve": "اعتماد", "reject": "رفض", "refresh": "تحديث", "noProducts": "لم تُحلَّل منتجات — راجع الرسالة.", "broughtBy": "المندوب: {name}",
     "empty_pending": "لا توجد طلبات بانتظار الاعتماد", "empty_approved": "لا توجد طلبات معتمدة بعد", "empty_rejected": "لا توجد طلبات مرفوضة",
     "emptyHint": "تظهر طلبات واتساب الجديدة هنا تلقائيًا، مُحلّلة إلى بنود، جاهزة للاعتماد.",
     "source": "المصدر: واتساب (WaSender) ← تصنيف جارفيس ← Supabase whatsapp_intake",
