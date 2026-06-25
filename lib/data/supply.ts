@@ -44,6 +44,16 @@ export type WhatsappMsg = {
   order_no?: string | null                 // order / invoice / reference number
   client_name?: string | null              // client/company named on the order or document
   recipient?: string | null                // receiver / driver (المستلم) on a delivery note
+  raw?: unknown                            // full original webhook payload (admin debug / audit)
+}
+
+export type EmailMsg = {
+  message_id: string; thread_id?: string | null; from_email: string; from_name: string
+  subject: string; body: string
+  intent: 'order' | 'inquiry' | 'complaint' | 'supplier' | 'payment' | 'other'
+  products: { name: string; qty?: number | null; unit?: string | null }[]
+  doc_type?: string | null; has_attachment?: boolean; attachments?: string[]
+  summary?: string | null; received_at: string
 }
 
 function cfg() {
@@ -79,6 +89,9 @@ export function getSupplyHistory(limit = 500) {
 }
 export function getWhatsappOrders(limit = 100) {
   return read<WhatsappMsg>(`whatsapp_intake?intent=eq.order&select=*&order=received_at.desc&limit=${limit}`)
+}
+export function getEmailIntake(limit = 200) {
+  return read<EmailMsg>(`email_intake?select=*&order=received_at.desc&limit=${limit}`)
 }
 
 // Server-side: set a WhatsApp order's approval status. Returns true on success.
