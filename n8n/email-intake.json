@@ -1,0 +1,88 @@
+{
+  "name": "MEC · Email Intake (Gmail)",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": { "item": [ { "mode": "everyMinute" } ] },
+        "simple": true,
+        "filters": {},
+        "options": {}
+      },
+      "id": "trigger",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [ 220, 320 ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize a Gmail message (simplified output) into a clean row.\nconst m = $input.first().json || {};\nconst rawFrom = m.From || m.from || (m.headers && (m.headers.from || m.headers.From)) || '';\nconst mt = String(rawFrom).match(/<([^>]+)>/);\nconst from_email = String(mt ? mt[1] : rawFrom).trim().toLowerCase();\nconst from_name = String(rawFrom).replace(/<[^>]+>/, '').replace(/\"/g, '').trim() || from_email;\nconst subject = m.Subject || m.subject || (m.headers && (m.headers.subject || m.headers.Subject)) || '';\nconst body = m.text || m.textPlain || m.snippet || (m.textHtml ? String(m.textHtml).replace(/<[^>]+>/g, ' ') : '') || '';\nconst atts = [];\nconst rawAtts = m.attachments || (m.payload && m.payload.attachments) || [];\nif (Array.isArray(rawAtts)) for (const a of rawAtts) atts.push(a.fileName || a.filename || a.name || 'attachment');\nelse if (rawAtts && typeof rawAtts === 'object') for (const k of Object.keys(rawAtts)) atts.push(rawAtts[k].fileName || k);\nreturn [{ json: {\n  message_id: m.id || m.messageId || '',\n  thread_id: m.threadId || '',\n  from_email,\n  from_name,\n  subject: String(subject).slice(0, 500),\n  body: String(body).replace(/\\s+/g, ' ').trim().slice(0, 4000),\n  attachments: atts,\n  has_attachment: atts.length > 0\n}}];"
+      },
+      "id": "normalize",
+      "name": "Normalize email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 440, 320 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
+          { "name": "Content-Type", "value": "application/json" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: $env.OPENAI_BATCH_MODEL || 'gpt-4o-mini',\n  temperature: 0,\n  response_format: { type: 'json_object' },\n  messages: [\n    { role: 'system', content: 'You triage the company inbox for MEC, a food importer/distributor in Saudi Arabia. Email may be Arabic or English. Return STRICT JSON: {\"intent\":\"order|inquiry|complaint|supplier|payment|other\",\"products\":[{\"name\":string,\"qty\":number|null,\"unit\":string|null}],\"doc_type\":\"po|invoice|delivery_note|payment|quote|other|null\",\"summary\":string}. intent=order when a client is placing/confirming an order (extract its products+quantities); inquiry for questions; supplier for incoming supplier offers/POs; payment for remittance/transfer confirmations. doc_type reflects an attached or described document (po, invoice/فاتورة, delivery_note/سند تسليم, payment/إيصال/تحويل, quote/عرض سعر) else null. Never invent products.' },\n    { role: 'user', content: \"subject: \" + String($json.subject || '(none)') + \"\\nfrom: \" + String($json.from_email || '') + \"\\nattachments: \" + String(($json.attachments || []).join(', ') || 'none') + \"\\n\\n\" + String($json.body || '(no body)') }\n  ]\n}) }}",
+        "options": {}
+      },
+      "id": "classify",
+      "name": "Classify (GPT mini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [ 660, 320 ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge classification into the Supabase row.\nlet cls = {};\ntry { cls = JSON.parse($json.choices[0].message.content); } catch (e) {}\nconst src = $('Normalize email').item.json;\nreturn [{ json: {\n  message_id: src.message_id,\n  thread_id: src.thread_id || null,\n  from_email: src.from_email,\n  from_name: src.from_name,\n  subject: src.subject,\n  body: src.body,\n  intent: cls.intent || 'other',\n  products: cls.products || [],\n  doc_type: cls.doc_type && cls.doc_type !== 'null' ? cls.doc_type : (src.has_attachment ? 'other' : null),\n  has_attachment: src.has_attachment,\n  attachments: src.attachments || [],\n  summary: cls.summary || null,\n  received_at: $now.toISO()\n}}];"
+      },
+      "id": "merge",
+      "name": "Build row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 880, 320 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/email_intake?on_conflict=message_id",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+          { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+          { "name": "Content-Type", "value": "application/json" },
+          { "name": "Prefer", "value": "resolution=merge-duplicates" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "store",
+      "name": "Store → Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [ 1100, 320 ]
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": { "main": [ [ { "node": "Normalize email", "type": "main", "index": 0 } ] ] },
+    "Normalize email": { "main": [ [ { "node": "Classify (GPT mini)", "type": "main", "index": 0 } ] ] },
+    "Classify (GPT mini)": { "main": [ [ { "node": "Build row", "type": "main", "index": 0 } ] ] },
+    "Build row": { "main": [ [ { "node": "Store → Supabase", "type": "main", "index": 0 } ] ] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "active": false
+}

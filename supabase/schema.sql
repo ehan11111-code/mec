@@ -76,6 +76,24 @@ alter table public.whatsapp_intake add column if not exists salesperson text;   
 alter table public.whatsapp_intake add column if not exists quoted_message_id text;   -- reply target (threads approve/reject/adjust)
 alter table public.whatsapp_intake add column if not exists decision text;            -- approve | reject | adjust (on a reply)
 
+-- Email intake (one row per inbound company email; written by n8n/email-intake.json via the Gmail node).
+create table if not exists public.email_intake (
+  message_id     text primary key,            -- Gmail message id
+  thread_id      text,
+  from_email     text,
+  from_name      text,
+  subject        text,
+  body           text,
+  intent         text,            -- order | inquiry | complaint | supplier | payment | other (GPT)
+  products       jsonb default '[]'::jsonb,
+  doc_type       text,            -- po | invoice | delivery_note | payment | quote | other (if a document)
+  has_attachment boolean default false,
+  attachments    jsonb default '[]'::jsonb,   -- attachment file names
+  summary        text,
+  received_at    timestamptz default now()
+);
+alter table public.email_intake enable row level security;  -- service-role only (no anon policy)
+
 -- App users (secure auth). Passwords are stored ONLY as a scrypt hash (scrypt$salt$hash) — never
 -- plaintext, never sent to the browser. Read/written server-side via /api/auth (service-role).
 create table if not exists public.app_users (
