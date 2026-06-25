@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifySession, SESSION_COOKIE } from '@/lib/auth/server'
 import { permissionsFor } from '@/lib/auth/users'
+import { archiveWhatsapp } from '@/lib/data/supply'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,10 +10,11 @@ function cfg() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   return url && key ? { url: url.replace(/\/+$/, ''), key } : null
 }
-// Tables that hold test data the admin/CEO may wipe before launch. Each delete uses a where-clause that
-// matches every row (id not null) — PostgREST refuses an unbounded DELETE without a filter.
+// Tables that hold test data the admin/CEO may clear before launch.
+// - whatsapp: the orders/approvals/documents we ran as tests are ARCHIVED (hidden from the portal but
+//   kept in the automation audit log) — not deleted. Counted as LIVE (non-archived) rows.
+// - contact / messages: deleted outright. PostgREST refuses an unbounded write, so each carries a filter.
 const TARGETS: Record<string, string> = {
-  whatsapp: 'whatsapp_intake?message_id=neq.__none__',
   contact: 'contact_inquiries?id=gt.0',
   messages: 'internal_messages?id=gt.0'
 }
@@ -27,24 +29,38 @@ async function count(c: { url: string; key: string }, path: string): Promise<num
   } catch { return 0 }
 }
 
-// GET → counts per clearable table (for the admin console).
+// GET → counts per clearable table (for the admin console). WhatsApp counts only LIVE (non-archived) rows.
 export async function GET(req: NextRequest) {
   const s = verifySession(req.cookies.get(SESSION_COOKIE)?.value)
   if (!s || !permissionsFor(s.r).includes('manageData')) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   const c = cfg(); if (!c) return NextResponse.json({ configured: false, counts: {} })
-  const counts = { whatsapp: await count(c, 'whatsapp_intake?select=message_id'), contact: await count(c, 'contact_inquiries?select=id'), messages: await count(c, 'internal_messages?select=id') }
+  // `archived=eq.false` would 400 if the column hasn't been added yet; fall back to the total count.
+  let whatsapp = await count(c, 'whatsapp_intake?select=message_id&archived=eq.false')
+  if (whatsapp === 0) {
+    const total = await count(c, 'whatsapp_intake?select=message_id')
+    const archived = await count(c, 'whatsapp_intake?select=message_id&archived=eq.true')
+    whatsapp = archived > 0 ? total - archived : total
+  }
+  const counts = { whatsapp, contact: await count(c, 'contact_inquiries?select=id'), messages: await count(c, 'internal_messages?select=id') }
   return NextResponse.json({ configured: true, counts })
 }
 
-// POST { target: 'whatsapp'|'contact'|'messages' } → delete all rows in that table (admin/CEO only).
+// POST { target: 'whatsapp'|'contact'|'messages' } → clear that data (admin/CEO only).
 export async function POST(req: NextRequest) {
   const s = verifySession(req.cookies.get(SESSION_COOKIE)?.value)
   if (!s || !permissionsFor(s.r).includes('manageData')) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   let b: { target?: string }
   try { b = await req.json() } catch { return NextResponse.json({ error: 'bad_request' }, { status: 400 }) }
+  const c = cfg(); if (!c) return NextResponse.json({ error: 'store_unavailable' }, { status: 503 })
+
+  // WhatsApp test data is archived (kept in the audit log), never deleted.
+  if (b.target === 'whatsapp') {
+    const ok = await archiveWhatsapp()
+    return ok ? NextResponse.json({ ok: true, target: 'whatsapp', mode: 'archived' }) : NextResponse.json({ error: 'archive_failed' }, { status: 502 })
+  }
+
   const path = b.target ? TARGETS[b.target] : undefined
   if (!path) return NextResponse.json({ error: 'invalid_target' }, { status: 400 })
-  const c = cfg(); if (!c) return NextResponse.json({ error: 'store_unavailable' }, { status: 503 })
   try {
     const r = await fetch(`${c.url}/rest/v1/${path}`, {
       method: 'DELETE',

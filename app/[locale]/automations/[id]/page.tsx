@@ -29,12 +29,12 @@ export default function AutomationDetailPage({ params }: { params: Promise<{ id:
 
   useEffect(() => {
     if (!source) return
-    const url = source === 'whatsapp' ? '/api/whatsapp' : '/api/email'
+    const url = source === 'whatsapp' ? '/api/whatsapp?all=1' : '/api/email'
     const load = () => fetch(url).then(r => r.json()).then(d => setRows(Array.isArray(d) ? d : [])).catch(() => setRows([]))
     load(); const t = setInterval(load, 20000); return () => clearInterval(t)
   }, [source])
 
-  const refresh = async () => { if (!source) return; setRefreshing(true); const url = source === 'whatsapp' ? '/api/whatsapp' : '/api/email'; try { const d = await fetch(url).then(r => r.json()); if (Array.isArray(d)) setRows(d) } catch {} setRefreshing(false) }
+  const refresh = async () => { if (!source) return; setRefreshing(true); const url = source === 'whatsapp' ? '/api/whatsapp?all=1' : '/api/email'; try { const d = await fetch(url).then(r => r.json()); if (Array.isArray(d)) setRows(d) } catch {} setRefreshing(false) }
 
   const list = rows ?? []
   const bucket = (m: any): Filter => {
@@ -148,6 +148,7 @@ function WaRow({ m, t, fmt }: { m: WhatsappMsg; t: any; fmt: (s: string) => stri
             {m.doc_type && <Chip tone="warn">{m.doc_type}</Chip>}
             {m.order_status && <Chip tone={m.order_status === 'approved' ? 'success' : m.order_status === 'rejected' ? 'accent' : 'warn'}>{m.order_status}</Chip>}
             {m.decision && <Chip tone="accent">↩ {m.decision}</Chip>}
+            {m.archived && <Chip>{t('archivedTest')}</Chip>}
           </div>
           {(m.order_no || m.client_name || m.recipient) && (
             <div className="mt-1 text-[11px] text-text-soft flex flex-wrap gap-x-3">

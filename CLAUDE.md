@@ -84,6 +84,28 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-25 — Test data archived (not deleted → kept in the automation log) + automated private-repo
+  backup + cloud-drive backup-of-backup.** Two-part run. **(1) Clear test data, keep the audit trail:** the
+  WhatsApp orders/approvals/documents we ran while testing now **archive** instead of delete. New
+  `archived` boolean on `whatsapp_intake` (schema.sql, idempotent). Operational reads (`getWhatsappIntake`/
+  `getWhatsappOrders`, filtered app-side so it's safe before the column exists) hide archived rows, so the
+  **Approvals queue, Documents page, WhatsApp inbox, notifications** go clean — but the **automation log**
+  (`/automations/whatsapp-intake`) calls `/api/whatsapp?all=1` and still shows every row with an
+  **"archived · test"** chip for audit/debug. Admin console **Clear** for WhatsApp now calls
+  `archiveWhatsapp()` (PATCH archived=true; contact/internal-messages still delete); its count shows only
+  live rows. `scripts/archive-whatsapp-test.js` archives existing rows in one shot (`--restore` to undo).
+  **(2) Backup:** new independent backup separate from the Vercel repo — `scripts/backup.ps1` auto-commits
+  working changes, pushes to a **private `backup` GitHub remote** (never `origin`, so no accidental
+  deploy), writes a full **`git bundle`** to a synced **cloud-drive** folder, copies `.env.local` to
+  drive `/secrets` (never GitHub), and prunes old bundles. `scripts/backup-install.ps1` registers a
+  **Windows Scheduled Task** so it runs automatically. Config `scripts/backup.config.json` (gitignored);
+  full guide in `BACKUP.md`. Build green (47 routes), EN/AR parity.
+  - **User actions:** (a) re-run `supabase/schema.sql` (adds `archived`), then `node
+    scripts/archive-whatsapp-test.js` (or click **Clear** in the admin console) to archive the test rows;
+    (b) create a private GitHub backup repo + add it as the `backup` remote, pick a cloud-drive folder,
+    copy `backup.config.example.json` → `backup.config.json` and fill it, then run `backup-install.ps1`
+    (see `BACKUP.md`). Awaiting the user's choice of GitHub-repo method, drive, and cadence.
+
 - **2026-06-25 — Receivables zeroed + margins made 100% consistent + WhatsApp TWO-group intake (orders +
   docs), sender→salesperson, reply threading, no auto-reply.** Three-part run. **(1) Zero receivables:**
   single source of truth `RECEIVABLES_ZEROED` in `dataset.ts` treats every historical invoice as collected

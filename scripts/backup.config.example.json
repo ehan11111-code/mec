@@ -1,0 +1,21 @@
+{
+  "_comment": "Copy this to scripts/backup.config.json (gitignored) and fill it in. backup.ps1 reads it.",
+
+  "backupRemote": "backup",
+  "_backupRemote": "Name of the git remote that points at your PRIVATE backup repo (separate from 'origin', which deploys to Vercel). Create it once: git remote add backup https://github.com/<you>/mec-portal-backup.git",
+
+  "branch": "main",
+
+  "driveDir": "C:\\Users\\anmar\\My Drive\\MEC-Portal-Backup",
+  "_driveDir": "Folder inside a synced cloud drive (Google Drive for Desktop, or OneDrive). backup.ps1 drops a full git bundle + secrets here, so it syncs to the cloud automatically. Set to \"\" to skip the drive copy.",
+
+  "keepBundles": 14,
+  "_keepBundles": "How many timestamped .bundle snapshots to keep in driveDir before pruning the oldest.",
+
+  "includeSecrets": true,
+  "secretsFiles": [".env.local"],
+  "_secrets": "Gitignored files copied into driveDir/secrets ONLY (never to GitHub) so a laptop loss is fully recoverable.",
+
+  "autoCommit": true,
+  "_autoCommit": "When true, backup.ps1 commits any working-tree changes before pushing to the backup remote (captures in-progress work). It NEVER pushes to origin, so it can't trigger a Vercel deploy."
+}

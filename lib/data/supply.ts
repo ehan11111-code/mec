@@ -44,6 +44,7 @@ export type WhatsappMsg = {
   order_no?: string | null                 // order / invoice / reference number
   client_name?: string | null              // client/company named on the order or document
   recipient?: string | null                // receiver / driver (المستلم) on a delivery note
+  archived?: boolean | null                // test/cleared row — hidden from the portal, kept in the audit log
   raw?: unknown                            // full original webhook payload (admin debug / audit)
 }
 
@@ -81,14 +82,21 @@ export const supplyConfigured = () => !!cfg()
 export function getSupplyIntel() {
   return read<SupplyIntel>('supply_intel?select=*&order=generated_at.desc')
 }
-export function getWhatsappIntake(limit = 100) {
-  return read<WhatsappMsg>(`whatsapp_intake?select=*&order=received_at.desc&limit=${limit}`)
+// Operational reads hide `archived` rows (test data the admin cleared). The automation audit log passes
+// includeArchived=true to keep showing them. Filtering happens in app code so it works even before the
+// `archived` column exists (an undefined value is treated as not-archived).
+const liveOnly = (rows: WhatsappMsg[]) => rows.filter(r => !r.archived)
+
+export async function getWhatsappIntake(limit = 100, includeArchived = false) {
+  const rows = await read<WhatsappMsg>(`whatsapp_intake?select=*&order=received_at.desc&limit=${limit}`)
+  return includeArchived ? rows : liveOnly(rows)
 }
 export function getSupplyHistory(limit = 500) {
   return read<SupplyHistory>(`supply_intel_history?select=*&order=generated_at.asc&limit=${limit}`)
 }
-export function getWhatsappOrders(limit = 100) {
-  return read<WhatsappMsg>(`whatsapp_intake?intent=eq.order&select=*&order=received_at.desc&limit=${limit}`)
+export async function getWhatsappOrders(limit = 100, includeArchived = false) {
+  const rows = await read<WhatsappMsg>(`whatsapp_intake?intent=eq.order&select=*&order=received_at.desc&limit=${limit}`)
+  return includeArchived ? rows : liveOnly(rows)
 }
 export function getEmailIntake(limit = 200) {
   return read<EmailMsg>(`email_intake?select=*&order=received_at.desc&limit=${limit}`)
@@ -103,6 +111,26 @@ export async function setOrderStatus(messageId: string, status: 'approved' | 're
       method: 'PATCH',
       headers: { apikey: c.key, Authorization: `Bearer ${c.key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify({ order_status: status }), cache: 'no-store'
+    })
+    return r.ok
+  } catch { return false }
+}
+
+// Server-side: archive WhatsApp rows so they disappear from the portal (orders / approvals / documents /
+// inbox) but stay in the automation audit log. `restore` flips them back. Without a filter it archives
+// every row (used by the admin "clear test data" action before launch). Returns true on success.
+export async function archiveWhatsapp(opts: { restore?: boolean; before?: string } = {}): Promise<boolean> {
+  const c = cfg()
+  if (!c) return false
+  // PostgREST refuses an unbounded write, so always carry a where-clause (every row by default).
+  const where = opts.before
+    ? `received_at=lte.${encodeURIComponent(opts.before)}`
+    : 'message_id=neq.__none__'
+  try {
+    const r = await fetch(`${c.url}/rest/v1/whatsapp_intake?${where}`, {
+      method: 'PATCH',
+      headers: { apikey: c.key, Authorization: `Bearer ${c.key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ archived: !opts.restore }), cache: 'no-store'
     })
     return r.ok
   } catch { return false }
