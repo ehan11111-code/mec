@@ -59,10 +59,15 @@ if ($hasRemote) {
   $pushOut = (git push $remote $branch 2>&1 | Out-String)
   $code = $LASTEXITCODE
   $ErrorActionPreference = $eap
-  # keep real git lines; drop PowerShell's NativeCommandError decoration (stderr is normal for git)
-  $noise = '^(At |\+ |\s*~|CategoryInfo|FullyQualifiedErrorId|git : )'
-  foreach ($l in ($pushOut -split "`r?`n" | Where-Object { $_.Trim() -ne '' -and $_ -notmatch $noise })) { Log "  git: $($l.Trim())" }
-  if ($code -eq 0) { Log "Pushed $branch to '$remote'." } else { Log "Push to '$remote' FAILED (git exit $code)." }
+  # git writes normal progress to stderr (PowerShell dresses it up as NativeCommandError noise), so on
+  # success just log the summary; only dump git's raw output when the push actually failed.
+  if ($code -eq 0) {
+    $ref = ($pushOut -split "`r?`n" | Where-Object { $_ -match '->' } | Select-Object -First 1)
+    Log "Pushed $branch to '$remote'.$(if ($ref) { ' (' + $ref.Trim() + ')' })"
+  } else {
+    Log "Push to '$remote' FAILED (git exit $code):"
+    foreach ($l in ($pushOut -split "`r?`n" | Where-Object { $_.Trim() -ne '' })) { Log "  git: $($l.Trim())" }
+  }
 } else {
   Log "Remote '$remote' not configured - skipping GitHub push. Add it with: git remote add $remote <url>"
 }
