@@ -84,6 +84,33 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-25 — Receivables zeroed + margins made 100% consistent + WhatsApp TWO-group intake (orders +
+  docs), sender→salesperson, reply threading, no auto-reply.** Three-part run. **(1) Zero receivables:**
+  single source of truth `RECEIVABLES_ZEROED` in `dataset.ts` treats every historical invoice as collected
+  → outstanding receivables read **0** everywhere (Control Center, Analytics→Collections, CRM balances/risk,
+  Operations House payments-due, concerns). The "uncollected receivables" + "high-risk clients" concerns no
+  longer fire. Verified revenue 31,084,511 = collected, outstanding 0. **(2) Margins correct & consistent:**
+  purchase unit cost is now **quantity-weighted** (by cartons bought) in both the margin matcher and the
+  inventory cost matcher; per-product avg sell = pre-VAT revenue ÷ units (realized, qty-weighted) not a mean
+  of list prices; `marginByCategory` now **derives from the per-product gross profit** (revenue-weighted) so
+  product/category/overall reconcile (category revenue stays post-VAT to match the Sales tab). Verified
+  overall 7.8% on 105 priced products; Beef 10.8% / Poultry 5.1% / Lamb 7.1%. **(3) WhatsApp two groups:**
+  the intake workflow used to DROP all group messages — rewritten (`n8n/whatsapp-intake.json`, redeployed
+  `NzuuId3FYrcqaAkb`) to listen in **two groups** via `MEC_ORDERS_GROUP_JID` (orders + quantities; the
+  **sender is the salesperson** — whoever sends it brought it; new orders open 'pending' in approvals) and
+  `MEC_DOCS_GROUP_JID` (delivery notes/invoices/payments → doc_type). **Reply threading:** a reply that
+  approves/rejects/adjusts quantities PATCHes the quoted order (order_status/products) so the portal queue
+  updates itself. **No auto-reply** anywhere (groups or DMs) per user — JARVIS listens silently
+  (`WASENDER_AUTO_REPLY=1` re-enables a DM-only ack, never in a group). Unknown groups are recorded as
+  `group_type='unknown'` so their JID shows in the inbox for setup. Schema: whatsapp_intake gains
+  `group_jid, group_type, salesperson, quoted_message_id, decision`. Approval card shows the salesperson.
+  Build green, EN/AR parity, deployed.
+  - **User actions:** (a) re-run `supabase/schema.sql` (adds the 5 columns); (b) once JARVIS is in the two
+    groups, give me each group's JID (or read it from the inbox where unknown-group messages now show their
+    `group_jid`) so I set `MEC_ORDERS_GROUP_JID` / `MEC_DOCS_GROUP_JID` in `.env.local` and redeploy — then
+    orders/docs route correctly. Doc→order matching is by sender for now; richer matching (by invoice/order
+    ref via OCR) is a later enhancement.
+
 - **2026-06-24 — Stock-by-SKU now reconciles with the headline + live warehouse on-hand on every product
   page.** User: the SKU table and the overall on-hand "don't match" (summing the 45-row on-hand column gave
   14,888, headline was 3,483) — "no room for errors." Fix: the table adds up to the headline **by
