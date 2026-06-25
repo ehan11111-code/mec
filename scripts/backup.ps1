@@ -51,14 +51,16 @@ if ($cfg.autoCommit) {
 }
 
 # --- 2. push to the private backup remote --------------------------------------
+# git writes normal progress to stderr, so judge success by the EXIT CODE, not by stderr. Run native git
+# with ErrorActionPreference=Continue so its stderr can't raise a (false) terminating error.
 $hasRemote = (git remote) -contains $remote
 if ($hasRemote) {
-  try {
-    git push $remote $branch 2>&1 | ForEach-Object { Log "  git: $_" }
-    Log "Pushed $branch to '$remote'."
-  } catch {
-    Log "Push to '$remote' FAILED: $_"
-  }
+  $eap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+  $pushOut = (git push $remote $branch 2>&1 | Out-String)
+  $code = $LASTEXITCODE
+  $ErrorActionPreference = $eap
+  foreach ($l in ($pushOut -split "`r?`n" | Where-Object { $_.Trim() -ne '' })) { Log "  git: $($l.Trim())" }
+  if ($code -eq 0) { Log "Pushed $branch to '$remote'." } else { Log "Push to '$remote' FAILED (git exit $code)." }
 } else {
   Log "Remote '$remote' not configured - skipping GitHub push. Add it with: git remote add $remote <url>"
 }
@@ -75,7 +77,10 @@ if ($driveReady) {
 
   $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
   $bundle = Join-Path $drive "mec-portal-$stamp.bundle"
-  git bundle create $bundle --all 2>&1 | ForEach-Object { Log "  bundle: $_" }
+  $eap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+  $bundleOut = (git bundle create $bundle --all 2>&1 | Out-String); $bcode = $LASTEXITCODE
+  $ErrorActionPreference = $eap
+  if ($bcode -ne 0) { Log "  bundle FAILED (git exit $bcode): $($bundleOut.Trim())" }
   # also keep a stable "latest" pointer
   Copy-Item $bundle (Join-Path $drive 'mec-portal-latest.bundle') -Force
   Log "Wrote git bundle -> $bundle"
