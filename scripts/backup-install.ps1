@@ -1,8 +1,8 @@
-<#
+﻿<#
   Register (or update) a Windows Scheduled Task that runs scripts\backup.ps1 automatically, so every
   change you make is backed up to the private GitHub repo + cloud drive without you doing anything.
 
-  Run from an ordinary PowerShell (no admin needed — the task runs as the current user):
+  Run from an ordinary PowerShell (no admin needed - the task runs as the current user):
     powershell -ExecutionPolicy Bypass -File scripts\backup-install.ps1                 # every 15 min
     powershell -ExecutionPolicy Bypass -File scripts\backup-install.ps1 -IntervalMinutes 30
     powershell -ExecutionPolicy Bypass -File scripts\backup-install.ps1 -Remove          # uninstall
@@ -38,6 +38,6 @@ $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoi
 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings `
   -Description 'Auto-backup of the MEC Operations Portal to the private GitHub repo + cloud drive.' -Force | Out-Null
 
-Write-Output "Installed scheduled task '$taskName' — runs every $IntervalMinutes minute(s) as $env:USERNAME."
+Write-Output "Installed scheduled task '$taskName' - runs every $IntervalMinutes minute(s) as $env:USERNAME."
 Write-Output "Check it: Get-ScheduledTask -TaskName '$taskName' | Get-ScheduledTaskInfo"
 Write-Output "Run it now: Start-ScheduledTask -TaskName '$taskName'"

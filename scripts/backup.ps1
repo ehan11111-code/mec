@@ -1,11 +1,11 @@
-<#
-  MEC Operations Portal — automated backup.
+﻿<#
+  MEC Operations Portal - automated backup.
 
   Captures a full copy of the project so a laptop loss is fully recoverable:
-    1. (optional) commits any working-tree changes  — so in-progress work is never lost
+    1. (optional) commits any working-tree changes  - so in-progress work is never lost
     2. pushes the branch to a PRIVATE GitHub backup repo (the 'backup' remote, NOT 'origin')
     3. writes a full `git bundle` (whole history in one file) into a synced cloud-drive folder
-    4. copies gitignored secrets (.env.local) into that folder's /secrets — drive only, never GitHub
+    4. copies gitignored secrets (.env.local) into that folder's /secrets - drive only, never GitHub
     5. prunes old timestamped bundles
 
   It NEVER pushes to 'origin', so it can't trigger a Vercel deploy. Safe to run on a schedule.
@@ -18,16 +18,17 @@ $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
 
+$logFile = Join-Path $repo 'backup.log'
 function Log($msg) {
   $line = "[{0}] {1}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $msg
-  Write-Output $line
-  Add-Content -Path (Join-Path $repo 'backup.log') -Value $line -Encoding utf8
+  Write-Host $line
+  try { [System.IO.File]::AppendAllText($logFile, $line + [Environment]::NewLine) } catch {}
 }
 
 # --- load config ---------------------------------------------------------------
 $cfgPath = Join-Path $PSScriptRoot 'backup.config.json'
 if (-not (Test-Path $cfgPath)) {
-  Log "No scripts/backup.config.json — copy backup.config.example.json and fill it in. Aborting."
+  Log "No scripts/backup.config.json - copy backup.config.example.json and fill it in. Aborting."
   exit 1
 }
 $cfg = Get-Content $cfgPath -Raw | ConvertFrom-Json
@@ -59,11 +60,16 @@ if ($hasRemote) {
     Log "Push to '$remote' FAILED: $_"
   }
 } else {
-  Log "Remote '$remote' not configured — skipping GitHub push. Add it with: git remote add $remote <url>"
+  Log "Remote '$remote' not configured - skipping GitHub push. Add it with: git remote add $remote <url>"
 }
 
 # --- 3 & 4. cloud-drive bundle + secrets ---------------------------------------
-if ($cfg.driveDir -and $cfg.driveDir.Trim() -ne '') {
+$driveRoot = if ($cfg.driveDir) { Split-Path -Qualifier $cfg.driveDir -ErrorAction SilentlyContinue } else { $null }
+$driveReady = $cfg.driveDir -and $cfg.driveDir.Trim() -ne '' -and ((-not $driveRoot) -or (Test-Path "$driveRoot\"))
+if ($cfg.driveDir -and $cfg.driveDir.Trim() -ne '' -and -not $driveReady) {
+  Log "Drive '$($cfg.driveDir)' not mounted yet (Google Drive not running?) - GitHub backup done, skipping drive copy this run."
+}
+if ($driveReady) {
   $drive = $cfg.driveDir
   if (-not (Test-Path $drive)) { New-Item -ItemType Directory -Force -Path $drive | Out-Null }
 
@@ -88,7 +94,7 @@ if ($cfg.driveDir -and $cfg.driveDir.Trim() -ne '') {
   $old = Get-ChildItem $drive -Filter 'mec-portal-2*.bundle' | Sort-Object LastWriteTime -Descending | Select-Object -Skip $keep
   foreach ($o in $old) { Remove-Item $o.FullName -Force; Log "Pruned old bundle $($o.Name)" }
 } else {
-  Log "No driveDir configured — skipping cloud-drive copy."
+  Log "No driveDir configured - skipping cloud-drive copy."
 }
 
 Log "=== backup done ==="
