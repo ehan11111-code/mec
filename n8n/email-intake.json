@@ -1,4 +1,5 @@
 {
+  "_note": "LIVE in n8n (id q8fWuhdAg3DuWEuW) with the Gmail OAuth credential 'MEC Gmail - ayhatlani' attached to the trigger node. Do NOT re-run scripts/n8n-deploy.js for this workflow — a redeploy would overwrite the node and strip the credential. To change it, edit in the n8n UI, or redeploy then re-select the Gmail credential on the trigger.",
   "name": "MEC · Email Intake (Gmail)",
   "nodes": [
     {

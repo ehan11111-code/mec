@@ -71,7 +71,7 @@ export const automations: Automation[] = [
     ]
   },
   {
-    id: 'email-intake', dept: 'documents', kind: 'external', triggerKind: 'schedule', cadenceHours: 1, status: 'planned', phase: 2, webhookEnv: 'NEXT_PUBLIC_N8N_EMAIL_INTAKE',
+    id: 'email-intake', dept: 'documents', kind: 'external', triggerKind: 'schedule', cadenceHours: 1, status: 'live', phase: 2, webhookEnv: 'NEXT_PUBLIC_N8N_EMAIL_INTAKE',
     name: { en: 'Email Inbox Intake (Gmail)', ar: 'استقبال صندوق البريد (Gmail)' },
     trigger: { en: 'New email in the company Gmail inbox', ar: 'بريد جديد في صندوق Gmail للشركة' },
     steps: [
@@ -81,8 +81,8 @@ export const automations: Automation[] = [
       { en: 'Store in Supabase (email_intake)', ar: 'الحفظ في Supabase (email_intake)' }
     ],
     notes: {
-      en: 'Built and deployed to n8n; it activates once the company Gmail account is connected (Gmail OAuth credential) and selected on the trigger node. Then every minute it reads new inbox emails and, for each, classifies the intent (client order, inquiry, supplier offer, payment confirmation), extracts products + quantities for orders, and detects the document type of any attachment (PO, invoice, delivery note, payment, quote) — writing each to Supabase. It only reads and records; it never sends or auto-replies.',
-      ar: 'مبنيّ ومنشور في n8n؛ يُفعَّل بمجرد ربط حساب Gmail للشركة (بيانات اعتماد Gmail OAuth) واختياره في عقدة المُشغِّل. بعدها يقرأ كل دقيقة رسائل الوارد الجديدة، ولكل رسالة يصنّف النية (طلب عميل، استفسار، عرض مورد، تأكيد دفع)، ويستخرج المنتجات والكميات للطلبات، ويحدّد نوع أي مرفق (أمر شراء، فاتورة، سند تسليم، دفع، عرض سعر) — ويحفظ كلًّا منها في Supabase. يقرأ ويسجّل فقط؛ لا يرسل ولا يرد تلقائيًا.'
+      en: 'Live — the company Gmail account is connected (Gmail OAuth) and the workflow is active in n8n. Every minute it reads new inbox emails and, for each, classifies the intent (client order, inquiry, supplier offer, payment confirmation), extracts products + quantities for orders, and detects the document type of any attachment (PO, invoice, delivery note, payment, quote) — writing each to Supabase (email_intake). It only reads and records; it never sends or auto-replies.',
+      ar: 'مفعّل — حساب Gmail للشركة مربوط (Gmail OAuth) والتدفّق نشط في n8n. كل دقيقة يقرأ رسائل الوارد الجديدة، ولكل رسالة يصنّف النية (طلب عميل، استفسار، عرض مورد، تأكيد دفع)، ويستخرج المنتجات والكميات للطلبات، ويحدّد نوع أي مرفق (أمر شراء، فاتورة، سند تسليم، دفع، عرض سعر) — ويحفظ كلًّا منها في Supabase (email_intake). يقرأ ويسجّل فقط؛ لا يرسل ولا يرد تلقائيًا.'
     }
   },
   {
