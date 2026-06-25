@@ -1,0 +1,100 @@
+// Credit / receivables (المديونية) — the authoritative outstanding-credit statement Tarek sends the team
+// on WhatsApp (docs group). This file IS the source of truth for what clients currently owe: per invoice,
+// the client, salesperson, amount (VAT-INCLUSIVE), and aging in days. Latest snapshot: 2026-06-25.
+//
+// Refreshed from `المديونية حتي تاريخ …pdf`. When a newer statement arrives, replace CREDIT_ROWS + CREDIT_AS_OF
+// (the WhatsApp intake stores each file; `node scripts/wa-download.js <message_id>` pulls one to re-read).
+
+export type CreditRow = {
+  date: string            // invoice date (ISO)
+  invoiceNo: string
+  salespersonAr: string
+  salespersonEn: string
+  client: string          // client/company name (Arabic, as on the statement)
+  amount: number          // outstanding amount, VAT-INCLUSIVE (المبلغ بعد الضريبة)
+  ageDays: number         // days the receivable has been outstanding (اعمار الذمم)
+}
+
+export const CREDIT_AS_OF = '2026-06-25'
+
+// Source: المديونية حتي تاريخ 25-06-2026.pdf (Tarek Habbash → docs group). Total = SAR 601,296.55.
+export const CREDIT_ROWS: CreditRow[] = [
+  { date: '2026-05-16', invoiceNo: '324', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة الأغذية المتميزة التجارية', amount: 96973.00, ageDays: 40 },
+  { date: '2026-05-23', invoiceNo: '335', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة الأغذية المتميزة التجارية', amount: 87434.50, ageDays: 33 },
+  { date: '2026-06-14', invoiceNo: '365', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة سامح العربية للوجبات السريعة', amount: 10350.00, ageDays: 11 },
+  { date: '2026-06-17', invoiceNo: '375', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة سامح العربية للوجبات السريعة', amount: 20700.00, ageDays: 8 },
+  { date: '2026-06-18', invoiceNo: '378', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة سامح العربية للوجبات السريعة', amount: 103500.00, ageDays: 7 },
+  { date: '2026-06-20', invoiceNo: '380', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة مجمدات الريف التجارية', amount: 99476.50, ageDays: 5 },
+  { date: '2026-06-22', invoiceNo: '387', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة مجمدات الريف التجارية', amount: 31314.50, ageDays: 3 },
+  { date: '2026-06-24', invoiceNo: '391', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة فخر الأطعمة التجارية', amount: 14835.00, ageDays: 1 },
+  { date: '2026-06-24', invoiceNo: '392', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة دجاج اسيا لخدمات الاعاشة', amount: 48472.50, ageDays: 1 },
+  { date: '2026-06-24', invoiceNo: '393', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة جوهرة الحياة التجارية', amount: 6573.30, ageDays: 1 },
+  { date: '2026-06-24', invoiceNo: '395', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'مؤسسة كنز المحيط للتجارة', amount: 2277.00, ageDays: 1 },
+  { date: '2026-06-25', invoiceNo: '396', salespersonAr: 'محمود', salespersonEn: 'Mahmoud', client: 'شركة فخر الأطعمة التجارية', amount: 14789.00, ageDays: 0 },
+  { date: '2026-06-25', invoiceNo: '397', salespersonAr: 'تامر', salespersonEn: 'Tamer', client: 'شركة الزاهر الوطنية التجارية ( الحلقة )', amount: 51347.50, ageDays: 0 },
+  { date: '2026-06-25', invoiceNo: '398', salespersonAr: 'تامر', salespersonEn: 'Tamer', client: 'شركة نصيب جرين للتجارة', amount: 13253.75, ageDays: 0 },
+]
+
+const VAT_RATE = 0.15
+const round2 = (n: number) => Math.round(n * 100) / 100
+
+export type CreditClient = { client: string; salespersonAr: string; salespersonEn: string; amount: number; invoices: number; maxAge: number; pct: number }
+export type CreditBuckets = { current: number; d8_30: number; d31_60: number; over60: number }
+
+export type CreditSummary = {
+  asOf: string
+  total: number                 // VAT-inclusive outstanding
+  totalNet: number              // ex-VAT
+  invoices: number
+  clientCount: number
+  overdueCount: number          // invoices older than 30 days
+  overdueAmount: number
+  avgAge: number
+  rows: (CreditRow & { pct: number })[]
+  byClient: CreditClient[]
+  buckets: CreditBuckets
+}
+
+export function getCredit(): CreditSummary {
+  const total = round2(CREDIT_ROWS.reduce((s, r) => s + r.amount, 0))
+  const rows = CREDIT_ROWS.map(r => ({ ...r, pct: total ? r.amount / total : 0 }))
+    .sort((a, b) => b.amount - a.amount)
+
+  const cmap = new Map<string, CreditClient>()
+  for (const r of CREDIT_ROWS) {
+    const cur = cmap.get(r.client) ?? { client: r.client, salespersonAr: r.salespersonAr, salespersonEn: r.salespersonEn, amount: 0, invoices: 0, maxAge: 0, pct: 0 }
+    cur.amount = round2(cur.amount + r.amount); cur.invoices++; cur.maxAge = Math.max(cur.maxAge, r.ageDays); cmap.set(r.client, cur)
+  }
+  const byClient = [...cmap.values()].map(c => ({ ...c, pct: total ? c.amount / total : 0 })).sort((a, b) => b.amount - a.amount)
+
+  const buckets: CreditBuckets = { current: 0, d8_30: 0, d31_60: 0, over60: 0 }
+  for (const r of CREDIT_ROWS) {
+    if (r.ageDays <= 7) buckets.current += r.amount
+    else if (r.ageDays <= 30) buckets.d8_30 += r.amount
+    else if (r.ageDays <= 60) buckets.d31_60 += r.amount
+    else buckets.over60 += r.amount
+  }
+  ;(Object.keys(buckets) as (keyof CreditBuckets)[]).forEach(k => (buckets[k] = round2(buckets[k])))
+
+  const overdue = CREDIT_ROWS.filter(r => r.ageDays > 30)
+  return {
+    asOf: CREDIT_AS_OF,
+    total,
+    totalNet: round2(total / (1 + VAT_RATE)),
+    invoices: CREDIT_ROWS.length,
+    clientCount: byClient.length,
+    overdueCount: overdue.length,
+    overdueAmount: round2(overdue.reduce((s, r) => s + r.amount, 0)),
+    avgAge: Math.round(CREDIT_ROWS.reduce((s, r) => s + r.ageDays, 0) / CREDIT_ROWS.length),
+    rows, byClient, buckets,
+  }
+}
+
+// name → outstanding amount (VAT-inclusive), keyed by the exact statement name.
+export function creditByClientName(): Map<string, number> {
+  const m = new Map<string, number>()
+  for (const r of CREDIT_ROWS) m.set(r.client, round2((m.get(r.client) ?? 0) + r.amount))
+  return m
+}
+
+export const creditTotal = () => round2(CREDIT_ROWS.reduce((s, r) => s + r.amount, 0))

@@ -3,19 +3,39 @@ import { sales as _salesRaw, type SalesInvoice } from './sales'
 import { purchases, type PurchaseRow } from './purchases'
 import { inventory, INVENTORY_MONTHS, type InventoryRow } from './inventory'
 import { categoryLabel } from './categorize'
+import { creditByClientName, creditTotal, CREDIT_AS_OF } from './credit'
 
 export type { Client, SalesInvoice, PurchaseRow }
+export { CREDIT_AS_OF }
 
 // ── Receivables policy ──────────────────────────────────────────────────────────────────────────
-// Business decision (2026-06-25): all historical receivables are settled. Every historical invoice is
-// treated as COLLECTED, so outstanding receivables read ZERO everywhere the portal computes them
-// (Control Center, Analytics → Collections, CRM client balances/risk, Operations House payments-due,
-// and the data-integrity concerns). New receivables accrue going forward from live WhatsApp orders.
-// This is the single source of truth — flip RECEIVABLES_ZEROED to false to restore the workbook values.
-const RECEIVABLES_ZEROED = true
-const sales: SalesInvoice[] = RECEIVABLES_ZEROED
-  ? _salesRaw.map(s => ({ ...s, collected: true, collectionStatus: 'تم' }))
-  : _salesRaw
+// Business decision (2026-06-25): outstanding receivables are driven by Tarek's credit statement
+// (المديونية, lib/data/credit.ts) — the authoritative source for what each client currently owes. Every
+// historical invoice is treated as collected EXCEPT the outstanding balance named on that statement, which
+// is carved back out as the receivable. So: revenue is unchanged (these invoices are already in it),
+// total outstanding == the statement total, and per-client overdue == the statement's per-client balance.
+// Everything reconciles (Control Center, Analytics → Collections, CRM, Operations House, concerns).
+const sales: SalesInvoice[] = _salesRaw.map(s => ({ ...s, collected: true, collectionStatus: 'تم' }))
+
+// Credit (المديونية) overlay: client name (normalised) -> current outstanding (VAT-inclusive). Lazy so it
+// initialises after norm() is defined below.
+let _creditByNormCache: Map<string, number> | null = null
+function creditByNorm(): Map<string, number> {
+  if (_creditByNormCache) return _creditByNormCache
+  const m = new Map<string, number>()
+  for (const [name, amt] of creditByClientName()) m.set(norm(name), amt)
+  _creditByNormCache = m
+  return m
+}
+// Outstanding owed by a client, matched to the statement by name (exact, then fuzzy contains). 0 if current.
+function creditOutstandingForName(name: string): number {
+  if (!name) return 0
+  const n = norm(name)
+  const map = creditByNorm()
+  const direct = map.get(n); if (direct != null) return direct
+  for (const [k, v] of map) if (k === n || k.includes(n) || n.includes(k)) return v
+  return 0
+}
 
 // ── formatting / helpers ──
 // Full comma-grouped figures (e.g. "SAR 31,084,511") — millions must read as millions.
@@ -65,8 +85,9 @@ export function salesSummary(f?: SalesFilter) {
   const revenue = rows.reduce((s, r) => s + r.postVat, 0)
   const preVat = rows.reduce((s, r) => s + r.preVat, 0)
   const vat = rows.reduce((s, r) => s + r.vat, 0)
-  const collected = rows.filter(r => r.collected).reduce((s, r) => s + r.postVat, 0)
-  const outstanding = revenue - collected
+  // outstanding is driven by the credit statement (current snapshot), so it only applies unfiltered.
+  const outstanding = f ? Math.max(0, revenue - rows.filter(r => r.collected).reduce((s, r) => s + r.postVat, 0)) : creditTotal()
+  const collected = revenue - outstanding
   const invoices = rows.length
   const clientsCount = new Set(rows.map(r => r.clientName)).size
   return { revenue, preVat, vat, collected, outstanding, invoices, clients: clientsCount, avgInvoice: invoices ? revenue / invoices : 0 }
@@ -98,8 +119,11 @@ export function salesByClientName(f?: SalesFilter): { name: string; revenue: num
     const cur = map.get(r.clientName) ?? { revenue: 0, n: 0, collected: 0 }
     cur.revenue += r.postVat; cur.n++; if (r.collected) cur.collected += r.postVat; map.set(r.clientName, cur)
   }
-  return [...map.entries()].map(([name, v]) => ({ name, revenue: Math.round(v.revenue), invoices: v.n, collected: Math.round(v.collected), outstanding: Math.round(v.revenue - v.collected) }))
-    .sort((a, b) => b.revenue - a.revenue)
+  // per-client outstanding comes from the credit statement (unfiltered snapshot); collected = revenue - that.
+  return [...map.entries()].map(([name, v]) => {
+    const outstanding = f ? Math.max(0, v.revenue - v.collected) : Math.min(v.revenue, creditOutstandingForName(name))
+    return { name, revenue: Math.round(v.revenue), invoices: v.n, collected: Math.round(v.revenue - outstanding), outstanding: Math.round(outstanding) }
+  }).sort((a, b) => b.revenue - a.revenue)
 }
 export function topProducts(f?: SalesFilter, n = 10): { item: string; category: string; revenue: number; qty: number }[] {
   const map = new Map<string, { category: string; revenue: number; qty: number }>()
@@ -114,9 +138,9 @@ export function collectionsSummary(f?: SalesFilter) {
   const collected = rows.filter(r => r.collected)
   const cash = rows.filter(r => /كاش|cash/i.test(r.payMethod)).reduce((s, r) => s + r.postVat, 0)
   const bank = rows.filter(r => /تحويل|بنك|bank/i.test(r.payMethod)).reduce((s, r) => s + r.postVat, 0)
-  const collectedV = collected.reduce((s, r) => s + r.postVat, 0)
   const total = rows.reduce((s, r) => s + r.postVat, 0)
-  return { collected: collectedV, outstanding: total - collectedV, collectedCount: collected.length, total, cash, bank }
+  const outstanding = f ? Math.max(0, total - collected.reduce((s, r) => s + r.postVat, 0)) : creditTotal()
+  return { collected: total - outstanding, outstanding, collectedCount: collected.length, total, cash, bank }
 }
 
 // ── purchases aggregates ──
@@ -286,22 +310,52 @@ function enrichClients(): Client[] {
   const erp: Client[] = rawClients.map(c => {
     const a = agg.get(c.id)
     if (!a) return { ...c, totalRevenue: 0, totalOrders: 0, overdueAmount: 0, riskScore: 20, status: 'lead' as const }
-    const overdue = Math.max(0, a.revenue - a.collected)
-    return { ...c, totalRevenue: Math.round(a.revenue), totalOrders: a.invoices, overdueAmount: Math.round(overdue), riskScore: riskFrom(a.revenue, overdue), status: 'active' as const }
+    return { ...c, totalRevenue: Math.round(a.revenue), totalOrders: a.invoices, overdueAmount: 0, riskScore: 20, status: 'active' as const }
   })
   const salesOnly: Client[] = unmatched.map((u, i) => {
-    const overdue = Math.max(0, u.revenue - u.collected)
     const id = `SC-${i + 1}`
     nameToId.set(u.name, id)
     return {
       id, nameAr: u.name, nameEn: u.name, salespersonAr: 'غير محدد', salespersonEn: 'Unassigned',
       branch: '', source: 'Sales', type: '', mobile: '', crNumber: '', accountNumber: '', cityAr: '', cityEn: '',
-      active: true, status: 'active' as const, riskScore: riskFrom(u.revenue, overdue),
-      totalOrders: u.invoices, totalRevenue: Math.round(u.revenue), overdueAmount: Math.round(overdue), paymentTermsDays: 0
+      active: true, status: 'active' as const, riskScore: 20,
+      totalOrders: u.invoices, totalRevenue: Math.round(u.revenue), overdueAmount: 0, paymentTermsDays: 0
     }
   })
+  const all = [...erp, ...salesOnly]
+
+  // ── Credit (المديونية) assignment — each statement line lands on exactly one client, so
+  // Σ(client overdue) === the statement total. Unmatched statement names become their own credit row.
+  const byNorm = new Map<string, Client>()
+  for (const c of all) { const k = norm(c.nameAr); if (!byNorm.has(k)) byNorm.set(k, c) }
+  const tokens = (s: string) => new Set(norm(s).split(' ').filter(w => w.length > 2 && !['شركة', 'مؤسسة', 'التجارية', 'للتجارة'].includes(w)))
+  const resolveCredit = (name: string): Client | undefined => {
+    const n = norm(name); if (byNorm.has(n)) return byNorm.get(n)
+    let best: Client | undefined; let bestScore = 0; const nt = tokens(name)
+    for (const c of all) {
+      const ct = tokens(c.nameAr); let overlap = 0; for (const t of nt) if (ct.has(t)) overlap++
+      const score = overlap / Math.max(1, Math.min(nt.size, ct.size))
+      if (overlap >= 2 && score > bestScore) { best = c; bestScore = score }
+    }
+    return best
+  }
+  let scN = salesOnly.length
+  for (const [name, amount] of creditByClientName()) {
+    let c = resolveCredit(name)
+    if (!c) {
+      c = {
+        id: `SC-${++scN}`, nameAr: name, nameEn: name, salespersonAr: 'غير محدد', salespersonEn: 'Unassigned',
+        branch: '', source: 'Credit', type: '', mobile: '', crNumber: '', accountNumber: '', cityAr: '', cityEn: '',
+        active: true, status: 'active' as const, riskScore: 20, totalOrders: 0, totalRevenue: 0, overdueAmount: 0, paymentTermsDays: 0
+      }
+      all.push(c); byNorm.set(norm(name), c)
+    }
+    c.overdueAmount = Math.round((c.overdueAmount || 0) + amount)
+  }
+  for (const c of all) c.riskScore = riskFrom(c.totalRevenue || c.overdueAmount, c.overdueAmount)
+
   _nameToId = nameToId
-  _enriched = [...erp, ...salesOnly]
+  _enriched = all
   return _enriched
 }
 // clientId -> the actual sales invoice lines for that client (newest first).
@@ -394,12 +448,14 @@ export function getClientStats(): ClientStats[] {
   const idx = clientSalesIndex()
   _clientStats = enrichClients().map(c => {
     const rows = idx.get(c.id) ?? []
-    const collected = Math.round(rows.filter(r => r.collected).reduce((s, r) => s + r.postVat, 0))
+    // outstanding is the client's credit-statement balance; collected = revenue − outstanding.
+    const outstanding = Math.round(c.overdueAmount || 0)
+    const collected = Math.max(0, c.totalRevenue - outstanding)
     const units = Math.round(rows.reduce((s, r) => s + r.qty, 0))
     const prods = productsForInvoices(rows)
     const dates = rows.map(r => r.date).filter(Boolean).sort()
     return {
-      ...c, units, productCount: prods.length, collected, outstanding: Math.max(0, c.totalRevenue - collected),
+      ...c, units, productCount: prods.length, collected, outstanding,
       avgInvoice: c.totalOrders ? Math.round(c.totalRevenue / c.totalOrders) : 0,
       topProduct: prods[0]?.item ?? '', products: prods.map(p => p.item), categories: [...new Set(prods.map(p => p.category))],
       firstDate: dates[0] ?? '', lastDate: dates[dates.length - 1] ?? ''
@@ -428,8 +484,9 @@ export function getClientDetail(id: string): ClientDetail | null {
   const client = enrichClients().find(c => c.id === id)
   if (!client) return null
   const rows = clientSalesIndex().get(id) ?? []
-  const collected = Math.round(rows.filter(r => r.collected).reduce((s, r) => s + r.postVat, 0))
-  const outstanding = Math.max(0, client.totalRevenue - collected)
+  // outstanding is the client's credit-statement balance; collected = revenue − outstanding.
+  const outstanding = Math.round(client.overdueAmount || 0)
+  const collected = Math.max(0, client.totalRevenue - outstanding)
   const units = Math.round(rows.reduce((s, r) => s + r.qty, 0))
   const products = productsForInvoices(rows)
   const dates = rows.map(r => r.date).filter(Boolean).sort()
@@ -615,7 +672,9 @@ export function operationsSnapshot() {
   const paid = recent.filter(o => o.status === 'paid')
   const delayed = orders.filter(o => o.status === 'payment_pending')
   const col = collectionsSummary()
-  const debtors = salesByClientName().filter(x => x.outstanding > 0).slice(0, 6)
+  // debtors from the credit statement (covers clients whose only open balance is a new credit invoice).
+  const debtors = getClientStats().filter(c => c.outstanding > 0).sort((a, b) => b.outstanding - a.outstanding).slice(0, 6)
+    .map(c => ({ id: c.id, name: c.nameAr, nameEn: c.nameEn, revenue: c.totalRevenue, invoices: c.totalOrders, collected: c.collected, outstanding: c.outstanding }))
   // warehouse throughput (latest month) vs storage capacity → turnover
   const lm = MONTHS[MONTHS.length - 1] || ''
   const lmCartons = Math.round(sales.filter(s => s.month === lm).reduce((a, s) => a + (s.cartons || 0), 0))
