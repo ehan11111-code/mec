@@ -68,7 +68,7 @@
     "trigger": "Trigger", "live": "Live", "planned": "Planned", "phase": "Phase",
     "internal": "Internal workflows", "internalSub": "Run on MEC's own data & operations.", "external": "External workflows", "externalSub": "Pull data in from the outside world.",
     "adminOnly": "Admin only", "liveCount": "{n} of {total} live", "noManualTitle": "Hands-off by design", "noManualBody": "Workflows are not run by hand. Scheduled ones fire on the interval you set; event ones fire when their trigger happens. This keeps runs auditable and prevents accidental double-processing.",
-    "runs": "Runs", "weekly": "Weekly", "daily": "Daily", "everyHours": "Every {n}h"
+    "runs": "Runs", "weekly": "Weekly", "daily": "Daily", "everyHours": "Every {n}h", "howItWorks": "How it works"
   },
   "jarvis": {
     "subtitle": "Ask anything about MEC", "placeholder": "Ask about sales, clients, margin…", "greeting": "Hi — I'm JARVIS. Ask me about MEC's sales, margins, receivables, suppliers or products.",

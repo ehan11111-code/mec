@@ -16,6 +16,8 @@ export type Automation = {
   phase: number                 // brief phase this belongs to (1–7)
   steps: Bi[]
   webhookEnv: string
+  // How it works, in plain language — documented in the portal so MEC staff understand the automation.
+  notes?: Bi
 }
 
 export const automations: Automation[] = [
@@ -44,13 +46,18 @@ export const automations: Automation[] = [
   {
     id: 'whatsapp-intake', dept: 'documents', kind: 'external', triggerKind: 'event', status: 'live', phase: 2, webhookEnv: 'NEXT_PUBLIC_N8N_WHATSAPP_INTAKE',
     name: { en: 'WhatsApp Message & Order Intake', ar: 'استقبال رسائل وطلبات واتساب' },
-    trigger: { en: 'New WhatsApp message or media', ar: 'رسالة أو وسائط واتساب جديدة' },
+    trigger: { en: 'New WhatsApp message, reaction or media in a MEC group', ar: 'رسالة أو تفاعل أو وسائط جديدة في مجموعة MEC' },
     steps: [
-      { en: 'Identify sender', ar: 'تحديد المُرسِل' },
-      { en: 'Classify intent + extract order', ar: 'تصنيف النية + استخراج الطلب' },
-      { en: 'Store + push to approval queue', ar: 'حفظ + دفع لقائمة الاعتماد' },
-      { en: 'Auto-acknowledge the sender', ar: 'رد تلقائي على المُرسِل' }
-    ]
+      { en: 'Listen in the orders group & the documents group', ar: 'الاستماع في مجموعة الطلبات ومجموعة المستندات' },
+      { en: 'Sender = the salesperson; parse the order + quantities', ar: 'المُرسِل = المندوب؛ تحليل الطلب + الكميات' },
+      { en: 'Open the order as “pending” in the approval queue', ar: 'فتح الطلب كـ«قيد الانتظار» في قائمة الاعتماد' },
+      { en: 'Approve / reject by reply or by ✅ / ❌ reaction', ar: 'الاعتماد / الرفض بالرد أو بتفاعل ✅ / ❌' },
+      { en: 'Match invoices, delivery notes & payments from the docs group', ar: 'مطابقة الفواتير وسندات التسليم والمدفوعات من مجموعة المستندات' }
+    ],
+    notes: {
+      en: 'JARVIS sits in two WhatsApp groups and listens silently — it never replies in a group. ORDERS GROUP: whoever sends an order is recorded as the salesperson who brought it (their WhatsApp name); the order and its quantities are parsed and appear in the approval queue as pending. Approve or reject an order without opening the portal — either REPLY to the order message (“موافق/approved”, “مرفوض/rejected”, or new quantities to adjust) or simply REACT to it with ✅ to approve / ❌ to reject. Either way the order’s status updates automatically. DOCUMENTS GROUP: invoices, delivery notes and payment confirmations are classified by type and matched to their order. No order is ever auto-approved — a human always decides. Setup: each group’s ID is set in MEC_ORDERS_GROUP_JID / MEC_DOCS_GROUP_JID; until then a new group is just recorded so its ID can be read here.',
+      ar: 'يجلس جارفيس في مجموعتي واتساب ويستمع بصمت — لا يرد داخل أي مجموعة أبدًا. مجموعة الطلبات: من يرسل الطلب يُسجَّل كالمندوب الذي جلبه (اسمه في واتساب)؛ يُحلَّل الطلب وكمياته ويظهر في قائمة الاعتماد كـ«قيد الانتظار». يمكن اعتماد الطلب أو رفضه دون فتح البوابة — إمّا بالرد على رسالة الطلب («موافق»، «مرفوض»، أو كميات جديدة للتعديل) أو ببساطة بالتفاعل معها ✅ للاعتماد / ❌ للرفض. في الحالتين تتحدّث حالة الطلب تلقائيًا. مجموعة المستندات: تُصنَّف الفواتير وسندات التسليم وتأكيدات الدفع حسب النوع وتُطابَق بطلبها. لا يُعتمد أي طلب تلقائيًا — القرار دائمًا لإنسان. الإعداد: يُضبط معرّف كل مجموعة في MEC_ORDERS_GROUP_JID / MEC_DOCS_GROUP_JID؛ وحتى ذلك الحين تُسجَّل المجموعة الجديدة فقط ليُقرأ معرّفها هنا.'
+    }
   },
   {
     id: 'contact-inquiry', dept: 'documents', kind: 'external', triggerKind: 'event', status: 'live', phase: 1, webhookEnv: 'NEXT_PUBLIC_N8N_CONTACT',
@@ -64,15 +71,19 @@ export const automations: Automation[] = [
     ]
   },
   {
-    id: 'email-intake', dept: 'documents', kind: 'external', triggerKind: 'event', status: 'planned', phase: 2, webhookEnv: 'NEXT_PUBLIC_N8N_EMAIL_INTAKE',
-    name: { en: 'Email Document Intake', ar: 'استقبال مستندات البريد' },
-    trigger: { en: 'New order email with attachment', ar: 'بريد جديد متعلق بطلب مع مرفق' },
+    id: 'email-intake', dept: 'documents', kind: 'external', triggerKind: 'schedule', cadenceHours: 1, status: 'planned', phase: 2, webhookEnv: 'NEXT_PUBLIC_N8N_EMAIL_INTAKE',
+    name: { en: 'Email Inbox Intake (Gmail)', ar: 'استقبال صندوق البريد (Gmail)' },
+    trigger: { en: 'New email in the company Gmail inbox', ar: 'بريد جديد في صندوق Gmail للشركة' },
     steps: [
-      { en: 'Fetch email + attachments', ar: 'جلب البريد والمرفقات' },
-      { en: 'Classify + OCR parse', ar: 'تصنيف + استخراج ضوئي' },
-      { en: 'Match to client / order', ar: 'مطابقة بالعميل / الطلب' },
-      { en: 'Create document record + notify', ar: 'إنشاء سجل مستند + إشعار' }
-    ]
+      { en: 'Gmail node reads new inbox emails', ar: 'عقدة Gmail تقرأ رسائل الوارد الجديدة' },
+      { en: 'Classify intent + extract order / document type', ar: 'تصنيف النية + استخراج الطلب / نوع المستند' },
+      { en: 'Read sender, subject & attachments', ar: 'قراءة المُرسِل والموضوع والمرفقات' },
+      { en: 'Store in Supabase (email_intake)', ar: 'الحفظ في Supabase (email_intake)' }
+    ],
+    notes: {
+      en: 'Built and deployed to n8n; it activates once the company Gmail account is connected (Gmail OAuth credential) and selected on the trigger node. Then every minute it reads new inbox emails and, for each, classifies the intent (client order, inquiry, supplier offer, payment confirmation), extracts products + quantities for orders, and detects the document type of any attachment (PO, invoice, delivery note, payment, quote) — writing each to Supabase. It only reads and records; it never sends or auto-replies.',
+      ar: 'مبنيّ ومنشور في n8n؛ يُفعَّل بمجرد ربط حساب Gmail للشركة (بيانات اعتماد Gmail OAuth) واختياره في عقدة المُشغِّل. بعدها يقرأ كل دقيقة رسائل الوارد الجديدة، ولكل رسالة يصنّف النية (طلب عميل، استفسار، عرض مورد، تأكيد دفع)، ويستخرج المنتجات والكميات للطلبات، ويحدّد نوع أي مرفق (أمر شراء، فاتورة، سند تسليم، دفع، عرض سعر) — ويحفظ كلًّا منها في Supabase. يقرأ ويسجّل فقط؛ لا يرسل ولا يرد تلقائيًا.'
+    }
   },
   {
     id: 'order-approval', dept: 'approvals', kind: 'internal', triggerKind: 'event', status: 'planned', phase: 3, webhookEnv: 'NEXT_PUBLIC_N8N_ORDER_APPROVAL',

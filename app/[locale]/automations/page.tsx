@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
-import { Clock, Zap, Workflow, ShieldCheck } from 'lucide-react'
+import { Clock, Zap, Workflow, ShieldCheck, Info } from 'lucide-react'
 import { PageShell } from '@/components/PageShell'
 import { DisplayHeading } from '@/components/DisplayHeading'
 import { Eyebrow } from '@/components/Eyebrow'
@@ -82,6 +82,15 @@ export default function AutomationsPage() {
                       </li>
                     ))}
                   </ol>
+
+                  {a.notes && (
+                    <details className="mt-3 group/notes">
+                      <summary className="cursor-pointer list-none inline-flex items-center gap-1.5 text-[11px] font-medium text-accent hover:underline">
+                        <Info className="h-3.5 w-3.5" strokeWidth={1.9} />{t('howItWorks')}
+                      </summary>
+                      <p className="mt-2 text-[11px] leading-relaxed text-text-soft bg-bg-soft rounded-soft px-3 py-2.5">{a.notes[locale]}</p>
+                    </details>
+                  )}
 
                   <div className="mt-4 border-t border-border pt-3 flex items-center justify-between gap-3">
                     {a.triggerKind === 'schedule' ? (
