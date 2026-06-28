@@ -2,13 +2,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
-import { FileText, Receipt, Truck, RefreshCw, Loader2, ExternalLink, Search, Users2, FileType2 } from 'lucide-react'
+import { FileText, Receipt, Truck, RefreshCw, Loader2, ExternalLink, Search, Users2, FileType2, AlertTriangle, ShieldCheck, ShieldAlert, Check } from 'lucide-react'
 import { PageShell } from './PageShell'
 import { DisplayHeading } from './DisplayHeading'
 import { Eyebrow } from './Eyebrow'
 import { Panel } from './Panel'
 import { StatCard } from './StatCard'
 import { EmptyState } from './EmptyState'
+import { NoteCallout } from './NoteCallout'
+import { useCurrentUser } from '@/lib/auth/useCurrentUser'
 import { fmtDateTime } from '@/lib/format/datetime'
 import type { WaDoc } from '@/app/api/wa-docs/route'
 
@@ -19,11 +21,14 @@ const ICON: Record<DocType, typeof FileText> = { invoice: FileText, payment: Rec
 // Lists everything the intake fetched, newest first, with the original file openable (decrypted on demand).
 export function DocList({ type }: { type: DocType }) {
   const tNav = useTranslations('nav'); const t = useTranslations('waDocs'); const locale = useLocale() as 'en' | 'ar'
+  const { can } = useCurrentUser()
   const [docs, setDocs] = useState<WaDoc[] | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [busy, setBusy] = useState<string | null>(null)
   const [q, setQ] = useState('')
   const [withFileOnly, setWithFileOnly] = useState(false)
   const Icon = ICON[type]
+  const isDelivery = type === 'delivery_note'
 
   const load = useCallback(async (manual = false) => {
     if (manual) setRefreshing(true)
@@ -33,8 +38,23 @@ export function DocList({ type }: { type: DocType }) {
   }, [type])
   useEffect(() => { load(); const id = setInterval(() => load(), 30000); return () => clearInterval(id) }, [load])
 
+  // Admin: fix a misfiled document (moves it to its correct type) / confirm a delivery was received.
+  async function reclassify(d: WaDoc) {
+    if (!d.suggestedType) return
+    setBusy(d.message_id)
+    try { const r = await fetch('/api/wa-docs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message_id: d.message_id, doc_type: d.suggestedType }) }); if (r.ok) setDocs(ds => (ds || []).filter(x => x.message_id !== d.message_id)) } catch { /* ignore */ }
+    setBusy(null)
+  }
+  async function markReceived(d: WaDoc) {
+    setBusy(d.message_id)
+    try { const r = await fetch('/api/wa-docs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message_id: d.message_id, received: true }) }); if (r.ok) setDocs(ds => (ds || []).map(x => x.message_id === d.message_id ? { ...x, receiptConfirmed: true } : x)) } catch { /* ignore */ }
+    setBusy(null)
+  }
+
   const list = docs ?? []
   const withFile = useMemo(() => list.filter(d => d.hasFile).length, [list])
+  const misfiled = useMemo(() => list.filter(d => d.suggestedType).length, [list])
+  const unconfirmed = useMemo(() => isDelivery ? list.filter(d => !d.receiptConfirmed).length : 0, [list, isDelivery])
   const latest = list[0]?.received_at
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase()
@@ -56,11 +76,21 @@ export function DocList({ type }: { type: DocType }) {
         </button>
       </header>
 
-      <section className="mb-6 grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-3">
+      <section className="mb-6 grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         <StatCard label={t('kTotal')} value={docs ? String(list.length) : '—'} index={0} accent />
         <StatCard label={t('kWithFile')} value={docs ? String(withFile) : '—'} index={1} />
-        <StatCard label={t('kLatest')} value={latest ? fmtDateTime(latest, locale) : '—'} index={2} />
+        {isDelivery
+          ? <StatCard label={t('kUnconfirmed')} value={docs ? String(unconfirmed) : '—'} delta={t('kUnconfirmedSub')} index={2} accent />
+          : <StatCard label={t('kMisfiled')} value={docs ? String(misfiled) : '—'} delta={t('kMisfiledSub')} index={2} accent />}
+        <StatCard label={t('kLatest')} value={latest ? fmtDateTime(latest, locale) : '—'} index={3} />
       </section>
+
+      {!!misfiled && (
+        <NoteCallout className="mb-6" tone="warn" title={t('misfiledTitle')}>{t('misfiledBody', { n: misfiled })}</NoteCallout>
+      )}
+      {isDelivery && (
+        <NoteCallout className="mb-6" tone="info" title={t('receiptTitle')}>{t('receiptBody')}</NoteCallout>
+      )}
 
       <Panel bodyClassName="px-0 pb-0" title={t(`title_${type}`)}
         action={
@@ -90,6 +120,7 @@ export function DocList({ type }: { type: DocType }) {
                   <th className="text-start font-medium px-4 py-3 hidden lg:table-cell">{t('colSender')}</th>
                   <th className="text-start font-medium px-4 py-3 hidden lg:table-cell">{t('colChannel')}</th>
                   <th className="text-start font-medium px-4 py-3">{t('colDate')}</th>
+                  {isDelivery && <th className="text-center font-medium px-4 py-3">{t('colReceipt')}</th>}
                   <th className="text-end font-medium px-5 md:px-6 py-3">{t('colOpen')}</th>
                 </tr>
               </thead>
@@ -102,11 +133,37 @@ export function DocList({ type }: { type: DocType }) {
                         <span className="text-text truncate max-w-[260px]" dir="auto">{d.filename || t('untitled')}</span>
                       </div>
                       {d.order_no && <div className="text-[11px] text-muted mt-0.5 ms-6">{t('orderNo', { no: d.order_no })}</div>}
+                      {d.suggestedType && (
+                        <div className="mt-1 ms-6 flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-warn-soft text-warn px-2 py-0.5 text-[10px] font-medium"><AlertTriangle className="h-2.5 w-2.5" strokeWidth={2} />{t('mayBe', { type: t(`title_${d.suggestedType}`) })}</span>
+                          {can('manageData') && (
+                            <button type="button" disabled={busy === d.message_id} onClick={() => reclassify(d)}
+                              className="inline-flex items-center gap-1 rounded-full border border-accent text-accent px-2 py-0.5 text-[10px] font-medium hover:bg-accent-soft disabled:opacity-50 transition-colors">
+                              {busy === d.message_id ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : null}{t('reclassify')}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-text-soft hidden md:table-cell max-w-[200px] truncate" dir="auto">{d.client_name || '—'}</td>
                     <td className="px-4 py-3 text-text-soft hidden lg:table-cell">{d.sender}</td>
                     <td className="px-4 py-3 hidden lg:table-cell"><span className="inline-flex items-center gap-1 text-[11px] text-text-soft"><Users2 className="h-3 w-3" strokeWidth={1.8} />{d.channel}</span></td>
                     <td className="px-4 py-3 text-muted tabular-nums whitespace-nowrap">{fmtDateTime(d.received_at, locale)}</td>
+                    {isDelivery && (
+                      <td className="px-4 py-3 text-center">
+                        {d.receiptConfirmed
+                          ? <span className="inline-flex items-center gap-1 rounded-full bg-success-soft text-success px-2 py-0.5 text-[10px] font-medium"><ShieldCheck className="h-3 w-3" strokeWidth={2} />{t('receiptOk')}</span>
+                          : <div className="inline-flex items-center gap-1.5 flex-wrap justify-center">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-bg-soft text-muted px-2 py-0.5 text-[10px] font-medium"><ShieldAlert className="h-3 w-3" strokeWidth={2} />{t('receiptNo')}</span>
+                              {can('manageData') && (
+                                <button type="button" disabled={busy === d.message_id} onClick={() => markReceived(d)}
+                                  className="inline-flex items-center gap-1 rounded-full border border-success text-success px-2 py-0.5 text-[10px] font-medium hover:bg-success-soft disabled:opacity-50 transition-colors">
+                                  {busy === d.message_id ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Check className="h-2.5 w-2.5" strokeWidth={2.2} />}{t('markReceived')}
+                                </button>
+                              )}
+                            </div>}
+                      </td>
+                    )}
                     <td className="px-5 md:px-6 py-3 text-end">
                       {d.hasFile
                         ? <a href={`/api/wa-file?id=${encodeURIComponent(d.message_id)}`} target="_blank" rel="noopener noreferrer"
