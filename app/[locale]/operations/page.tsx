@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
 import { ShoppingCart, ClipboardCheck, CheckCircle2, AlertTriangle, Wallet, Warehouse, PackageSearch, Printer } from 'lucide-react'
@@ -8,29 +8,29 @@ import { DisplayHeading } from '@/components/DisplayHeading'
 import { Eyebrow } from '@/components/Eyebrow'
 import { Panel } from '@/components/Panel'
 import { NoteCallout } from '@/components/NoteCallout'
-import { StatusBadge } from '@/components/StatusBadge'
 import { ConcernsBar } from '@/components/ConcernsBar'
 import { ClientLink, ProductLink } from '@/components/EntityLink'
+import { LatestOrders, type LiveOrderRow } from '@/components/LatestOrders'
 import { printReport } from '@/lib/export/exporters'
+import { fmtDate as fmtD } from '@/lib/format/datetime'
 import { operationsSnapshot, categoryLabel, fmtSAR, fmtNum } from '@/lib/data/dataset'
 
 export default function OperationsPage() {
   const tNav = useTranslations('nav'); const t = useTranslations('ops'); const locale = useLocale() as 'en' | 'ar'
   const snap = operationsSnapshot()
-  const [pendingApprovals, setPendingApprovals] = useState<number | null>(null)
+  // Live incoming orders feed both an "incoming" tile and the pending-approvals tile — and the embedded
+  // feed below. Deleting an order there updates these tiles immediately (one connected source).
+  const [live, setLive] = useState<LiveOrderRow[] | null>(null)
+  const onLive = useCallback((rows: LiveOrderRow[]) => setLive(rows), [])
+  const liveCount = live?.length ?? null
+  const pendingApprovals = live ? live.filter(o => (o.order_status || 'pending') === 'pending').length : null
 
-  useEffect(() => {
-    fetch('/api/approvals').then(r => r.json()).then(d => {
-      if (Array.isArray(d)) setPendingApprovals(d.filter((o: any) => (o.order_status || 'pending') === 'pending').length)
-    }).catch(() => setPendingApprovals(0))
-  }, [])
-
-  const fmtDate = (d: string) => { if (!d) return '—'; try { return new Date(d).toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-GB', { day: '2-digit', month: 'short' }) } catch { return d } }
+  const fmtDate = (d: string) => fmtD(d, locale)
   const w = snap.warehouse
-  const turnTone = w.turnover >= 3 ? 'text-accent' : w.turnover >= 1.5 ? 'text-warn' : 'text-success'
 
   const tiles = [
     { icon: ShoppingCart, key: 'today', val: String(snap.todays.count), sub: fmtSAR(snap.todays.value), accent: true },
+    { icon: ShoppingCart, key: 'incoming', val: liveCount == null ? '…' : String(liveCount), sub: t('liveWhatsapp'), accent: (liveCount ?? 0) > 0 },
     { icon: ClipboardCheck, key: 'approvals', val: pendingApprovals == null ? '…' : String(pendingApprovals), sub: t('liveWhatsapp'), accent: (pendingApprovals ?? 0) > 0 },
     { icon: CheckCircle2, key: 'completed', val: String(snap.completed.count), sub: fmtSAR(snap.completed.value) },
     { icon: AlertTriangle, key: 'delayed', val: String(snap.delayed.count), sub: fmtSAR(snap.delayed.value), accent: snap.delayed.count > 0 },
@@ -58,7 +58,7 @@ export default function OperationsPage() {
       </header>
 
       {/* status tiles */}
-      <section className="mb-6 grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-5">
+      <section className="mb-6 grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-6">
         {tiles.map((tile, i) => {
           const Icon = tile.icon
           return (
@@ -71,6 +71,9 @@ export default function OperationsPage() {
           )
         })}
       </section>
+
+      {/* live incoming orders + their proofs — deleting one updates the tiles above */}
+      <LatestOrders className="mb-6" limit={5} onData={onLive} />
 
       {/* warehouse + stock watch */}
       <section className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">

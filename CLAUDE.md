@@ -111,11 +111,16 @@ next ledger item → re-build → update the ledger below → commit + push. See
   safe behavior-preserving method; first refactor shipped — new **`lib/format/datetime.ts`** (`fmtDate`,
   `fmtDateTime`, `fmtDayMonth`, `fmtStampUTC`, `fmtAgo`) replacing the date formatters duplicated across
   Orders/Approvals/Documents/Inventory. Build green (50 routes), EN/AR parity.
-  - **Honest boundary:** the *live order layer* (`whatsapp_intake`) is now one connected source — delete
-    propagates across Approvals/Documents/Orders-feed/Inbox/Notifications/HI-JARVIS. The **historical**
-    Orders/Inventory/Operations analytics are still computed from the imported spreadsheets
-    (`lib/data/sales.ts` / `inventory.ts`) — a separate layer that a WhatsApp delete doesn't alter. Fully
-    unifying the two (live orders flowing into the historical aggregates) is the next integration step.
+  - **(7) Unification (live orders → headline tiles):** `LatestOrders` now reports its live rows up via an
+    `onData` callback; the **Orders** page folds them into the "Total orders" / "Open orders" KPIs (with a
+    "+N live" delta) and the **Operations House** page gains an "Incoming (live)" tile + the embedded feed,
+    with its pending-approvals tile driven from the same source. So deleting a live order updates those
+    headline counts immediately — the connected behaviour, now reaching the analytics pages too.
+  - **Honest boundary (remaining):** the *historical* revenue/margin/inventory aggregates are still the
+    fixed accounting record from the imported spreadsheets (`lib/data/sales.ts` / `inventory.ts`) — a live
+    WhatsApp delete doesn't rewrite the books, by design. Live orders are surfaced as an overlay (feeds +
+    count tiles) on top. Folding live orders into stock movements / revenue would be the next step.
+  - **Deployed:** pushed to `origin/main` → Vercel (commit `5f19a26` + the unification commit).
 
 - **2026-06-25 — "HI JARVIS" WhatsApp status bot + automatic error alerts + auto-extract live.** Two new
   capabilities. **(1) Status bot:** new **`/api/jarvis-status`** health-checks every platform (Vercel,

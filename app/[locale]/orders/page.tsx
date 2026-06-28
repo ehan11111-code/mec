@@ -45,14 +45,14 @@ export default function OrdersPage() {
       </header>
 
       <section className="mb-8 grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-5">
-        <StatCard label={t('kTotal')} value={String(sum.total)} infoId="ordersTotal" index={0} />
-        <StatCard label={t('kOpen')} value={String(sum.open)} infoId="openOrders" index={1} accent />
+        <StatCard label={t('kTotal')} value={String(sum.total + liveCount)} delta={liveCount ? t('liveDelta', { n: liveCount }) : undefined} infoId="ordersTotal" index={0} />
+        <StatCard label={t('kOpen')} value={String(sum.open + livePending)} delta={livePending ? t('livePendingDelta', { n: livePending }) : undefined} infoId="openOrders" index={1} accent />
         <StatCard label={t('kValue')} value={fmtSAR(sum.value)} infoId="orderValue" index={2} />
         <StatCard label={t('kMargin')} value={`${sum.avgMargin}%`} infoId="avgMargin" index={3} accent />
         <StatCard label={t('kOverdue')} value={String(sum.overdue)} infoId="openOrders" index={4} />
       </section>
 
-      <LatestOrders className="mb-8" limit={6} />
+      <LatestOrders className="mb-8" limit={6} onData={onLive} />
 
       <section className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
         <BarChartPanel data={statusBars} title={t('byStatus')} subtitle={t('byStatusSub')} locale={locale} />
