@@ -17,9 +17,9 @@ const ICON: Record<Mode, typeof ShieldCheck> = { jarvis: ShieldCheck, tarek: Cli
 type OpenOrder = { label: string; units: number }
 type Line = { label: string; value: number; muted?: boolean; strike?: boolean }
 
-export function OnHandMetric({ reconciled, physical, excluded, asOf, skus, countRows, index = 0 }: {
+export function OnHandMetric({ reconciled, physical, excluded, asOf, skus, countRows, capacity, index = 0 }: {
   reconciled: number; physical: number; excluded: number; asOf: string
-  skus: InventorySku[]; countRows: { item: string; cartons: number }[]; index?: number
+  skus: InventorySku[]; countRows: { item: string; cartons: number }[]; capacity: number; index?: number
 }) {
   const t = useTranslations('inventory'); const locale = useLocale() as 'en' | 'ar'
   const [mode, setMode] = useState<Mode>('jarvis')
@@ -39,9 +39,11 @@ export function OnHandMetric({ reconciled, physical, excluded, asOf, skus, count
 
   const fmtDate = (d: string) => { try { return new Date(d).toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-GB', { day: '2-digit', month: 'short' }) } catch { return d } }
   const ordersVal = Math.max(0, reconciled - (committed || 0))
+  // Tarek's raw count exceeding the warehouse capacity is physically impossible — flag it loudly.
+  const overCapacity = mode === 'tarek' && physical > capacity
   const data: Record<Mode, { value: number; sub: string }> = {
     jarvis: { value: reconciled, sub: t('onhand_jarvis_sub', { n: excluded }) },
-    tarek: { value: physical, sub: t('onhand_tarek_sub', { date: fmtDate(asOf) }) },
+    tarek: { value: physical, sub: overCapacity ? t('onhand_tarek_over', { cap: fmtNum(capacity) }) : t('onhand_tarek_sub', { date: fmtDate(asOf) }) },
     orders: { value: ordersVal, sub: committed == null ? t('onhand_orders_loading') : t('onhand_orders_sub', { units: fmtNum(committed), orders: orders.length }) }
   }
   const cur = data[mode]
@@ -51,7 +53,8 @@ export function OnHandMetric({ reconciled, physical, excluded, asOf, skus, count
   const breakdown = useMemo(() => {
     if (mode === 'tarek') {
       const lines: Line[] = [...countRows].sort((a, b) => b.cartons - a.cartons).map(r => ({ label: r.item, value: r.cartons }))
-      return { formula: t('calc_tarek_formula'), lines, total: physical }
+      const formula = t('calc_tarek_formula') + (physical > capacity ? ' ' + t('calc_tarek_over', { cap: fmtNum(capacity) }) : '')
+      return { formula, lines, total: physical }
     }
     if (mode === 'jarvis') {
       const inc = skus.filter(s => !s.unreconciled).sort((a, b) => b.onHand - a.onHand)
@@ -88,7 +91,7 @@ export function OnHandMetric({ reconciled, physical, excluded, asOf, skus, count
           {fmtNum(cur.value)}
           <Calculator className="h-3.5 w-3.5 text-accent/50 group-hover:text-accent transition-colors print:hidden" strokeWidth={1.8} />
         </button>
-        <div className="text-xs text-muted leading-snug"><span className="text-text-soft font-medium">{t(`onhand_${mode}`)}</span> · {cur.sub}</div>
+        <div className={clsx('text-xs leading-snug', overCapacity ? 'text-accent' : 'text-muted')}><span className={clsx('font-medium', overCapacity ? 'text-accent' : 'text-text-soft')}>{t(`onhand_${mode}`)}</span> · {cur.sub}</div>
       </motion.div>
 
       {open && (

@@ -80,7 +80,7 @@ export default function InventoryPage() {
 
       <section className="mb-6 grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         <StatCard label={t('kSkus')} value={String(ws.skus)} index={0} accent />
-        <OnHandMetric reconciled={ws.onHand} physical={cnt.total} excluded={ws.unreconciled} asOf={cnt.asOf} skus={inv} countRows={cnt.rows} index={1} />
+        <OnHandMetric reconciled={ws.onHand} physical={cnt.total} excluded={ws.unreconciled} asOf={cnt.asOf} skus={inv} countRows={cnt.rows} capacity={ws.capacity} index={1} />
         <StatCard label={t('kValue')} value={fmtSAR(ws.value)} index={2} />
         <StatCard label={t('kReorder')} value={String(ws.reorder)} delta={`${ws.red + ws.yellow} ${t('expiringSoon')}`} index={3} accent />
       </section>
