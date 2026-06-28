@@ -84,6 +84,18 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-28 — Document registries: Invoices, Payments & Delivery notes pages (all WhatsApp docs,
+  file-openable).** User wanted a dedicated page for each: all payments received, all invoices, all
+  delivery notes — listing everything fetched from WhatsApp. Built three pages under **Documents** —
+  `/documents/invoices`, `/documents/payments`, `/documents/delivery-notes` — each a thin wrapper over one
+  reusable **`components/DocList.tsx`** (KPIs: total / with-file / latest; search; "with file only"
+  filter; table of filename, client, sender, channel/group, received time; **Open file** → decrypts the
+  original via `/api/wa-file`). New **`/api/wa-docs?type=invoice|payment|delivery_note`** +
+  `getWhatsappDocs()` in supply.ts return every non-archived `whatsapp_intake` row of that doc_type,
+  newest first, with the group JID resolved to a friendly name. Sidebar (Intelligence): Invoices /
+  Payments / Delivery notes (perm `documents`); auto-refresh every 30s. Build green (57 routes), EN/AR
+  parity.
+
 - **2026-06-28 — Credit & Inventory now auto-refresh from WhatsApp (live overlay + aligned static).**
   User: credit/inventory "not updated with the WhatsApp messages." **Diagnosis (probed live):** the
   workflow IS healthy — it classifies المديونية/المخزون PDFs and **extracts** their tables into

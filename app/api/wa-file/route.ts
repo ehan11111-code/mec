@@ -1,6 +1,33 @@
 import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
+// WhatsApp's CDN (mmg.whatsapp.net) is picky about who fetches the encrypted media — a plain server
+// request can come back throttled/short, which corrupts the ciphertext. Fetch with browser-ish headers,
+// follow redirects, and retry a couple of times.
+async function fetchEnc(u: string): Promise<Buffer | null> {
+  const headers = { 'User-Agent': 'WhatsApp/2.2412.50 A', 'Accept': '*/*', 'Accept-Encoding': 'identity' }
+  for (let i = 0; i < 3; i++) {
+    try {
+      const res = await fetch(u, { headers, redirect: 'follow', cache: 'no-store' })
+      if (res.ok) {
+        const buf = Buffer.from(await res.arrayBuffer())
+        if (buf.length > 100) return buf
+      }
+    } catch { /* retry */ }
+    await new Promise(r => setTimeout(r, 250 * (i + 1)))
+  }
+  return null
+}
+
+// Does the decrypted output look like a real file (PDF / JPEG / PNG / generic)? Guards against serving
+// garbage from a corrupted fetch.
+function looksValid(buf: Buffer): boolean {
+  if (buf.length < 8) return false
+  const h = buf.subarray(0, 4).toString('latin1')
+  return h.startsWith('%PDF') || buf[0] === 0xff && buf[1] === 0xd8 /* jpeg */ || h.startsWith('\x89PNG') || buf.length > 256
+}
 
 // Serve a WhatsApp document/image that arrived via WaSender. WhatsApp media is AES-256-CBC encrypted;
 // the key is derived from the message's mediaKey via HKDF-SHA256 with a media-type-specific info string.
@@ -43,30 +70,41 @@ export async function GET(req: Request) {
 
   const msg = raw?.data?.messages?.message || raw?.messages?.message || raw?.message || raw
   const found = findMedia(msg)
-  if (!found || !found.m?.url || !found.m?.mediaKey) return new Response('no downloadable media on this message', { status: 404 })
+  if (!found || !found.m?.mediaKey || !(found.m.url || found.m.directPath)) return new Response('no downloadable media on this message', { status: 404 })
   const media = found.m
+
+  // Candidate URLs: the message url, then a host+directPath reconstruction (the url can expire).
+  const urls: string[] = []
+  if (media.url) urls.push(media.url)
+  if (media.directPath) urls.push(`https://mmg.whatsapp.net${media.directPath}`)
 
   try {
     const mediaKey = Buffer.from(media.mediaKey, 'base64')
-    const expanded = Buffer.from(crypto.hkdfSync('sha256', mediaKey, Buffer.alloc(0), Buffer.from(INFO[found.kind]), 112))
-    const iv = expanded.subarray(0, 16)
-    const cipherKey = expanded.subarray(16, 48)
+    const expanded = Buffer.from(crypto.hkdfSync('sha256', mediaKey, new Uint8Array(0), Buffer.from(INFO[found.kind]), 112))
+    const iv = Buffer.from(expanded.subarray(0, 16))         // copy out of the hkdf buffer (avoids view issues)
+    const cipherKey = Buffer.from(expanded.subarray(16, 48))
 
-    const encRes = await fetch(media.url)
-    if (!encRes.ok) return new Response('media fetch failed', { status: 502 })
-    const enc = Buffer.from(await encRes.arrayBuffer())
-    const ciphertext = enc.subarray(0, enc.length - 10)   // last 10 bytes are the MAC
-
-    const decipher = crypto.createDecipheriv('aes-256-cbc', cipherKey, iv)
-    const out = Buffer.concat([decipher.update(ciphertext), decipher.final()])
+    let out: Buffer | null = null
+    let lastStatus = ''
+    for (const u of urls) {
+      const enc = await fetchEnc(u)
+      if (!enc) { lastStatus = 'fetch'; continue }
+      try {
+        const decipher = crypto.createDecipheriv('aes-256-cbc', cipherKey, iv)
+        const dec = Buffer.concat([decipher.update(enc.subarray(0, enc.length - 10)), decipher.final()])
+        if (looksValid(dec)) { out = dec; break }
+        lastStatus = 'invalid'
+      } catch { lastStatus = 'decrypt' }
+    }
+    if (!out) return new Response(`media unavailable (${lastStatus || 'fetch'}) — the file may have expired on WhatsApp's servers`, { status: 502 })
 
     const mime = media.mimetype || (found.kind === 'image' ? 'image/jpeg' : 'application/octet-stream')
-    const fname = (media.fileName || media.title || `${found.kind}`).replace(/"/g, '')
+    const fname = (media.fileName || media.title || `${found.kind}`).replace(/[\r\n"]/g, '')
     return new Response(out, {
       headers: {
         'content-type': mime,
         'content-disposition': `inline; filename="${fname}"`,
-        'cache-control': 'private, max-age=300'
+        'cache-control': 'private, max-age=600'
       }
     })
   } catch (e) {
