@@ -84,6 +84,23 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-28 — Inventory count corrected via Google Vision OCR + click-to-see-calculation on the on-hand
+  box.** User: "Tarek's ~8k is wrong… make all numbers correct and clickable to show how each is
+  calculated." **Diagnosis:** the المخزون/المديونية PDFs use a **custom-encoded Arabic font**, so the n8n
+  text extractor misread them (wrong item names, a missed row) — the "1500"s it saw were glyph codes.
+  **Fix — Google Vision OCR:** new **`scripts/ocr-statement.js`** OCRs the cached PDF (positional, so the
+  table's rows/columns are preserved), parses inventory **deterministically** (skips header + الإجمالي
+  subtotals, strips the عاصمة الدجاج supplier prefix, quantity = trailing number) and credit via GPT on
+  the clean OCR text. Result: inventory now **8 correctly-labelled items = 8,288 cartons** (the old 7,948
+  had mislabels + missed بوبي فيل 340); credit confirmed **593,884** (its digits read fine). Wired into
+  `scripts/refresh-statements.ps1` (cache-media → OCR → push) so new statements auto-OCR. **Honest finding:**
+  8,288 is genuinely what Tarek's sheet says — it exceeds the 6,000 capacity (driven by فيل ليج 1500 +
+  فور كوارتر 1500 + صدور 2685 + شاورما 2248), so the *source* likely carries cumulative/incoming figures,
+  not pure current on-hand — flagged for the user, not an extraction error anymore. **Click-to-calculate:**
+  the **OnHandMetric** value is now a button → a breakdown modal showing every line that sums to the figure
+  for the active source (physical: per-item counts; reconciled: per-SKU on-hand with excluded SKUs struck
+  through; orders: reconciled − each open order's units), with the formula. Build green (57 routes), EN/AR.
+
 - **2026-06-28 — 3-source on-hand metric box + delivery-note accuracy (reclassify) & receipt verification.**
   Two requests. **(1) On-hand box, user-switchable by icons:** new **`components/OnHandMetric.tsx`** on the
   Inventory page replaces the On-hand KPI — one box, three sources toggled by the icons inside it:

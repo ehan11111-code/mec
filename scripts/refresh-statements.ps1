@@ -15,6 +15,10 @@ if ($LASTEXITCODE -ne 0) { Write-Output "refresh failed"; exit 1 }
 #     reliably (Vercel can't fetch WhatsApp's CDN directly). Non-fatal if it hiccups.
 node "scripts/cache-media.js"
 
+# 1c. Re-extract the credit/inventory statements ACCURATELY from the cached PDFs via Google Vision OCR
+#     (the custom-font PDFs defeat the text extractor). Overwrites the generated JSON with correct numbers.
+node "scripts/ocr-statement.js"
+
 # 2. Commit + push only the two generated files, and only if they actually changed.
 $files = @("lib/data/credit.generated.json", "lib/data/inventory-count.generated.json")
 git add -- $files
