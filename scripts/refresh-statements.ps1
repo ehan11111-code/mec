@@ -11,6 +11,10 @@ Set-Location $root
 node "scripts/refresh-statements.js"
 if ($LASTEXITCODE -ne 0) { Write-Output "refresh failed"; exit 1 }
 
+# 1b. Cache any new WhatsApp media (PDFs/images) into Supabase Storage so the portal can serve them
+#     reliably (Vercel can't fetch WhatsApp's CDN directly). Non-fatal if it hiccups.
+node "scripts/cache-media.js"
+
 # 2. Commit + push only the two generated files, and only if they actually changed.
 $files = @("lib/data/credit.generated.json", "lib/data/inventory-count.generated.json")
 git add -- $files

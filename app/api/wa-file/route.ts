@@ -70,8 +70,26 @@ export async function GET(req: Request) {
 
   const msg = raw?.data?.messages?.message || raw?.messages?.message || raw?.message || raw
   const found = findMedia(msg)
-  if (!found || !found.m?.mediaKey || !(found.m.url || found.m.directPath)) return new Response('no downloadable media on this message', { status: 404 })
-  const media = found.m
+  const media = found?.m
+  const fname = ((media?.fileName || media?.title || found?.kind || 'file') as string).replace(/[\r\n"]/g, '')
+  const mime = media?.mimetype || (found?.kind === 'image' ? 'image/jpeg' : 'application/octet-stream')
+
+  // 1. Prefer the cached copy in Supabase Storage (decrypted by scripts/cache-media.js on a machine that
+  //    can reach WhatsApp's CDN). Vercel can always reach Supabase, so this path is reliable.
+  try {
+    const cacheRes = await fetch(`${base}/storage/v1/object/wa-media/${encodeURIComponent(id)}`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: 'no-store'
+    })
+    if (cacheRes.ok) {
+      const buf = Buffer.from(await cacheRes.arrayBuffer())
+      if (buf.length > 8) return new Response(buf, {
+        headers: { 'content-type': cacheRes.headers.get('content-type') || mime, 'content-disposition': `inline; filename="${fname}"`, 'cache-control': 'private, max-age=3600' }
+      })
+    }
+  } catch { /* fall through to live decrypt */ }
+
+  // 2. Fallback: decrypt live from WhatsApp's CDN (works when the server can reach it).
+  if (!found || !media?.mediaKey || !(media.url || media.directPath)) return new Response('no downloadable media on this message', { status: 404 })
 
   // Candidate URLs: the message url, then a host+directPath reconstruction (the url can expire).
   const urls: string[] = []
@@ -98,8 +116,6 @@ export async function GET(req: Request) {
     }
     if (!out) return new Response(`media unavailable (${lastStatus || 'fetch'}) — the file may have expired on WhatsApp's servers`, { status: 502 })
 
-    const mime = media.mimetype || (found.kind === 'image' ? 'image/jpeg' : 'application/octet-stream')
-    const fname = (media.fileName || media.title || `${found.kind}`).replace(/[\r\n"]/g, '')
     return new Response(out, {
       headers: {
         'content-type': mime,
