@@ -117,6 +117,22 @@ export async function setOrderStatus(messageId: string, status: 'approved' | 're
   } catch { return false }
 }
 
+// Server-side: patch arbitrary fields on a single WhatsApp row. Used by the smart-reprocess engine to
+// promote a missed order (intent/products) or apply a correction (client_name/products/decision).
+// Returns true on success.
+export async function patchWhatsapp(messageId: string, fields: Record<string, unknown>): Promise<boolean> {
+  const c = cfg()
+  if (!c) return false
+  try {
+    const r = await fetch(`${c.url}/rest/v1/whatsapp_intake?message_id=eq.${encodeURIComponent(messageId)}`, {
+      method: 'PATCH',
+      headers: { apikey: c.key, Authorization: `Bearer ${c.key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify(fields), cache: 'no-store'
+    })
+    return r.ok
+  } catch { return false }
+}
+
 // Server-side: permanently delete a single WhatsApp row (an order/document/message). Unlike archive,
 // this removes it from EVERY view including the automation audit log — used by the jarvis/admin "delete
 // order" action. Because approvals, documents, the orders feed, the inbox and notifications all read the

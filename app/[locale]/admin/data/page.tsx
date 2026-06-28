@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
-import { Database, RefreshCw, Loader2, MessageCircle, Mail, Radar, AlertTriangle, CheckCircle2, Circle, Users2 } from 'lucide-react'
+import { Database, RefreshCw, Loader2, MessageCircle, Mail, Radar, AlertTriangle, CheckCircle2, Circle, Users2, Wand2, Sparkles, ArrowRight, Check } from 'lucide-react'
 import { PageShell } from '@/components/PageShell'
 import { DisplayHeading } from '@/components/DisplayHeading'
 import { Eyebrow } from '@/components/Eyebrow'
@@ -12,6 +12,7 @@ import { NoteCallout } from '@/components/NoteCallout'
 import { EmptyState } from '@/components/EmptyState'
 import { fmtDateTime } from '@/lib/format/datetime'
 import type { DataItem } from '@/app/api/admin/data/route'
+import type { ReprocessChange } from '@/lib/data/reprocess'
 
 type Counts = { total: number; whatsapp: number; email: number; supply: number; captured: number; notCaptured: number; possibleOrders: number }
 const SRC_ICON = { whatsapp: MessageCircle, email: Mail, supply: Radar } as const
@@ -24,6 +25,10 @@ export default function AdminDataPage() {
   const [src, setSrc] = useState<'all' | 'whatsapp' | 'email' | 'supply'>('all')
   const [onlyUncaptured, setOnlyUncaptured] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
+  // Smart reprocess (missed orders + corrections)
+  const [proposals, setProposals] = useState<ReprocessChange[] | null>(null)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [applyingId, setApplyingId] = useState<string | null>(null)
 
   const load = useCallback(async (manual = false) => {
     if (manual) setRefreshing(true)
@@ -31,6 +36,22 @@ export default function AdminDataPage() {
     if (manual) setRefreshing(false)
   }, [])
   useEffect(() => { load(); const id = setInterval(() => load(), 30000); return () => clearInterval(id) }, [load])
+
+  const runSmart = useCallback(async () => {
+    setAnalyzing(true)
+    try { const d = await fetch('/api/admin/reprocess', { cache: 'no-store' }).then(r => r.json()); setProposals(Array.isArray(d.changes) ? d.changes : []) }
+    catch { setProposals([]) }
+    setAnalyzing(false)
+  }, [])
+
+  async function applyProposal(ch: ReprocessChange) {
+    setApplyingId(ch.triggerId)
+    try {
+      const r = await fetch('/api/admin/reprocess', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ change: ch }) })
+      if (r.ok) { setProposals(ps => (ps || []).filter(p => p.triggerId !== ch.triggerId)); load() }
+    } catch { /* ignore */ }
+    setApplyingId(null)
+  }
 
   const items = data?.items ?? []
   const counts = data?.counts
@@ -63,6 +84,48 @@ export default function AdminDataPage() {
       {!!counts?.possibleOrders && (
         <NoteCallout className="mb-6" tone="warn" title={t('missedTitle')}>{t('missedBody', { n: counts.possibleOrders })}</NoteCallout>
       )}
+
+      {/* Smart reprocess — catch missed orders + apply correction messages, live */}
+      <Panel className="mb-6" title={<span className="inline-flex items-center gap-2"><Wand2 className="h-4 w-4 text-accent" strokeWidth={1.8} />{t('smartTitle')}</span>} subtitle={t('smartSub')}
+        action={
+          <button type="button" onClick={runSmart} disabled={analyzing}
+            className="inline-flex items-center gap-1.5 rounded-full bg-accent text-white px-3.5 py-2 text-xs font-medium hover:bg-accent-strong disabled:opacity-60 transition-colors">
+            {analyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" strokeWidth={1.9} />}{t('runSmart')}
+          </button>
+        }>
+        {proposals === null ? (
+          <p className="py-5 text-center text-sm text-muted">{t('smartIdle')}</p>
+        ) : proposals.length === 0 ? (
+          <p className="py-5 text-center text-sm text-success">{t('smartClean')}</p>
+        ) : (
+          <ul className="space-y-3">
+            {proposals.map(p => (
+              <li key={p.triggerId} className="rounded-soft border border-border p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={clsx('inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium', p.kind === 'promote_order' ? 'bg-accent-soft text-accent' : 'bg-warn-soft text-warn')}>{t(p.kind === 'promote_order' ? 'kindOrder' : 'kindCorrection')}</span>
+                      <span className="text-[10px] text-muted">{t('conf', { p: Math.round(p.confidence * 100) })}</span>
+                      {p.auto && <span className="inline-flex items-center gap-0.5 text-[10px] text-success"><CheckCircle2 className="h-3 w-3" strokeWidth={2} />{t('autoEligible')}</span>}
+                    </div>
+                    <p className="mt-1.5 text-xs text-text-soft leading-snug" dir="auto">{p.reason}</p>
+                    <div className="mt-1.5 flex items-center gap-2 text-[11px] flex-wrap" dir="auto">
+                      <span className="text-muted line-through decoration-muted/50">{p.before}</span>
+                      <ArrowRight className="h-3 w-3 text-accent shrink-0" strokeWidth={2} />
+                      <span className="text-text font-medium">{p.after}</span>
+                    </div>
+                  </div>
+                  <button type="button" disabled={applyingId === p.triggerId} onClick={() => applyProposal(p)}
+                    className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-accent text-accent px-3 py-1.5 text-xs font-medium hover:bg-accent-soft disabled:opacity-60 transition-colors">
+                    {applyingId === p.triggerId ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" strokeWidth={2} />}{t(p.kind === 'promote_order' ? 'queueOrder' : 'applyFix')}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-3 text-[11px] text-muted leading-relaxed">{t('smartNote')}</p>
+      </Panel>
 
       <Panel bodyClassName="px-0 pb-0" title={t('feedTitle')} subtitle={t('feedSub')}
         action={
