@@ -84,20 +84,23 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
-- **2026-06-28 — Reliable WhatsApp file viewing: Supabase Storage media cache.** User: opening a delivery
-  note / invoice gave "decrypt failed / no downloadable media." **Root cause (traced precisely):** the
-  decryptor is correct — it produces a valid `%PDF` locally — but on **Vercel it returns "decrypt failed"**
-  because Vercel's servers can't reliably fetch **WhatsApp's CDN** (`mmg.whatsapp.net` throttles datacenter
-  IPs → corrupt ciphertext). WaSender has no media-download API (probed, all 404). **Fix:** decrypt where
-  the CDN *is* reachable (the user's machine, like the refresh task) and cache the file in Supabase
-  Storage, which Vercel can always reach. New **`scripts/cache-media.js`** — ensures a private **`wa-media`**
-  bucket, lists what's cached, then for each media message fetches+decrypts (browser UA + retry +
-  `directPath` fallback + magic-byte validation) and uploads the real file (ran it → **43 cached, 0
-  unavailable**). **`/api/wa-file`** now **serves the cached Storage copy first** (reliable on Vercel),
-  falling back to live decrypt; pinned `runtime='nodejs'`. Wired `cache-media.js` into
-  `scripts/refresh-statements.ps1` so new media auto-caches on the existing 30-min schedule. Build green
-  (57 routes). **Supabase note:** all of this fits the **free tier** (1 GB storage; PDFs are ~100–300 KB)
-  — Pro ($25/mo) is worth it at real launch for no-auto-pause + daily backups, not now.
+- **2026-06-28 — Reliable WhatsApp file viewing: fixed (Arabic-filename header) + Supabase Storage cache.**
+  User: opening a delivery note / invoice gave "decrypt failed / no downloadable media." **TWO real
+  causes, both fixed:** **(A) The actual user-facing bug — an Arabic filename in the `content-disposition`
+  header.** HTTP headers are Latin-1 only, so `new Response(buf, {headers:{'content-disposition':
+  'inline; filename="فاتورة…"'}})` threw *"Cannot convert to ByteString"*, which was caught and fell
+  through to the failing live-decrypt → 500. That's why ASCII-named PDFs opened and Arabic-named ones
+  didn't. Fixed with **RFC 5987** (`filename="ascii"; filename*=UTF-8''<pct-encoded>`). **Verified
+  10/10 documents now open as valid PDFs in prod.** (Found via a temporary `debug=1` probe, since the
+  decrypt worked locally — the throw only surfaced on Vercel's response construction.) **(B) Vercel can't
+  reliably fetch WhatsApp's CDN** (`mmg.whatsapp.net` throttles datacenter IPs), so live-decrypt is
+  unreliable in prod regardless. Fix: **`scripts/cache-media.js`** decrypts on a machine that *can* reach
+  the CDN (the user's, like the refresh task) and uploads the real file to a private **`wa-media`** Supabase
+  Storage bucket (ran → 43 cached); **`/api/wa-file` serves the cached copy first** (reliable on Vercel),
+  live-decrypt as fallback; `runtime='nodejs'`. Wired `cache-media.js` into `scripts/refresh-statements.ps1`
+  so new media auto-caches on the 30-min schedule. WaSender has no media API (probed, all 404). Build green
+  (57 routes). **Supabase note:** fits the **free tier** (1 GB storage; PDFs ~100–300 KB) — Pro ($25/mo)
+  worth it at real launch for no-auto-pause + daily backups, not now.
 
 - **2026-06-28 — Document registries: Invoices, Payments & Delivery notes pages (all WhatsApp docs,
   file-openable).** User wanted a dedicated page for each: all payments received, all invoices, all
