@@ -60,8 +60,11 @@ async function main() {
     const lj = await lr.json(); if (Array.isArray(lj)) for (const o of lj) cached.add(o.name)
   } catch {}
 
-  // 3. Media messages to consider (anything with media_url), newest first.
-  const r = await fetch(`${SUPA}/rest/v1/whatsapp_intake?media_url=not.is.null&select=message_id,raw,doc_type,received_at&order=received_at.desc&limit=400`, { headers: H })
+  // 3. Media messages to consider — by message_type (document/image/video/audio) OR a classified
+  //    doc_type. NOT by media_url: some document rows have media_url null but still carry the media node
+  //    inside `raw`, and those are exactly the ones the live route fails on. findMedia decides per row.
+  const filter = `or=(message_type.in.(document,image,video,audio),doc_type.in.(invoice,delivery_note,payment))`
+  const r = await fetch(`${SUPA}/rest/v1/whatsapp_intake?${filter}&select=message_id,raw,doc_type,received_at&order=received_at.desc&limit=500`, { headers: H })
   const rows = await r.json()
   if (!Array.isArray(rows)) { console.error('intake read failed'); process.exit(1) }
 

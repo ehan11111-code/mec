@@ -76,17 +76,21 @@ export async function GET(req: Request) {
 
   // 1. Prefer the cached copy in Supabase Storage (decrypted by scripts/cache-media.js on a machine that
   //    can reach WhatsApp's CDN). Vercel can always reach Supabase, so this path is reliable.
+  let dbg = ''
   try {
     const cacheRes = await fetch(`${base}/storage/v1/object/wa-media/${encodeURIComponent(id)}`, {
       headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: 'no-store'
     })
+    dbg = `storage:${cacheRes.status}`
     if (cacheRes.ok) {
       const buf = Buffer.from(await cacheRes.arrayBuffer())
       if (buf.length > 8) return new Response(buf, {
         headers: { 'content-type': cacheRes.headers.get('content-type') || mime, 'content-disposition': `inline; filename="${fname}"`, 'cache-control': 'private, max-age=3600' }
       })
+      dbg += `:bytes${buf.length}`
     }
-  } catch { /* fall through to live decrypt */ }
+  } catch (e) { dbg = 'storage:throw:' + String(e instanceof Error ? e.message : e).slice(0, 60) }
+  if (req.url.includes('debug=1')) return new Response(`dbg=${dbg} base=${base.slice(0, 40)} keylen=${(key || '').length}`, { status: 200 })
 
   // 2. Fallback: decrypt live from WhatsApp's CDN (works when the server can reach it).
   if (!found || !media?.mediaKey || !(media.url || media.directPath)) return new Response('no downloadable media on this message', { status: 404 })
