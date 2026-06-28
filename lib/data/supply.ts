@@ -40,7 +40,7 @@ export type WhatsappMsg = {
   group_type?: 'orders' | 'docs' | 'dm' | null
   salesperson?: string | null              // sender display name — who brought the order
   quoted_message_id?: string | null        // reply target (threads approve/reject/adjust)
-  decision?: 'approve' | 'reject' | 'adjust' | null
+  decision?: 'approve' | 'reject' | 'adjust' | 'received' | null   // 'received' = delivery note confirmed (signed/stamped/تم الاستلام)
   order_no?: string | null                 // order / invoice / reference number
   client_name?: string | null              // client/company named on the order or document
   recipient?: string | null                // receiver / driver (المستلم) on a delivery note

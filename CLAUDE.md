@@ -84,6 +84,22 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-28 — 3-source on-hand metric box + delivery-note accuracy (reclassify) & receipt verification.**
+  Two requests. **(1) On-hand box, user-switchable by icons:** new **`components/OnHandMetric.tsx`** on the
+  Inventory page replaces the On-hand KPI — one box, three sources toggled by the icons inside it:
+  **JARVIS reconciled** (ledger net, excludes unbalanced SKUs), **Tarek's physical المخزون count** (live),
+  and **Available after orders** (reconciled − units committed to live open orders, fetched from
+  `/api/approvals`). (i) tooltip defines all three. **(2) Delivery notes — misclassification + proof of
+  receipt:** user noted some delivery notes are actually invoices and none show a signature/stamp /
+  تم الاستلام. `/api/wa-docs` now derives **`suggestedType`** (filename/text heuristics:
+  فاتورة/INV → invoice, تسليم/سند تسليم → delivery note, حوالة/إيصال → payment) and **`receiptConfirmed`**
+  (text proof تم الاستلام/استلام/received/توقيع/ختم, or an explicit confirm). New **POST `/api/wa-docs`**
+  (manageData): **reclassify** a misfiled doc (moves it to the right list) and **mark received**. The
+  delivery-notes page gains a **Receipt** column (Received ✓ / Unconfirmed + admin "Mark received"), a
+  "Possibly misfiled" KPI + warning callout with an inline **Reclassify** button, and an honest note that
+  auto-reading a stamp from the image is a later OCR step (`GOOGLE_VISION_API_KEY` earmarked). `decision`
+  union widened with `'received'`. Build green (57 routes), EN/AR parity.
+
 - **2026-06-28 — Reliable WhatsApp file viewing: fixed (Arabic-filename header) + Supabase Storage cache.**
   User: opening a delivery note / invoice gave "decrypt failed / no downloadable media." **TWO real
   causes, both fixed:** **(A) The actual user-facing bug — an Arabic filename in the `content-disposition`
