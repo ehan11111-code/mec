@@ -84,6 +84,30 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-28 — Smart self-correcting intake: missed-order recovery + correction messages applied live
+  (the Data page acts).** User: the classifier missing relevant data is "a problem" — make it intelligent,
+  understand correction messages, apply them to update all portal data, live, every day & every message,
+  visible on the Data page. Built the engine. New **`lib/data/reprocess.ts`** (server-only): re-reads
+  recent `whatsapp_intake`, sends the order-like + reply/correction candidates to **OpenAI (JSON mode,
+  gpt-4o-mini)** and produces typed proposals — **`promote_order`** (a real order filed as `other` → set
+  intent=order + parsed products, status pending) and **`correction`** (a message that fixes a prior
+  order/invoice — change client, qty, price, or cancel; target resolved by order#, else the quoted reply,
+  else most-recent prior order) — each with confidence + before→after. New **`patchWhatsapp()`** in
+  supply.ts applies a change (PATCH the live row → whole portal self-corrects). New **`/api/admin/reprocess`**
+  (manageData session OR cron secret): GET previews, POST applies one whitelisted change or auto-applies
+  the high-confidence batch. **Data page** gains a **Smart review** panel — *Run smart reprocess* → list of
+  proposals with confidence + before→after + one-click **Queue as order** / **Apply fix** (my offered
+  "queue-as-order" suggestion, shipped). **Guardrails honoured:** a recovered order only enters the
+  approvals queue as *pending* (never auto-approved); data-changing corrections auto-apply only at ≥0.85
+  confidence with an explicit target, else they wait for human one-click apply. **Daily automation:** new
+  **`n8n/smart-reprocess.json`** (Schedule 06:00 → POST `/api/admin/reprocess?key=…&auto=1`) so it
+  self-corrects every day; registered in the automations registry (live, phase 7, with bilingual notes).
+  Build green (52 routes), EN/AR parity.
+  - **Still open / optional:** set `MEC_DOCS_GROUP_JID=120363404531223628@g.us` so the docs group stops
+    showing as "unknown" on the Data page; and tighten the n8n first-pass classifier (the reprocess now
+    backstops it, but catching orders on the first pass is cheaper). "Every message" (vs daily) = have the
+    whatsapp-intake workflow also POST to `/api/admin/reprocess` after storing — easy to wire next.
+
 - **2026-06-28 — Admin "Data" page: a cross-source data inspector (what was fetched, from which group,
   and whether it was captured).** User asked whether recent fetched data was relevant-but-not-added, and
   for a page under Admin to see the latest data from all sources in detail (which group, which message).

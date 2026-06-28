@@ -60,6 +60,21 @@ export const automations: Automation[] = [
     }
   },
   {
+    id: 'smart-reprocess', dept: 'documents', kind: 'internal', triggerKind: 'schedule', cadenceHours: 24, status: 'live', phase: 7, webhookEnv: 'NEXT_PUBLIC_N8N_SMART_REPROCESS',
+    name: { en: 'Smart Reprocess (missed orders & corrections)', ar: 'المعالجة الذكية (طلبات فائتة وتصحيحات)' },
+    trigger: { en: 'Daily — and on demand from Admin → Data', ar: 'يوميًا — وعند الطلب من الإدارة ← البيانات' },
+    steps: [
+      { en: 'Re-read recent WhatsApp messages', ar: 'إعادة قراءة رسائل واتساب الأخيرة' },
+      { en: 'Catch orders filed as chatter (GPT)', ar: 'التقاط الطلبات المصنّفة كمحادثة (GPT)' },
+      { en: 'Read correction messages → compute the fix', ar: 'قراءة رسائل التصحيح ← حساب التصحيح' },
+      { en: 'Auto-apply high-confidence; queue the rest', ar: 'تطبيق عالي الثقة تلقائيًا؛ وإدراج الباقي' }
+    ],
+    notes: {
+      en: 'Makes the intake self-correcting. Every day at 06:00 (and on demand from the Admin → Data page) JARVIS re-reads recent WhatsApp messages and finds what the first pass missed: orders that were filed as general chatter (e.g. an order sent into the documents group) and CORRECTION messages that fix a prior order or invoice (“sold to Kanz, not Al-Kadi”; change a quantity/price; cancel). It computes the exact change and updates the live record so the whole portal stays correct. Guardrails: a recovered order only ever enters the approval queue as pending — never auto-approved; data-changing corrections are auto-applied only when confidence is high, otherwise they wait for a one-click human apply on the Data page. Everything it does is visible there.',
+      ar: 'يجعل الاستقبال ذاتي التصحيح. كل يوم الساعة 06:00 (وعند الطلب من صفحة الإدارة ← البيانات) يعيد جارفيس قراءة رسائل واتساب الأخيرة ويجد ما فات التصنيف الأول: طلبات صُنّفت كمحادثة عامة (مثل طلب أُرسل إلى مجموعة المستندات) ورسائل التصحيح التي تصحّح طلبًا أو فاتورة سابقة («مباعة لكنز وليس الكادي»؛ تغيير كمية/سعر؛ إلغاء). يحسب التغيير الدقيق ويحدّث السجل المباشر ليبقى كامل البوابة صحيحًا. الضوابط: الطلب المُستعاد يدخل قائمة الاعتماد كـ«قيد الانتظار» فقط — لا اعتماد تلقائي؛ والتصحيحات التي تغيّر البيانات تُطبَّق تلقائيًا فقط عند الثقة العالية، وإلا تنتظر تطبيقًا بشريًا بنقرة في صفحة البيانات. وكل ما يفعله ظاهر هناك.'
+    }
+  },
+  {
     id: 'contact-inquiry', dept: 'documents', kind: 'external', triggerKind: 'event', status: 'live', phase: 1, webhookEnv: 'NEXT_PUBLIC_N8N_CONTACT',
     name: { en: 'Contact / Inquiry Alert', ar: 'تنبيه التواصل / الاستفسار' },
     trigger: { en: 'Portal contact form submitted', ar: 'إرسال نموذج التواصل في البوابة' },
@@ -182,6 +197,7 @@ export const webhookUrls: Record<string, string | undefined> = {
   NEXT_PUBLIC_N8N_CONTACT: process.env.NEXT_PUBLIC_N8N_CONTACT,
   NEXT_PUBLIC_N8N_EMAIL_INTAKE: process.env.NEXT_PUBLIC_N8N_EMAIL_INTAKE,
   NEXT_PUBLIC_N8N_WHATSAPP_INTAKE: process.env.NEXT_PUBLIC_N8N_WHATSAPP_INTAKE,
+  NEXT_PUBLIC_N8N_SMART_REPROCESS: process.env.NEXT_PUBLIC_N8N_SMART_REPROCESS,
   NEXT_PUBLIC_N8N_ORDER_APPROVAL: process.env.NEXT_PUBLIC_N8N_ORDER_APPROVAL,
   NEXT_PUBLIC_N8N_WAREHOUSE_DISPATCH: process.env.NEXT_PUBLIC_N8N_WAREHOUSE_DISPATCH,
   NEXT_PUBLIC_N8N_DRIVER_ROUTE: process.env.NEXT_PUBLIC_N8N_DRIVER_ROUTE,

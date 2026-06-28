@@ -1,0 +1,30 @@
+{
+  "name": "MEC · Smart Reprocess (daily)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "hours", "hoursInterval": 24, "triggerAtHour": 6 }] }
+      },
+      "id": "schedule",
+      "name": "Every day 06:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Daily self-correction: ask the portal to re-read recent WhatsApp messages, catch orders that were\n// filed as chatter, and apply correction messages — auto-applying only the high-confidence ones. The\n// portal handles auth via the shared secret. Everything it does is visible on the Admin -> Data page.\nconst base = $env.PORTAL_BASE_URL;\nconst secret = $env.WASENDER_WEBHOOK_SECRET;\nlet result = { applied: 0 };\ntry {\n  result = await this.helpers.httpRequest({ method: 'POST', url: base + '/api/admin/reprocess?key=' + encodeURIComponent(secret) + '&auto=1', body: {}, json: true });\n} catch (e) { result = { error: String(e && e.message || e) }; }\nreturn [{ json: result }];"
+      },
+      "id": "reprocess",
+      "name": "Reprocess (auto-apply)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 320]
+    }
+  ],
+  "connections": {
+    "Every day 06:00": { "main": [[{ "node": "Reprocess (auto-apply)", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "active": true
+}
