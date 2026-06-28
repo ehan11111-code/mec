@@ -3,14 +3,14 @@ import { useState } from 'react'
 import { Link, usePathname } from '@/i18n/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { clsx } from 'clsx'
-import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap, Radar, MessageCircle, ClipboardCheck, Inbox, Package, ShieldAlert, Activity, Boxes, FileCheck2, Wallet, Database, FileText, Receipt, Truck } from 'lucide-react'
+import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap, Radar, MessageCircle, ClipboardCheck, Inbox, Package, ShieldAlert, Activity, Boxes, FileCheck2, Wallet, Database } from 'lucide-react'
 import { BrandLogo } from './BrandLogo'
 import { departmentSeeds } from '@/lib/mock/catalog'
 import { getFirmState } from '@/lib/mock/data'
 import { useCurrentUser } from '@/lib/auth/useCurrentUser'
 import type { Permission } from '@/lib/auth/users'
 
-type Item = { href: string; label: string; icon: typeof LayoutDashboard; badge?: number; perm: Permission }
+type Item = { href: string; label: string; icon: typeof LayoutDashboard; badge?: number; perm: Permission; children?: { href: string; label: string }[] }
 type Section = { key: string; items: Item[] }
 
 export function SidebarNav() {
@@ -19,6 +19,7 @@ export function SidebarNav() {
   const firm = getFirmState()
   const unread = firm.notifications.filter(n => !n.read).length
   const [deptsOpen, setDeptsOpen] = useState(true)
+  const [docsOpen, setDocsOpen] = useState(true)
   const { user, can } = useCurrentUser()
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
@@ -40,10 +41,11 @@ export function SidebarNav() {
       { href: '/analytics', label: tNav('analytics'), icon: BarChart3, perm: 'analytics' },
       { href: '/supply-intelligence', label: tNav('supplyIntel'), icon: Radar, perm: 'supply' },
       { href: '/whatsapp', label: tNav('whatsapp'), icon: MessageCircle, perm: 'whatsapp' },
-      { href: '/documents', label: tNav('documents'), icon: FileCheck2, perm: 'documents' },
-      { href: '/documents/invoices', label: tNav('invoices'), icon: FileText, perm: 'documents' },
-      { href: '/documents/payments', label: tNav('payments'), icon: Receipt, perm: 'documents' },
-      { href: '/documents/delivery-notes', label: tNav('deliveryNotes'), icon: Truck, perm: 'documents' }
+      { href: '/documents', label: tNav('documents'), icon: FileCheck2, perm: 'documents', children: [
+        { href: '/documents/invoices', label: tNav('invoices') },
+        { href: '/documents/payments', label: tNav('payments') },
+        { href: '/documents/delivery-notes', label: tNav('deliveryNotes') }
+      ] }
     ] },
     { key: 'secWorkspace', items: [
       { href: '/messages', label: tNav('messages'), icon: Inbox, perm: 'messages' },
@@ -73,6 +75,33 @@ export function SidebarNav() {
       </Link>
     )
   }
+  // A nav item with sub-pages (e.g. Documents → Invoices / Payments / Delivery notes): the parent still
+  // links to its own page, with a chevron that expands the children indented beneath it.
+  const group = (item: Item) => {
+    const Icon = item.icon; const active = isActive(item.href)
+    return (
+      <div key={item.href}>
+        <div className={clsx('flex items-center rounded-soft pe-1 transition-colors', active ? 'bg-surface text-text shadow-soft' : 'text-text-soft hover:bg-surface/60')}>
+          <Link href={item.href} className="flex flex-1 items-center gap-3 px-3 py-2 text-sm min-w-0">
+            <Icon className={clsx('h-4 w-4 shrink-0', active ? 'text-accent' : 'text-muted')} strokeWidth={1.7} />
+            <span className="flex-1 truncate">{item.label}</span>
+          </Link>
+          <button type="button" onClick={() => setDocsOpen(o => !o)} aria-label="toggle" className="p-1.5 text-muted hover:text-text transition-colors">
+            <ChevronDown className={clsx('h-3.5 w-3.5 transition-transform', docsOpen && 'rotate-180')} strokeWidth={1.7} />
+          </button>
+        </div>
+        {docsOpen && (
+          <ul className="mt-1 ms-5 border-s border-border ps-3 space-y-0.5">
+            {item.children!.map(c => (
+              <li key={c.href}>
+                <Link href={c.href} className={clsx('block rounded-md px-3 py-1.5 text-sm truncate transition-colors', pathname === c.href ? 'text-accent font-medium' : 'text-text-soft hover:text-text')}>{c.label}</Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    )
+  }
   const sectionLabel = (k: string) => <p className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted/70">{tNav(k)}</p>
 
   return (
@@ -91,7 +120,7 @@ export function SidebarNav() {
               return (
                 <div key={sec.key}>
                   {sectionLabel(sec.key)}
-                  {items.map(row)}
+                  {items.map(it => it.children ? group(it) : row(it))}
                 </div>
               )
             })}
