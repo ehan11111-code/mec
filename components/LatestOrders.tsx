@@ -24,12 +24,19 @@ type Row = {
 }
 const DOC_ICON_ORDER: DocType[] = ['invoice', 'delivery_note', 'payment']
 
-export function LatestOrders({ limit = 6, className }: { limit?: number; className?: string }) {
+// A minimal view of the live rows reported up to a parent, enough to drive KPI tiles (counts/status).
+export type LiveOrderRow = { message_id: string; order_status: string; received_at: string }
+
+export function LatestOrders({ limit = 6, className, onData }: { limit?: number; className?: string; onData?: (rows: LiveOrderRow[]) => void }) {
   const t = useTranslations('latest'); const locale = useLocale() as 'en' | 'ar'
   const { can } = useCurrentUser()
   const [rows, setRows] = useState<Row[] | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
+
+  // Report the live list up so a parent's headline counts (Orders / Operations tiles) stay in sync —
+  // including right after a delete, which is what makes the whole order surface feel connected.
+  useEffect(() => { if (rows && onData) onData(rows) }, [rows, onData])
 
   const load = useCallback(async (manual = false) => {
     if (manual) setRefreshing(true)

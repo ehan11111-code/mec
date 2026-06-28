@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
 import { PageShell } from '@/components/PageShell'
@@ -11,7 +11,7 @@ import { BarChartPanel } from '@/components/BarChartPanel'
 import { ChartPanel } from '@/components/ChartPanel'
 import { StatusBadge } from '@/components/StatusBadge'
 import { ClientLink, ProductLink } from '@/components/EntityLink'
-import { LatestOrders } from '@/components/LatestOrders'
+import { LatestOrders, type LiveOrderRow } from '@/components/LatestOrders'
 import { getOrders, getClient, ordersByStatus, ordersSummary, revenueByMonth, categoryMix, clientName, fmtSAR, type OrderStatus } from '@/lib/data/dataset'
 import { fmtDate, fmtDayMonth } from '@/lib/format/datetime'
 
@@ -21,6 +21,12 @@ export default function OrdersPage() {
   const orders = getOrders(); const sum = ordersSummary(); const byStatus = ordersByStatus()
   const rev = revenueByMonth(); const cats = categoryMix()
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all')
+  // Live incoming orders (WhatsApp) folded into the headline counts, so the totals include new orders
+  // and drop the moment one is deleted from the feed below — the historical book + live, as one number.
+  const [live, setLive] = useState<LiveOrderRow[] | null>(null)
+  const onLive = useCallback((rows: LiveOrderRow[]) => setLive(rows), [])
+  const liveCount = live?.length ?? 0
+  const livePending = live?.filter(o => (o.order_status || 'pending') === 'pending').length ?? 0
 
   const filtered = useMemo(() => filter === 'all' ? orders : orders.filter(o => o.status === filter), [filter, orders])
   const rows = filtered.slice(0, 80)
