@@ -4,6 +4,8 @@ import { operationsSnapshot } from '@/lib/data/dataset'
 import { getCredit } from '@/lib/data/credit'
 import { getInventoryCount } from '@/lib/data/inventory-count'
 import { getConcerns } from '@/lib/data/concerns'
+import { getWhatsappIntake } from '@/lib/data/supply'
+import { fmtStampUTC } from '@/lib/format/datetime'
 import { automations } from '@/lib/automations/registry'
 
 export const dynamic = 'force-dynamic'
@@ -90,19 +92,27 @@ async function buildReport(): Promise<string> {
     return `${dot(active)} ${a.name.en}`
   })
 
-  // recent activity from the live data layer
-  let activity: string[] = []
+  // Last updates — the EXACT date & time of the latest order / document / message (no vague "today"),
+  // plus the as-of dates of the credit & inventory statements. Sourced from the live whatsapp_intake feed.
+  let updates: string[] = []
   try {
+    const live = await getWhatsappIntake(100)                       // newest-first
+    const orders = live.filter(m => m.intent === 'order')
+    const docs = live.filter(m => m.doc_type && ['invoice', 'delivery_note', 'payment'].includes(String(m.doc_type)))
+    const lastOrder = orders[0]; const lastDoc = docs[0]; const lastMsg = live[0]
+    const pending = orders.filter(o => (o.order_status || 'pending') === 'pending').length
     const snap = operationsSnapshot(); const credit = getCredit(); const cnt = getInventoryCount(); const concerns = getConcerns()
-    activity = [
-      `• Orders today: ${snap.todays.count} (${fmtSAR(snap.todays.value)})`,
-      `• Pending approvals: ${snap.payments ? snap.delayed.count : 0} delayed · payments due ${fmtSAR(snap.payments.due)}`,
-      `• Receivables (المديونية): ${fmtSAR(credit.total)} · ${credit.overdueCount} overdue >30d`,
-      `• Inventory count: ${cnt.rows.length} SKUs (as of ${cnt.asOf})`,
-      `• Warehouse on-hand: ${snap.warehouse.onHand.toLocaleString('en-US')} / ${snap.warehouse.capacity} cartons`,
+    const who = (m: typeof lastOrder) => m ? (m.client_name || m.salesperson || m.push_name || m.phone) : ''
+    updates = [
+      lastOrder ? `• Last order: ${fmtStampUTC(lastOrder.received_at)} — ${lastOrder.order_no ? '#' + lastOrder.order_no + ' ' : ''}${who(lastOrder)}` : '• Last order: none received yet',
+      lastDoc ? `• Last document: ${fmtStampUTC(lastDoc.received_at)} — ${lastDoc.doc_type}` : '• Last document: none received yet',
+      lastMsg ? `• Last WhatsApp message: ${fmtStampUTC(lastMsg.received_at)}` : '• Last WhatsApp message: none yet',
+      `• Open approvals: ${pending} pending · payments due ${fmtSAR(snap.payments.due)}`,
+      `• Receivables (المديونية): ${fmtSAR(credit.total)} · ${credit.overdueCount} overdue >30d · statement ${credit.asOf}`,
+      `• Inventory count: ${cnt.rows.length} SKUs · count ${cnt.asOf} · on-hand ${snap.warehouse.onHand.toLocaleString('en-US')}/${snap.warehouse.capacity}`,
       `• Data concerns: ${concerns.length}${concerns.length ? ' — ' + concerns.slice(0, 2).map(c => c.title.en).join('; ') : ''}`,
     ]
-  } catch (e) { activity = ['• (activity unavailable)'] }
+  } catch (e) { updates = ['• (activity unavailable)'] }
 
   const now = new Date().toISOString().replace('T', ' ').slice(0, 16) + ' UTC'
   const allOk = platforms.every(p => p.ok !== false)
@@ -116,8 +126,8 @@ async function buildReport(): Promise<string> {
     `*Automations (live)*`,
     ...(autoLines.length ? autoLines : ['• none live']),
     ``,
-    `*Recent activity*`,
-    ...activity,
+    `*Last updates (UTC — date & time)*`,
+    ...updates,
     ``,
     `_Send "report" or "hi jarvis" anytime for this status._`,
   ].join('\n')

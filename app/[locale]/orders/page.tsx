@@ -11,9 +11,9 @@ import { BarChartPanel } from '@/components/BarChartPanel'
 import { ChartPanel } from '@/components/ChartPanel'
 import { StatusBadge } from '@/components/StatusBadge'
 import { ClientLink, ProductLink } from '@/components/EntityLink'
+import { LatestOrders } from '@/components/LatestOrders'
 import { getOrders, getClient, ordersByStatus, ordersSummary, revenueByMonth, categoryMix, clientName, fmtSAR, type OrderStatus } from '@/lib/data/dataset'
-
-function fmtDate(ts: string) { const d = new Date(ts); return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}` }
+import { fmtDate, fmtDayMonth } from '@/lib/format/datetime'
 
 export default function OrdersPage() {
   const tNav = useTranslations('nav'); const t = useTranslations('orders'); const tStatus = useTranslations('orderStatus')
@@ -46,6 +46,8 @@ export default function OrdersPage() {
         <StatCard label={t('kOverdue')} value={String(sum.overdue)} infoId="openOrders" index={4} />
       </section>
 
+      <LatestOrders className="mb-8" limit={6} />
+
       <section className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
         <BarChartPanel data={statusBars} title={t('byStatus')} subtitle={t('byStatusSub')} locale={locale} />
         <ChartPanel chart={revChart} locale={locale} height={260} title={t('revenueTrend')} />
@@ -70,6 +72,7 @@ export default function OrdersPage() {
             <thead>
               <tr className="text-xs text-muted border-b border-border">
                 <th className="text-start font-medium px-5 md:px-6 py-3">{t('colNumber')}</th>
+                <th className="text-start font-medium px-4 py-3 whitespace-nowrap">{t('colDate')}</th>
                 <th className="text-start font-medium px-4 py-3">{t('colClient')}</th>
                 <th className="text-start font-medium px-4 py-3 hidden md:table-cell">{t('colItem')}</th>
                 <th className="text-start font-medium px-4 py-3 hidden lg:table-cell">{t('colRep')}</th>
@@ -85,17 +88,18 @@ export default function OrdersPage() {
                 return (
                   <tr key={o.id} className="hover:bg-surface-elev transition-colors">
                     <td className="px-5 md:px-6 py-3 font-medium text-text tabular-nums whitespace-nowrap">{o.number}</td>
+                    <td className="px-4 py-3 text-text-soft tabular-nums whitespace-nowrap">{fmtDate(o.date, locale)}</td>
                     <td className="px-4 py-3 text-text-soft max-w-[220px] truncate"><ClientLink name={o.clientName} id={o.clientId || undefined} display={c ? clientName(c, locale) : o.clientName} /></td>
                     <td className="px-4 py-3 text-text-soft max-w-[200px] truncate hidden md:table-cell"><ProductLink item={o.item} /></td>
                     <td className="px-4 py-3 text-text-soft hidden lg:table-cell">{locale === 'ar' ? o.salespersonAr : o.salespersonEn}</td>
                     <td className="px-4 py-3"><StatusBadge status={o.status} /></td>
                     <td className="px-4 py-3 text-end tabular-nums text-text">{fmtSAR(o.totalAmount)}</td>
                     <td className={clsx('px-4 py-3 text-end tabular-nums hidden sm:table-cell', o.marginPct >= 20 ? 'text-success' : o.marginPct >= 12 ? 'text-warn' : 'text-accent')}>{o.marginPct}%</td>
-                    <td className="px-5 md:px-6 py-3 text-end tabular-nums text-muted hidden md:table-cell">{fmtDate(o.dueDate)}</td>
+                    <td className="px-5 md:px-6 py-3 text-end tabular-nums text-muted hidden md:table-cell">{fmtDayMonth(o.dueDate)}</td>
                   </tr>
                 )
               })}
-              {rows.length === 0 && <tr><td colSpan={8} className="px-6 py-10 text-center text-sm text-muted">{t('empty')}</td></tr>}
+              {rows.length === 0 && <tr><td colSpan={9} className="px-6 py-10 text-center text-sm text-muted">{t('empty')}</td></tr>}
             </tbody>
           </table>
         </div>

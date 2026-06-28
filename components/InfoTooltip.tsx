@@ -1,20 +1,23 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { useLocale } from 'next-intl'
-import { Info, FileText } from 'lucide-react'
+import { Info, FileText, Clock } from 'lucide-react'
 import { clsx } from 'clsx'
 import { getDef } from '@/lib/info/definitions'
 import type { Bi } from '@/lib/info/definitions'
 
-// (i) icon that defines a metric/node AND cites its source reference. Pass an `id` (looked up in the
-// definitions registry) or explicit `def`/`source` bilingual strings.
-export function InfoTooltip({ id, def, source, className }: { id?: string; def?: Bi; source?: Bi; className?: string }) {
+// (i) icon that defines a metric/node, cites its source reference, AND shows when it was last updated.
+// Pass an `id` (looked up in the definitions registry) or explicit `def`/`source`/`updated` bilingual
+// strings. `updated` may also be a plain string (e.g. a live timestamp) shown verbatim in both locales.
+export function InfoTooltip({ id, def, source, updated, className }: { id?: string; def?: Bi; source?: Bi; updated?: Bi | string; className?: string }) {
   const locale = useLocale() as 'en' | 'ar'
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLSpanElement>(null)
   const entry = id ? getDef(id) : undefined
   const d = def ?? entry?.def
   const s = source ?? entry?.source
+  const u = updated ?? entry?.updated
+  const uText = typeof u === 'string' ? u : u?.[locale]
 
   useEffect(() => {
     if (!open) return
@@ -23,7 +26,7 @@ export function InfoTooltip({ id, def, source, className }: { id?: string; def?:
     return () => document.removeEventListener('mousedown', onDoc)
   }, [open])
 
-  if (!d && !s) return null
+  if (!d && !s && !uText) return null
 
   return (
     <span ref={ref} className={clsx('relative inline-flex align-middle', className)}
@@ -39,6 +42,12 @@ export function InfoTooltip({ id, def, source, className }: { id?: string; def?:
             <span className="mt-2 flex items-start gap-1.5 border-t border-border pt-2 text-[11px] text-muted leading-relaxed">
               <FileText className="h-3 w-3 mt-0.5 shrink-0 text-accent" strokeWidth={1.8} />
               <span>{s[locale]}</span>
+            </span>
+          )}
+          {uText && (
+            <span className="mt-1.5 flex items-start gap-1.5 text-[11px] text-muted leading-relaxed">
+              <Clock className="h-3 w-3 mt-0.5 shrink-0 text-accent" strokeWidth={1.8} />
+              <span>{uText}</span>
             </span>
           )}
         </span>

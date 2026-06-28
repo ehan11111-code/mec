@@ -2,13 +2,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
-import { ClipboardCheck, Check, X, Loader2, MessageCircle, RefreshCw } from 'lucide-react'
+import { ClipboardCheck, Check, X, Loader2, MessageCircle, RefreshCw, Trash2 } from 'lucide-react'
 import { PageShell } from '@/components/PageShell'
 import { DisplayHeading } from '@/components/DisplayHeading'
 import { Eyebrow } from '@/components/Eyebrow'
 import { Panel } from '@/components/Panel'
 import { StatCard } from '@/components/StatCard'
 import { EmptyState } from '@/components/EmptyState'
+import { useCurrentUser } from '@/lib/auth/useCurrentUser'
+import { fmtDateTime } from '@/lib/format/datetime'
 import type { WhatsappMsg } from '@/lib/data/supply'
 
 type Status = 'pending' | 'approved' | 'rejected'
@@ -16,6 +18,7 @@ const st = (o: WhatsappMsg): Status => (o.order_status as Status) || 'pending'
 
 export default function ApprovalsPage() {
   const t = useTranslations('approvals'); const tNav = useTranslations('nav'); const locale = useLocale() as 'en' | 'ar'
+  const { can } = useCurrentUser()
   const [orders, setOrders] = useState<WhatsappMsg[] | null>(null)
   const [tab, setTab] = useState<Status>('pending')
   const [busy, setBusy] = useState<string | null>(null)
@@ -51,7 +54,18 @@ export default function ApprovalsPage() {
     } catch { /* ignore */ }
     setBusy(null)
   }
-  const fmt = (s: string) => { try { return new Date(s).toLocaleString(locale === 'ar' ? 'ar-SA' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' }) } catch { return '—' } }
+  // jarvis/admin only: permanently delete an order. It vanishes from approvals, documents, the orders
+  // feed, the inbox and notifications (all read the same live whatsapp_intake table).
+  async function remove(id: string) {
+    if (!window.confirm(t('confirmDelete'))) return
+    setBusy(id)
+    try {
+      const r = await fetch('/api/approvals', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message_id: id }) })
+      if (r.ok) setOrders(os => (os || []).filter(o => o.message_id !== id))
+    } catch { /* ignore */ }
+    setBusy(null)
+  }
+  const fmt = (s: string) => fmtDateTime(s, locale)
   const tabs: { id: Status; n: number }[] = [{ id: 'pending', n: counts.pending }, { id: 'approved', n: counts.approved }, { id: 'rejected', n: counts.rejected }]
 
   return (
@@ -104,8 +118,16 @@ export default function ApprovalsPage() {
                   {(o.salesperson || o.push_name) && <p className="text-[11px] text-accent mt-1 font-medium">{t('broughtBy', { name: o.salesperson || o.push_name })}</p>}
                   {o.recipient && <p className="text-[11px] text-text-soft mt-0.5">{t('recipient', { name: o.recipient })}</p>}
                 </div>
-                <span className={clsx('shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-medium capitalize',
-                  st(o) === 'approved' ? 'bg-success-soft text-success' : st(o) === 'rejected' ? 'bg-bg-soft text-muted' : 'bg-warn-soft text-warn')}>{t(`tab_${st(o)}`)}</span>
+                <div className="shrink-0 flex items-center gap-1.5">
+                  <span className={clsx('inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-medium capitalize',
+                    st(o) === 'approved' ? 'bg-success-soft text-success' : st(o) === 'rejected' ? 'bg-bg-soft text-muted' : 'bg-warn-soft text-warn')}>{t(`tab_${st(o)}`)}</span>
+                  {can('manageData') && (
+                    <button type="button" disabled={busy === o.message_id} onClick={() => remove(o.message_id)} title={t('delete')} aria-label={t('delete')}
+                      className="inline-flex items-center justify-center h-6 w-6 rounded-full text-muted hover:text-accent hover:bg-accent-soft transition-colors disabled:opacity-50">
+                      {busy === o.message_id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" strokeWidth={1.9} />}
+                    </button>
+                  )}
+                </div>
               </div>
 
               {o.products?.length > 0 ? (

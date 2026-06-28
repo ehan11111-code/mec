@@ -11,6 +11,7 @@ import { Panel } from '@/components/Panel'
 import { NoteCallout } from '@/components/NoteCallout'
 import { JarvisNotes, type JarvisNote } from '@/components/JarvisNotes'
 import { printReport } from '@/lib/export/exporters'
+import { fmtDate } from '@/lib/format/datetime'
 import { getInventory, warehouseStock, categoryLabel, fmtSAR, fmtNum, type InventorySku, type ExpiryStatus } from '@/lib/data/dataset'
 import { getInventoryCount } from '@/lib/data/inventory-count'
 
@@ -154,6 +155,7 @@ export default function InventoryPage() {
                 <th className="text-start font-medium px-5 md:px-6 py-3">{t('colProduct')}</th>
                 <th className="text-start font-medium px-4 py-3 hidden md:table-cell">{t('colCategory')}</th>
                 <th className="text-end font-medium px-4 py-3">{t('colOnHand')}</th>
+                <th className="text-start font-medium px-4 py-3 hidden md:table-cell whitespace-nowrap">{t('colLastActivity')}</th>
                 <th className="text-end font-medium px-4 py-3 hidden lg:table-cell">{t('colRop')}</th>
                 <th className="text-center font-medium px-4 py-3">{t('colExpiry')}</th>
                 <th className="text-end font-medium px-4 py-3 hidden sm:table-cell">{t('colValue')}</th>
@@ -175,6 +177,10 @@ export default function InventoryPage() {
                     {r.unreconciled && <span className="ms-1 text-[10px] font-medium text-warn">{t('excl')}</span>}
                     {(r.unreconciled || r.dataGap) && <div className="text-[10px] text-muted">{t('inOut', { in: fmtNum(r.inbound), out: fmtNum(r.outbound) })}</div>}
                   </td>
+                  <td className="px-4 py-3 hidden md:table-cell text-xs tabular-nums whitespace-nowrap">
+                    <span className="text-text-soft">{fmtDate(r.lastMove, locale)}</span>
+                    {r.lastIn && <span className="block text-[10px] text-muted">{t('lastIn', { date: fmtDate(r.lastIn, locale) })}</span>}
+                  </td>
                   <td className="px-4 py-3 text-end tabular-nums text-muted hidden lg:table-cell">{fmtNum(r.rop)}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={clsx('inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium', EXP_TONE[r.expiry])}>
@@ -191,12 +197,12 @@ export default function InventoryPage() {
                   </td>
                 </tr>
               ))}
-              {rows.length === 0 && <tr><td colSpan={7} className="px-6 py-10 text-center text-sm text-muted">{t('empty')}</td></tr>}
+              {rows.length === 0 && <tr><td colSpan={8} className="px-6 py-10 text-center text-sm text-muted">{t('empty')}</td></tr>}
             </tbody>
             {rows.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 border-border bg-bg-soft/40">
-                  <td colSpan={7} className="px-5 md:px-6 py-3 text-xs">
+                  <td colSpan={8} className="px-5 md:px-6 py-3 text-xs">
                     <span className="font-semibold text-text">{t('footLabel')}: {fmtNum(shownReconciled)} {t('cartons')}</span>
                     {shownExcluded > 0 && <span className="text-muted"> · {t('footNote', { excl: shownExcluded })}</span>}
                   </td>

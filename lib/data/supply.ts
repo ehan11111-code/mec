@@ -117,6 +117,23 @@ export async function setOrderStatus(messageId: string, status: 'approved' | 're
   } catch { return false }
 }
 
+// Server-side: permanently delete a single WhatsApp row (an order/document/message). Unlike archive,
+// this removes it from EVERY view including the automation audit log — used by the jarvis/admin "delete
+// order" action. Because approvals, documents, the orders feed, the inbox and notifications all read the
+// same `whatsapp_intake` table live, one delete propagates across the whole portal on the next refresh.
+// Returns true on success.
+export async function deleteWhatsapp(messageId: string): Promise<boolean> {
+  const c = cfg()
+  if (!c) return false
+  try {
+    const r = await fetch(`${c.url}/rest/v1/whatsapp_intake?message_id=eq.${encodeURIComponent(messageId)}`, {
+      method: 'DELETE',
+      headers: { apikey: c.key, Authorization: `Bearer ${c.key}`, Prefer: 'return=minimal' }, cache: 'no-store'
+    })
+    return r.ok
+  } catch { return false }
+}
+
 // Server-side: archive WhatsApp rows so they disappear from the portal (orders / approvals / documents /
 // inbox) but stay in the automation audit log. `restore` flips them back. Without a filter it archives
 // every row (used by the admin "clear test data" action before launch). Returns true on success.

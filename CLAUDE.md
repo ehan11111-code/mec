@@ -84,6 +84,39 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-28 — Connected order system: jarvis-admin delete (propagates everywhere) + orders-by-date &
+  live proofs + inventory last-activity + (i) shows source & last-update + HI JARVIS dated timeline +
+  Refactor skill.** Big multi-part run, all driven by "it's a system — all numbers and pages should be
+  integrated and connected." **(1) Delete orders (jarvis/admin):** new `deleteWhatsapp()` in
+  `lib/data/supply.ts` (hard DELETE on `whatsapp_intake`); new **`DELETE /api/approvals`** gated by the
+  `manageData` permission (jarvis/admin/CEO); a **Trash** button on every approval card AND in the new
+  Latest-orders feed, shown only when `useCurrentUser().can('manageData')`. Because Approvals, Documents,
+  the orders feed, the WhatsApp inbox and Notifications **all read the same live `whatsapp_intake` table**,
+  one delete clears the order from every page on the next refresh (20s poll / focus) — the integration the
+  user asked for. **(2) Orders by date + the latest ones + proofs:** new reusable
+  **`components/LatestOrders.tsx`** — a live "Latest orders & proofs" feed (reads `/api/documents`, newest
+  first, each with date+time, salesperson, status, and **proof chips** that open the actual invoice /
+  delivery-note / payment file via `/api/wa-file`, plus admin delete) — dropped on the **Orders** page.
+  The historical Orders table gains a **Date column** (already newest-first). **(3) Inventory last
+  activity:** new **Last-activity column** per SKU (last movement `lastMove` + last received `lastIn`) so
+  every transaction's recency is visible. **(4) (i) tooltip now shows source AND last update:** extended
+  `lib/info/definitions.ts` (each metric infers a `updated` line — imported-workbook date, live, credit
+  statement `CREDIT_AS_OF`, or inventory count `INVENTORY_COUNT_AS_OF`) and `components/InfoTooltip.tsx`
+  (renders a clock "last update" row) — so **every number's (i) shows what it means + its source + when it
+  was last updated**. **(5) HI JARVIS report = dated timeline, not "today":** rewrote the activity block in
+  `/api/jarvis-status` to a **"Last updates (UTC — date & time)"** section: exact stamp of the last order
+  (with #/client), last document, last WhatsApp message (from the live feed), plus open-approvals count and
+  the credit/inventory statement dates. **(6) Refactor skill + shared helpers:** new **`/refactor`** skill
+  (`.claude/skills/refactor/SKILL.md`) documenting the architecture, where shared helpers live, and a
+  safe behavior-preserving method; first refactor shipped — new **`lib/format/datetime.ts`** (`fmtDate`,
+  `fmtDateTime`, `fmtDayMonth`, `fmtStampUTC`, `fmtAgo`) replacing the date formatters duplicated across
+  Orders/Approvals/Documents/Inventory. Build green (50 routes), EN/AR parity.
+  - **Honest boundary:** the *live order layer* (`whatsapp_intake`) is now one connected source — delete
+    propagates across Approvals/Documents/Orders-feed/Inbox/Notifications/HI-JARVIS. The **historical**
+    Orders/Inventory/Operations analytics are still computed from the imported spreadsheets
+    (`lib/data/sales.ts` / `inventory.ts`) — a separate layer that a WhatsApp delete doesn't alter. Fully
+    unifying the two (live orders flowing into the historical aggregates) is the next integration step.
+
 - **2026-06-25 — "HI JARVIS" WhatsApp status bot + automatic error alerts + auto-extract live.** Two new
   capabilities. **(1) Status bot:** new **`/api/jarvis-status`** health-checks every platform (Vercel,
   Supabase, n8n via its API, WaSender, OpenAI) + lists live automations + recent activity (orders,

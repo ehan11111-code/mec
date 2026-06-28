@@ -1,8 +1,21 @@
-// Definitions + SOURCE REFERENCE for every metric/figure shown in the portal. Each (i) info icon reads
-// from here so the user always sees (a) what the number means and (b) exactly where it comes from —
-// a file, a JARVIS-derived calculation, or an external reference. Bilingual EN/AR.
+// Definitions + SOURCE REFERENCE + LAST-UPDATE for every metric/figure shown in the portal. Each (i)
+// info icon reads from here so the user always sees (a) what the number means, (b) exactly where it comes
+// from — a file, a JARVIS-derived calculation, or an external reference — and (c) when it was last
+// updated. Bilingual EN/AR.
+import { CREDIT_AS_OF } from '@/lib/data/credit'
+import { INVENTORY_COUNT_AS_OF } from '@/lib/data/inventory-count'
+
 export type Bi = { en: string; ar: string }
-export type Def = { def: Bi; source: Bi }
+export type Def = { def: Bi; source: Bi; updated?: Bi }
+
+// ── When each data source was last updated (shown under "Last update" in every (i) tooltip) ──
+// Imported spreadsheets — refreshed when a new workbook is dropped + regenerated.
+const DATA_UPDATED: Bi = { en: 'Last data import: sales & procurement workbooks covering Oct 2025 – Jun 2026.', ar: 'آخر استيراد للبيانات: ملفات المبيعات والمشتريات تغطي أكتوبر 2025 – يونيو 2026.' }
+// Live tables written by the n8n workflows — current as of the moment the page loads.
+const LIVE_UPDATED: Bi = { en: 'Live — refreshed every time the page loads and on each workflow run.', ar: 'مباشر — يُحدَّث عند كل تحميل للصفحة وعند كل تشغيل لسير العمل.' }
+// Tarek's المديونية / المخزون WhatsApp statements — refresh when a newer file arrives + auto-extract.
+const CREDIT_UPDATED: Bi = { en: `As of the latest المديونية (credit) statement — ${CREDIT_AS_OF}. Refreshes automatically when Tarek sends a new one.`, ar: `حتى آخر كشف مديونية — ${CREDIT_AS_OF}. يُحدَّث تلقائيًا عند إرسال طارق كشفًا جديدًا.` }
+const INV_UPDATED: Bi = { en: `Ledger through Jun 2026; physical count as of ${INVENTORY_COUNT_AS_OF}. Refreshes on each new المخزون file.`, ar: `السجل حتى يونيو 2026؛ الجرد الفعلي حتى ${INVENTORY_COUNT_AS_OF}. يُحدَّث عند كل ملف مخزون جديد.` }
 
 const SALES_SRC: Bi = { en: 'Source file: مبيعات Q4-2025 / Q1-2026 / Q2-2026.xlsx (sales invoices, Oct 2025–Jun 2026).', ar: 'ملف المصدر: مبيعات الربع الرابع 2025 / الأول 2026 / الثاني 2026.xlsx (فواتير المبيعات، أكتوبر 2025–يونيو 2026).' }
 const PURCH_SRC: Bi = { en: 'Source: the المشتريات (procurement) sheet inside the sales workbooks.', ar: 'المصدر: ورقة المشتريات داخل ملفات المبيعات.' }
@@ -53,4 +66,22 @@ export const DEFS: Record<string, Def> = {
   creditLimit: { def: { en: 'Indicative credit line. The limit is derived from the client’s peak monthly purchasing (×2) until MEC’s finance system supplies real limits; “used” is the client’s actual uncollected balance and is real.', ar: 'حد ائتماني استرشادي. السقف مشتق من أعلى مشتريات شهرية للعميل (×2) حتى يوفّر نظام المالية الحدود الفعلية؛ و«المستخدم» هو الرصيد غير المُحصّل الفعلي وهو حقيقي.' }, source: { en: 'Used balance: ' + SALES_SRC.en + ' Limit: derived by JARVIS (pending finance data).', ar: 'الرصيد المستخدم: ' + SALES_SRC.ar + ' السقف: محسوب بواسطة جارفيس (بانتظار بيانات المالية).' } }
 }
 
-export function getDef(id: string): Def | undefined { return DEFS[id] }
+// Metrics whose "last update" isn't the default spreadsheet import.
+const LIVE_IDS = new Set(['supplyIntelFeed', 'supplyRisks', 'supplyHigh', 'supplyUpdated', 'supplyLead', 'waMessages', 'waOrders'])
+const CREDIT_IDS = new Set(['receivables', 'outstanding', 'overdue', 'creditLimit'])
+const INV_IDS = new Set(['onHand', 'stockValue', 'reorder', 'expiry', 'skus'])
+
+function updatedFor(id: string): Bi {
+  if (LIVE_IDS.has(id)) return LIVE_UPDATED
+  if (CREDIT_IDS.has(id)) return CREDIT_UPDATED
+  if (INV_IDS.has(id)) return INV_UPDATED
+  return DATA_UPDATED
+}
+
+// Returns the definition with its `updated` line guaranteed (explicit on the entry, else inferred from
+// the metric's data source) — so every (i) tooltip can show source + last update.
+export function getDef(id: string): Def | undefined {
+  const e = DEFS[id]
+  if (!e) return undefined
+  return e.updated ? e : { ...e, updated: updatedFor(id) }
+}
