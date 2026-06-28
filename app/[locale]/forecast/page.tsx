@@ -10,6 +10,7 @@ import { StatCard } from '@/components/StatCard'
 import { Panel } from '@/components/Panel'
 import { NoteCallout } from '@/components/NoteCallout'
 import { ForecastChart } from '@/components/forecast/ForecastChart'
+import { SupplyForecast } from '@/components/forecast/SupplyForecast'
 import { ProductLink } from '@/components/EntityLink'
 import { fmtSAR, fmtNum, categoryLabel } from '@/lib/data/dataset'
 import { revenueForecast, demandForecast, ordersForecast, categoryDemandForecast, inventoryForecast } from '@/lib/data/forecast'
@@ -85,6 +86,9 @@ export default function ForecastPage() {
         </table>
         <div className="px-5 md:px-6 py-3 border-t border-border text-[11px] text-muted">{t('catNote')}</div>
       </Panel>
+
+      {/* Supply & price outlook */}
+      <SupplyForecast />
 
       {/* Inventory stockout forecast */}
       <Panel bodyClassName="px-0 pb-0" title={<span className="inline-flex items-center gap-2"><Boxes className="h-4 w-4 text-accent" strokeWidth={1.8} />{t('invTitle')}</span>} subtitle={t('invSub')}>

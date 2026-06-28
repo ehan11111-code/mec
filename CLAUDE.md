@@ -93,10 +93,13 @@ next ledger item → re-build → update the ledger below → commit + push. See
   New **`components/forecast/ForecastChart.tsx`** (Recharts ComposedChart: solid actual + dashed forecast
   + shaded confidence band). The page shows: KPIs (next-month revenue + MoM/CAGR, demand, orders,
   stockout-risk SKUs), a 3-month **revenue forecast** chart (with model-fit R²), **demand** + **order-volume**
-  forecast charts, **demand-by-category** (run-rate vs Holt next-month), and a **warehouse/stockout** table
-  (days-of-cover, reorder-in, critical/watch status, soonest-to-run-out first) — each with the method
-  written out (no black box). Also: click-to-calculate on Control Center Revenue/Receivables KPIs, and
-  Tarek's count flagged red when it exceeds the 6,000 capacity. Build green (58 routes), EN/AR parity.
+  forecast charts, **demand-by-category** (run-rate vs Holt next-month), a **warehouse/stockout** table
+  (days-of-cover, reorder-in, critical/watch status, soonest-to-run-out first), and a **Supply & price
+  outlook** section (`components/forecast/SupplyForecast.tsx`) that ties the supply-intelligence workflow's
+  price outlook (direction + low/high range + lead time) to MEC's **real last purchase cost**
+  (`baselineForCommodity`) → projected cost range per commodity — each with the method written out (no
+  black box). Also: click-to-calculate on Control Center Revenue/Receivables KPIs, and Tarek's count
+  flagged red when it exceeds the 6,000 capacity. Build green (58 routes), EN/AR parity.
 
 - **2026-06-28 — Inventory count corrected via Google Vision OCR + click-to-see-calculation on the on-hand
   box.** User: "Tarek's ~8k is wrong… make all numbers correct and clickable to show how each is
