@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, usePathname } from '@/i18n/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { clsx } from 'clsx'
-import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap, Radar, MessageCircle, ClipboardCheck, Inbox, Package, ShieldAlert, Activity, Boxes, FileCheck2, Wallet, Database } from 'lucide-react'
+import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap, Radar, MessageCircle, ClipboardCheck, Inbox, Package, ShieldAlert, Activity, Boxes, FileCheck2, Wallet, Database, FileText, Receipt, Truck } from 'lucide-react'
 import { BrandLogo } from './BrandLogo'
 import { departmentSeeds } from '@/lib/mock/catalog'
 import { getFirmState } from '@/lib/mock/data'
@@ -40,7 +40,10 @@ export function SidebarNav() {
       { href: '/analytics', label: tNav('analytics'), icon: BarChart3, perm: 'analytics' },
       { href: '/supply-intelligence', label: tNav('supplyIntel'), icon: Radar, perm: 'supply' },
       { href: '/whatsapp', label: tNav('whatsapp'), icon: MessageCircle, perm: 'whatsapp' },
-      { href: '/documents', label: tNav('documents'), icon: FileCheck2, perm: 'documents' }
+      { href: '/documents', label: tNav('documents'), icon: FileCheck2, perm: 'documents' },
+      { href: '/documents/invoices', label: tNav('invoices'), icon: FileText, perm: 'documents' },
+      { href: '/documents/payments', label: tNav('payments'), icon: Receipt, perm: 'documents' },
+      { href: '/documents/delivery-notes', label: tNav('deliveryNotes'), icon: Truck, perm: 'documents' }
     ] },
     { key: 'secWorkspace', items: [
       { href: '/messages', label: tNav('messages'), icon: Inbox, perm: 'messages' },

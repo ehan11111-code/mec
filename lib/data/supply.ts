@@ -103,6 +103,13 @@ export function getEmailIntake(limit = 200) {
   return read<EmailMsg>(`email_intake?select=*&order=received_at.desc&limit=${limit}`)
 }
 
+// All WhatsApp documents of one type (invoice / delivery_note / payment), newest first, archived hidden.
+// Powers the per-type document registries (/documents/invoices, /payments, /delivery-notes).
+export async function getWhatsappDocs(docType: string, limit = 300) {
+  const rows = await read<WhatsappMsg>(`whatsapp_intake?doc_type=eq.${encodeURIComponent(docType)}&select=*&order=received_at.desc&limit=${limit}`)
+  return liveOnly(rows)
+}
+
 // The latest WhatsApp credit/inventory statement with its extracted table — powers the live Credit &
 // Inventory pages so a newer المديونية/المخزون file refreshes the portal without a redeploy. Returns null
 // when none has arrived yet (the page falls back to its built-in statement).
