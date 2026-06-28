@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, usePathname } from '@/i18n/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { clsx } from 'clsx'
-import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap, Radar, MessageCircle, ClipboardCheck, Inbox, Package, ShieldAlert, Activity, Boxes, FileCheck2, Wallet } from 'lucide-react'
+import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap, Radar, MessageCircle, ClipboardCheck, Inbox, Package, ShieldAlert, Activity, Boxes, FileCheck2, Wallet, Database } from 'lucide-react'
 import { BrandLogo } from './BrandLogo'
 import { departmentSeeds } from '@/lib/mock/catalog'
 import { getFirmState } from '@/lib/mock/data'
@@ -49,6 +49,7 @@ export function SidebarNav() {
     ] },
     { key: 'secAdmin', items: [
       { href: '/automations', label: tNav('automations'), icon: Zap, perm: 'automations' },
+      { href: '/admin/data', label: tNav('dataConsole'), icon: Database, perm: 'manageData' },
       { href: '/admin', label: tNav('adminConsole'), icon: ShieldAlert, perm: 'manageData' }
     ] },
     { key: 'secHelp', items: [

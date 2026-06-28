@@ -84,6 +84,27 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-28 — Admin "Data" page: a cross-source data inspector (what was fetched, from which group,
+  and whether it was captured).** User asked whether recent fetched data was relevant-but-not-added, and
+  for a page under Admin to see the latest data from all sources in detail (which group, which message).
+  Built it. New **`/api/admin/data`** (manageData-gated) aggregates the latest items from **whatsapp_intake
+  (incl. archived), email_intake and supply_intel** into one normalized, newest-first feed — each tagged
+  with **source, channel (group JID → friendly name: `Middle East Chef order` / `MEC Invoices &
+  Collections`, else the raw JID so an unmapped group is obvious), sender, classification (intent/doc_type),
+  captured?** (became a structured portal record), archived flag, and a **`possible_order` heuristic**
+  (un-captured messages mentioning كرتون/سعر/طلب/qty/price). New **`/admin/data`** page (sidebar: Admin →
+  **Data**, Database icon): KPIs (fetched / captured / not-captured / possible missed orders), source tabs
+  (All/WhatsApp/Email/Supply), a "Not captured only" filter, a highlighted possible-missed-orders callout,
+  and a detailed expandable feed. **Live findings (probed at build time):** of 40 recent WhatsApp rows, 37
+  `other` / 1 order / 2 approval; **29 came from an unmapped "unknown" group** (= the docs group — set
+  `MEC_DOCS_GROUP_JID=120363404531223628@g.us` to label it) and 11 from the orders group. **Relevant data
+  the classifier missed**, e.g. `الأمل الحلقه 30كرتون بوبي فيل سعر 350` (a real order classified `other`,
+  never queued) and the owner's `Reprt … every day … at 6:00` request. Documents (invoice/delivery/payment)
+  ARE captured. Build green (51 routes), EN/AR parity.
+  - **Next from this:** (a) set `MEC_DOCS_GROUP_JID` so the docs group stops showing as "unknown"; (b)
+    tighten the order classifier (the 30-carton message proves orders in the docs/unknown group slip to
+    `other`); (c) optional: a one-click "queue as order" action on `possible_order` rows.
+
 - **2026-06-28 — Connected order system: jarvis-admin delete (propagates everywhere) + orders-by-date &
   live proofs + inventory last-activity + (i) shows source & last-update + HI JARVIS dated timeline +
   Refactor skill.** Big multi-part run, all driven by "it's a system — all numbers and pages should be
