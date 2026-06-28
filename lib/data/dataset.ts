@@ -108,6 +108,28 @@ export function salesByMonth(f?: SalesFilter): { key: string; t: string; tAr: st
   for (const r of applyFilter(sales, f)) { if (!r.month) continue; map.set(r.month, (map.get(r.month) ?? 0) + r.postVat) }
   return MONTHS.filter(m => map.has(m)).map(m => ({ key: m, t: monthLabel(m, 'en'), tAr: monthLabel(m, 'ar'), v: Math.round(map.get(m)! ) }))
 }
+// Monthly units (cartons) sold — the demand series the forecast engine works from.
+export function unitsByMonth(f?: SalesFilter): { key: string; t: string; tAr: string; v: number }[] {
+  const map = new Map<string, number>()
+  for (const r of applyFilter(sales, f)) { if (!r.month) continue; map.set(r.month, (map.get(r.month) ?? 0) + (r.qty || 0)) }
+  return MONTHS.filter(m => map.has(m)).map(m => ({ key: m, t: monthLabel(m, 'en'), tAr: monthLabel(m, 'ar'), v: Math.round(map.get(m)!) }))
+}
+// Monthly order (invoice) count — the order-volume series.
+export function ordersByMonth(f?: SalesFilter): { key: string; t: string; tAr: string; v: number }[] {
+  const map = new Map<string, number>()
+  for (const r of applyFilter(sales, f)) { if (!r.month) continue; map.set(r.month, (map.get(r.month) ?? 0) + 1) }
+  return MONTHS.filter(m => map.has(m)).map(m => ({ key: m, t: monthLabel(m, 'en'), tAr: monthLabel(m, 'ar'), v: map.get(m)! }))
+}
+// Monthly units per category — for per-category demand forecasting.
+export function unitsByCategoryMonth(): { category: string; ar: string; series: { key: string; v: number }[] }[] {
+  const cats = new Map<string, { ar: string; m: Map<string, number> }>()
+  for (const r of sales) {
+    if (!r.month) continue
+    const cur = cats.get(r.category) ?? { ar: r.categoryAr, m: new Map() }
+    cur.m.set(r.month, (cur.m.get(r.month) ?? 0) + (r.qty || 0)); cats.set(r.category, cur)
+  }
+  return [...cats.entries()].map(([category, v]) => ({ category, ar: v.ar, series: MONTHS.map(m => ({ key: m, v: Math.round(v.m.get(m) ?? 0) })) }))
+}
 export function salesBySalesperson(f?: SalesFilter): { ar: string; en: string; v: number; invoices: number }[] {
   const map = new Map<string, { en: string; v: number; n: number }>()
   for (const r of applyFilter(sales, f)) {

@@ -84,6 +84,20 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-28 — Forecast page (Intelligence): revenue / demand / orders / warehouse, real methods +
+  visuals.** New **`/forecast`** (sidebar: Intelligence → Forecast, perm `analytics`). New
+  **`lib/data/forecast.ts`** — real, explainable methods: **OLS linear regression** (+ R² + residual std
+  for a **95% confidence band**), **Holt's linear-trend exponential smoothing**, **SES**, **CAGR**/MoM,
+  and inventory **days-of-cover** + reorder timing. Forecasts blend regression + Holt on the live monthly
+  history. New data helpers `unitsByMonth` / `ordersByMonth` / `unitsByCategoryMonth` in dataset.ts.
+  New **`components/forecast/ForecastChart.tsx`** (Recharts ComposedChart: solid actual + dashed forecast
+  + shaded confidence band). The page shows: KPIs (next-month revenue + MoM/CAGR, demand, orders,
+  stockout-risk SKUs), a 3-month **revenue forecast** chart (with model-fit R²), **demand** + **order-volume**
+  forecast charts, **demand-by-category** (run-rate vs Holt next-month), and a **warehouse/stockout** table
+  (days-of-cover, reorder-in, critical/watch status, soonest-to-run-out first) — each with the method
+  written out (no black box). Also: click-to-calculate on Control Center Revenue/Receivables KPIs, and
+  Tarek's count flagged red when it exceeds the 6,000 capacity. Build green (58 routes), EN/AR parity.
+
 - **2026-06-28 — Inventory count corrected via Google Vision OCR + click-to-see-calculation on the on-hand
   box.** User: "Tarek's ~8k is wrong… make all numbers correct and clickable to show how each is
   calculated." **Diagnosis:** the المخزون/المديونية PDFs use a **custom-encoded Arabic font**, so the n8n
