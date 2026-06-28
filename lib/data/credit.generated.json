@@ -1,31 +1,32 @@
 {
   "asOf": "2026-06-27",
   "source": "المديونية حتي تاريخ 27-06-2026.pdf",
+  "ocr": true,
   "rows": [
-    {
-      "date": "2026-05-23",
-      "invoiceNo": "335",
-      "salespersonAr": "محمود",
-      "salespersonEn": "Mahmoud",
-      "client": "شركة الأغذية المتميزة",
-      "amount": 87434.5,
-      "ageDays": 35
-    },
     {
       "date": "2026-05-16",
       "invoiceNo": "324",
       "salespersonAr": "محمود",
       "salespersonEn": "Mahmoud",
-      "client": "شركة الأغذية المتميزة",
+      "client": "شركة الأغذية المتميزة التجارية",
       "amount": 96973,
       "ageDays": 42
+    },
+    {
+      "date": "2026-05-23",
+      "invoiceNo": "335",
+      "salespersonAr": "محمود",
+      "salespersonEn": "Mahmoud",
+      "client": "شركة الأغذية المتميزة التجارية",
+      "amount": 87434.5,
+      "ageDays": 35
     },
     {
       "date": "2026-06-14",
       "invoiceNo": "365",
       "salespersonAr": "محمود",
       "salespersonEn": "Mahmoud",
-      "client": "شركة سامح العالمية للوجبات السريعة",
+      "client": "شركة سامح العربية للوجبات السريعة",
       "amount": 10350,
       "ageDays": 13
     },
@@ -34,7 +35,7 @@
       "invoiceNo": "375",
       "salespersonAr": "محمود",
       "salespersonEn": "Mahmoud",
-      "client": "شركة سامح العالمية للوجبات السريعة",
+      "client": "شركة سامح العربية للوجبات السريعة",
       "amount": 20700,
       "ageDays": 10
     },
@@ -43,7 +44,7 @@
       "invoiceNo": "378",
       "salespersonAr": "محمود",
       "salespersonEn": "Mahmoud",
-      "client": "شركة سامح العالمية للوجبات السريعة",
+      "client": "شركة سامح العربية للوجبات السريعة",
       "amount": 103500,
       "ageDays": 9
     },
@@ -52,7 +53,7 @@
       "invoiceNo": "380",
       "salespersonAr": "محمود",
       "salespersonEn": "Mahmoud",
-      "client": "شركة مجمدات السيف التجارية",
+      "client": "شركة مجمدات الريف التجارية",
       "amount": 99476.5,
       "ageDays": 7
     },
@@ -61,7 +62,7 @@
       "invoiceNo": "387",
       "salespersonAr": "محمود",
       "salespersonEn": "Mahmoud",
-      "client": "شركة مجمدات السيف التجارية",
+      "client": "شركة مجمدات الريف التجارية",
       "amount": 31314.5,
       "ageDays": 5
     },
@@ -79,7 +80,7 @@
       "invoiceNo": "392",
       "salespersonAr": "محمود",
       "salespersonEn": "Mahmoud",
-      "client": "شركة دجاج السلام",
+      "client": "شركة دجاج اسيا لخدمات الاعاشة",
       "amount": 48472.5,
       "ageDays": 3
     },
@@ -97,7 +98,7 @@
       "invoiceNo": "395",
       "salespersonAr": "محمود",
       "salespersonEn": "Mahmoud",
-      "client": "المحيط للتجارة",
+      "client": "مؤسسة كنز المحيط للتجارة",
       "amount": 2277,
       "ageDays": 3
     },
@@ -115,7 +116,7 @@
       "invoiceNo": "397",
       "salespersonAr": "تامر",
       "salespersonEn": "Tamer",
-      "client": "شركة الزاهر الوطنية التجارية (الحلقة)",
+      "client": "شركة الزاهر الوطنية التجارية ( الحلقة )",
       "amount": 56953.75,
       "ageDays": 2
     },
@@ -124,7 +125,7 @@
       "invoiceNo": "399",
       "salespersonAr": "تامر",
       "salespersonEn": "Tamer",
-      "client": "شركة الا",
+      "client": "شركة الامل التجارية",
       "amount": 10235,
       "ageDays": 0
     }
