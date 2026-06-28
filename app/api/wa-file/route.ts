@@ -73,24 +73,24 @@ export async function GET(req: Request) {
   const media = found?.m
   const fname = ((media?.fileName || media?.title || found?.kind || 'file') as string).replace(/[\r\n"]/g, '')
   const mime = media?.mimetype || (found?.kind === 'image' ? 'image/jpeg' : 'application/octet-stream')
+  // HTTP headers are Latin-1 only — an Arabic filename throws "Cannot convert to ByteString". Build an
+  // ASCII-safe content-disposition (RFC 5987): plain ASCII fallback + UTF-8 filename* for the real name.
+  const asciiName = (fname || 'file').replace(/[^\x20-\x7E]/g, '_')
+  const dispo = `inline; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(fname)}`
 
   // 1. Prefer the cached copy in Supabase Storage (decrypted by scripts/cache-media.js on a machine that
   //    can reach WhatsApp's CDN). Vercel can always reach Supabase, so this path is reliable.
-  let dbg = ''
   try {
     const cacheRes = await fetch(`${base}/storage/v1/object/wa-media/${encodeURIComponent(id)}`, {
       headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: 'no-store'
     })
-    dbg = `storage:${cacheRes.status}`
     if (cacheRes.ok) {
       const buf = Buffer.from(await cacheRes.arrayBuffer())
       if (buf.length > 8) return new Response(buf, {
-        headers: { 'content-type': cacheRes.headers.get('content-type') || mime, 'content-disposition': `inline; filename="${fname}"`, 'cache-control': 'private, max-age=3600' }
+        headers: { 'content-type': cacheRes.headers.get('content-type') || mime, 'content-disposition': dispo, 'cache-control': 'private, max-age=3600' }
       })
-      dbg += `:bytes${buf.length}`
     }
-  } catch (e) { dbg = 'storage:throw:' + String(e instanceof Error ? e.message : e).slice(0, 60) }
-  if (req.url.includes('debug=1')) return new Response(`dbg=${dbg} base=${base.slice(0, 40)} keylen=${(key || '').length}`, { status: 200 })
+  } catch { /* fall through to live decrypt */ }
 
   // 2. Fallback: decrypt live from WhatsApp's CDN (works when the server can reach it).
   if (!found || !media?.mediaKey || !(media.url || media.directPath)) return new Response('no downloadable media on this message', { status: 404 })
@@ -123,7 +123,7 @@ export async function GET(req: Request) {
     return new Response(out, {
       headers: {
         'content-type': mime,
-        'content-disposition': `inline; filename="${fname}"`,
+        'content-disposition': dispo,
         'cache-control': 'private, max-age=600'
       }
     })
