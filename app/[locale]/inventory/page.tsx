@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
-import { Search, Boxes, Printer, AlertTriangle } from 'lucide-react'
+import { Search, Boxes, Printer, AlertTriangle, Wifi } from 'lucide-react'
 import { PageShell } from '@/components/PageShell'
 import { DisplayHeading } from '@/components/DisplayHeading'
 import { Eyebrow } from '@/components/Eyebrow'
@@ -13,7 +13,7 @@ import { JarvisNotes, type JarvisNote } from '@/components/JarvisNotes'
 import { printReport } from '@/lib/export/exporters'
 import { fmtDate } from '@/lib/format/datetime'
 import { getInventory, warehouseStock, categoryLabel, fmtSAR, fmtNum, type InventorySku, type ExpiryStatus } from '@/lib/data/dataset'
-import { getInventoryCount } from '@/lib/data/inventory-count'
+import { getInventoryCount, buildInventoryCount } from '@/lib/data/inventory-count'
 
 const EXP_TONE: Record<ExpiryStatus, string> = {
   green: 'bg-success-soft text-success', yellow: 'bg-warn-soft text-warn', red: 'bg-accent-soft text-accent', unknown: 'bg-bg-soft text-muted'
@@ -25,7 +25,16 @@ export default function InventoryPage() {
   useEffect(() => { setNow(new Date().toISOString()) }, [])
   const inv = useMemo(() => getInventory(now), [now])
   const ws = useMemo(() => warehouseStock(now), [now])
-  const cnt = useMemo(() => getInventoryCount(), [])
+  const staticCnt = useMemo(() => getInventoryCount(), [])
+  // Live overlay: if a newer المخزون count arrived via WhatsApp, use it; else the built-in count.
+  const [liveCount, setLiveCount] = useState<typeof staticCnt | null>(null)
+  useEffect(() => {
+    fetch('/api/inventory-count', { cache: 'no-store' }).then(r => r.json()).then(d => {
+      if (Array.isArray(d.rows) && d.rows.length && d.asOf) setLiveCount(buildInventoryCount(d.rows, d.asOf))
+    }).catch(() => { /* keep built-in */ })
+  }, [])
+  const cnt = liveCount ?? staticCnt
+  const isLiveCount = !!liveCount
   const fmtCountDate = (d: string) => { try { return new Date(d).toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-GB', { day: '2-digit', month: 'short' }) } catch { return d } }
 
   const cats = useMemo(() => [...new Set(inv.map(r => r.category))], [inv])
@@ -94,7 +103,8 @@ export default function InventoryPage() {
       </Panel>
 
       {/* Physical count from Tarek (المخزون) vs the ledger on-hand */}
-      <Panel className="mb-6" bodyClassName="px-0 pb-0" title={t('countTitle')} subtitle={t('countSub', { date: fmtCountDate(cnt.asOf), n: cnt.rows.length })}>
+      <Panel className="mb-6" bodyClassName="px-0 pb-0" subtitle={t('countSub', { date: fmtCountDate(cnt.asOf), n: cnt.rows.length })}
+        title={<span className="inline-flex items-center gap-2">{t('countTitle')}{isLiveCount && <span className="inline-flex items-center gap-1 rounded-full bg-success-soft text-success px-2 py-0.5 text-[10px] font-medium"><Wifi className="h-2.5 w-2.5" strokeWidth={2} />{t('liveBadge')}</span>}</span>}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="text-[11px] uppercase tracking-wide text-muted border-b border-border">

@@ -84,6 +84,29 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-28 — Credit & Inventory now auto-refresh from WhatsApp (live overlay + aligned static).**
+  User: credit/inventory "not updated with the WhatsApp messages." **Diagnosis (probed live):** the
+  workflow IS healthy — it classifies المديونية/المخزون PDFs and **extracts** their tables into
+  `whatsapp_intake.extracted` (latest credit = **27 Jun**, 14 rows; inventory = **27 Jun**, 7 rows). The
+  break was the **last mile**: the Credit/Inventory pages read static JSON baked at build, and
+  `refresh-statements.js` was a *manual* commit+deploy step — so they showed the stale 25 Jun data. **Fix
+  (two layers):** **(1) Live overlay** — refactored `credit.ts` + `inventory-count.ts` into pure builders
+  (`buildCredit`, `buildInventoryCount`) + parsers for the extracted rows; new live endpoints
+  **`/api/credit`** + **`/api/inventory-count`** (read the newest extracted statement via
+  `getLatestExtracted()`); the **Credit** and **Inventory** pages now fetch them and overlay the latest
+  statement instantly (with a **"Live · auto-updated"** badge), falling back to the built-in statement.
+  As-of date is parsed from the filename (`…حتي تاريخ DD-MM-YYYY.pdf`) so live + static agree. **(2)
+  Aligned static** — ran `refresh-statements.js` (now also filename-dated) → credit **SAR 593,884** /
+  inventory, both **as of 27 Jun**, baked into the generated JSON so the **server-rendered figures**
+  (Control Center receivables, CRM, Collections) move with the pages. New **`scripts/refresh-statements.ps1`**
+  + **`refresh-install.ps1`** register a Windows task that re-runs the refresh + pushes when a new
+  statement arrives, keeping the server figures auto-aligned. Build green (54 routes), EN/AR parity.
+  - **User action (one, for full automation):** `powershell -ExecutionPolicy Bypass -File
+    scripts/refresh-install.ps1` (every 30 min; `-IntervalMinutes N` / `-Remove`). The **pages are already
+    live** without it — the scheduled task only keeps the server-rendered global receivables figure aligned
+    between deploys. The credit total moved 601,297 → **593,884** because the 27 Jun statement superseded
+    the 25 Jun one.
+
 - **2026-06-28 — Smart self-correcting intake: missed-order recovery + correction messages applied live
   (the Data page acts).** User: the classifier missing relevant data is "a problem" — make it intelligent,
   understand correction messages, apply them to update all portal data, live, every day & every message,

@@ -29,16 +29,29 @@ function matchLedger(item: string): { matched: string; onHand: number } | null {
 }
 
 export type CountCompare = CountRow & { matched: string | null; ledgerOnHand: number | null; variance: number | null }
+export type InventoryCount = { asOf: string; total: number; rows: CountCompare[]; matchedCount: number }
 
-export function getInventoryCount(): { asOf: string; total: number; rows: CountCompare[]; matchedCount: number } {
-  const rows: CountCompare[] = INVENTORY_COUNT.map(r => {
+// Parse the rows the n8n intake extracts from a المخزون PDF (whatsapp_intake.extracted) into CountRows.
+// Used by the live /api/inventory-count endpoint so a newer count refreshes the portal without a redeploy.
+export function parseInventoryExtracted(extracted: unknown): CountRow[] {
+  if (!Array.isArray(extracted)) return []
+  const numv = (v: unknown) => { const n = Number(String(v ?? '').replace(/[^0-9.\-]/g, '')); return Number.isFinite(n) ? n : 0 }
+  return extracted.map((r: any) => ({ item: r.item || '', cartons: numv(r.cartons), supplier: r.supplier || '' })).filter(r => r.item)
+}
+
+// Pure builder — match a set of counted rows to the ledger and compute variances. Both the built-in
+// count (getInventoryCount) and the live endpoint use this for identical numbers.
+export function buildInventoryCount(countRows: CountRow[], asOf: string): InventoryCount {
+  const rows: CountCompare[] = countRows.map(r => {
     const m = matchLedger(r.item)
     return { ...r, matched: m?.matched ?? null, ledgerOnHand: m?.onHand ?? null, variance: m ? r.cartons - m.onHand : null }
   })
   return {
-    asOf: INVENTORY_COUNT_AS_OF,
-    total: INVENTORY_COUNT.reduce((s, r) => s + r.cartons, 0),
+    asOf,
+    total: countRows.reduce((s, r) => s + r.cartons, 0),
     rows,
     matchedCount: rows.filter(r => r.matched).length,
   }
 }
+
+export function getInventoryCount(): InventoryCount { return buildInventoryCount(INVENTORY_COUNT, INVENTORY_COUNT_AS_OF) }

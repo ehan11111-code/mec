@@ -31,7 +31,13 @@ async function main() {
   const SUPA = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, ''); const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!SUPA || !KEY) { console.error('Missing Supabase env in .env.local'); process.exit(1) }
   const dataDir = path.join(__dirname, '..', 'lib', 'data')
-  const asOf = (s) => (s ? String(s).slice(0, 10) : new Date().toISOString().slice(0, 10))
+  // As-of = the date in the filename (…حتي تاريخ DD-MM-YYYY.pdf), else the received day. Matches the live
+  // /api/credit + /api/inventory-count endpoints so the static JSON and the live overlay agree.
+  const asOf = (body, received) => {
+    const m = /(\d{2})-(\d{2})-(\d{4})/.exec(String(body || ''))
+    if (m) return `${m[3]}-${m[2]}-${m[1]}`
+    return received ? String(received).slice(0, 10) : new Date().toISOString().slice(0, 10)
+  }
   let changed = 0
 
   // ── Credit ──
@@ -44,7 +50,7 @@ async function main() {
       client: r.client || '', amount: num(r.amount), ageDays: num(r.ageDays),
     })).filter(r => r.client && r.amount)
     if (rows.length) {
-      const out = { asOf: asOf(credit.received_at), source: credit.body || '', rows }
+      const out = { asOf: asOf(credit.body, credit.received_at), source: credit.body || '', rows }
       fs.writeFileSync(path.join(dataDir, 'credit.generated.json'), JSON.stringify(out, null, 2) + '\n')
       console.log(`✓ credit: ${rows.length} rows, total ${rows.reduce((s, r) => s + r.amount, 0).toFixed(2)} (as of ${out.asOf})`); changed++
     }
@@ -55,7 +61,7 @@ async function main() {
   if (inv && Array.isArray(inv.extracted) && inv.extracted.length) {
     const rows = inv.extracted.map(r => ({ item: r.item || '', cartons: num(r.cartons), supplier: r.supplier || '' })).filter(r => r.item)
     if (rows.length) {
-      const out = { asOf: asOf(inv.received_at), source: inv.body || '', rows }
+      const out = { asOf: asOf(inv.body, inv.received_at), source: inv.body || '', rows }
       fs.writeFileSync(path.join(dataDir, 'inventory-count.generated.json'), JSON.stringify(out, null, 2) + '\n')
       console.log(`✓ inventory: ${rows.length} items (as of ${out.asOf})`); changed++
     }

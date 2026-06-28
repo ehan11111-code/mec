@@ -103,6 +103,24 @@ export function getEmailIntake(limit = 200) {
   return read<EmailMsg>(`email_intake?select=*&order=received_at.desc&limit=${limit}`)
 }
 
+// The latest WhatsApp credit/inventory statement with its extracted table — powers the live Credit &
+// Inventory pages so a newer المديونية/المخزون file refreshes the portal without a redeploy. Returns null
+// when none has arrived yet (the page falls back to its built-in statement).
+export async function getLatestExtracted(docType: 'credit' | 'inventory'): Promise<{ extracted: unknown; received_at: string; body: string } | null> {
+  const rows = await read<{ extracted: unknown; received_at: string; body: string }>(
+    `whatsapp_intake?doc_type=eq.${docType}&extracted=not.is.null&archived=eq.false&select=extracted,received_at,body&order=received_at.desc&limit=1`
+  )
+  return rows[0] || null
+}
+
+// Derive a statement's as-of date: prefer the date in the filename (…حتي تاريخ DD-MM-YYYY.pdf), else the
+// day it was received.
+export function statementAsOf(body: string, receivedAt: string): string {
+  const m = /(\d{2})-(\d{2})-(\d{4})/.exec(body || '')
+  if (m) return `${m[3]}-${m[2]}-${m[1]}`
+  return (receivedAt || '').slice(0, 10) || new Date().toISOString().slice(0, 10)
+}
+
 // Server-side: set a WhatsApp order's approval status. Returns true on success.
 export async function setOrderStatus(messageId: string, status: 'approved' | 'rejected'): Promise<boolean> {
   const c = cfg()

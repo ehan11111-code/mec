@@ -1,7 +1,8 @@
 'use client'
+import { useEffect, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
-import { Wallet, Users, AlertTriangle, CalendarClock, Printer } from 'lucide-react'
+import { Wallet, Users, AlertTriangle, CalendarClock, Printer, Wifi } from 'lucide-react'
 import { PageShell } from '@/components/PageShell'
 import { DisplayHeading } from '@/components/DisplayHeading'
 import { Eyebrow } from '@/components/Eyebrow'
@@ -12,11 +13,19 @@ import { JarvisNotes, type JarvisNote } from '@/components/JarvisNotes'
 import { ClientLink } from '@/components/EntityLink'
 import { printReport } from '@/lib/export/exporters'
 import { fmtSAR } from '@/lib/data/dataset'
-import { getCredit } from '@/lib/data/credit'
+import { getCredit, buildCredit } from '@/lib/data/credit'
 
 export default function CreditPage() {
   const tNav = useTranslations('nav'); const t = useTranslations('credit'); const locale = useLocale() as 'en' | 'ar'
-  const c = getCredit()
+  // Live overlay: if a newer المديونية statement has arrived via WhatsApp, use it; else the built-in one.
+  const [live, setLive] = useState<ReturnType<typeof getCredit> | null>(null)
+  useEffect(() => {
+    fetch('/api/credit', { cache: 'no-store' }).then(r => r.json()).then(d => {
+      if (Array.isArray(d.rows) && d.rows.length && d.asOf) setLive(buildCredit(d.rows, d.asOf))
+    }).catch(() => { /* keep built-in */ })
+  }, [])
+  const c = live ?? getCredit()
+  const isLive = !!live
   const fmtDate = (d: string) => { try { return new Date(d).toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) } catch { return d } }
   const pct = (n: number) => `${Math.round(n * 100)}%`
 
@@ -54,9 +63,12 @@ export default function CreditPage() {
           <DisplayHeading size="lg" className="mt-3" locale={locale}>{t('headline')}</DisplayHeading>
           <p className="text-sm text-text-soft mt-2 leading-relaxed">{t('subline')}</p>
         </div>
-        <button type="button" onClick={() => printReport()} className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface hover:bg-surface-elev px-3.5 py-2 text-xs font-medium text-text-soft transition-colors">
-          <Printer className="h-3.5 w-3.5" strokeWidth={1.8} />{t('print')}
-        </button>
+        <div className="shrink-0 flex items-center gap-2">
+          {isLive && <span className="inline-flex items-center gap-1 rounded-full bg-success-soft text-success px-2.5 py-1 text-[11px] font-medium"><Wifi className="h-3 w-3" strokeWidth={2} />{t('liveBadge')}</span>}
+          <button type="button" onClick={() => printReport()} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface hover:bg-surface-elev px-3.5 py-2 text-xs font-medium text-text-soft transition-colors">
+            <Printer className="h-3.5 w-3.5" strokeWidth={1.8} />{t('print')}
+          </button>
+        </div>
       </header>
 
       <NoteCallout className="mb-6" title={t('sourceTitle')}>{t('sourceBody', { date: fmtDate(c.asOf) })}</NoteCallout>

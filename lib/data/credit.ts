@@ -43,20 +43,37 @@ export type CreditSummary = {
   buckets: CreditBuckets
 }
 
-export function getCredit(): CreditSummary {
-  const total = round2(CREDIT_ROWS.reduce((s, r) => s + r.amount, 0))
-  const rows = CREDIT_ROWS.map(r => ({ ...r, pct: total ? r.amount / total : 0 }))
+const SALES_EN: Record<string, string> = { 'محمود': 'Mahmoud', 'تامر': 'Tamer', 'عمرو': 'Amr' }
+
+// Parse the rows the n8n intake extracts from a المديونية PDF (whatsapp_intake.extracted) into CreditRows.
+// Used by the live /api/credit endpoint so a newer statement refreshes the portal without a redeploy.
+export function parseCreditExtracted(extracted: unknown): CreditRow[] {
+  if (!Array.isArray(extracted)) return []
+  const numv = (v: unknown) => { const n = Number(String(v ?? '').replace(/[^0-9.\-]/g, '')); return Number.isFinite(n) ? n : 0 }
+  return extracted.map((r: any) => ({
+    date: r.date || '', invoiceNo: String(r.invoiceNo ?? r.invoice_no ?? ''),
+    salespersonAr: r.salespersonAr || r.salesperson || 'غير محدد',
+    salespersonEn: r.salespersonEn || SALES_EN[r.salespersonAr] || 'Unassigned',
+    client: r.client || '', amount: numv(r.amount), ageDays: numv(r.ageDays),
+  })).filter(r => r.client && r.amount)
+}
+
+// Pure builder — turn a set of credit rows + an as-of date into the full summary. Both the built-in
+// statement (getCredit) and the live endpoint use this, so the numbers are computed identically.
+export function buildCredit(creditRows: CreditRow[], asOf: string): CreditSummary {
+  const total = round2(creditRows.reduce((s, r) => s + r.amount, 0))
+  const rows = creditRows.map(r => ({ ...r, pct: total ? r.amount / total : 0 }))
     .sort((a, b) => b.amount - a.amount)
 
   const cmap = new Map<string, CreditClient>()
-  for (const r of CREDIT_ROWS) {
+  for (const r of creditRows) {
     const cur = cmap.get(r.client) ?? { client: r.client, salespersonAr: r.salespersonAr, salespersonEn: r.salespersonEn, amount: 0, invoices: 0, maxAge: 0, pct: 0 }
     cur.amount = round2(cur.amount + r.amount); cur.invoices++; cur.maxAge = Math.max(cur.maxAge, r.ageDays); cmap.set(r.client, cur)
   }
   const byClient = [...cmap.values()].map(c => ({ ...c, pct: total ? c.amount / total : 0 })).sort((a, b) => b.amount - a.amount)
 
   const buckets: CreditBuckets = { current: 0, d8_30: 0, d31_60: 0, over60: 0 }
-  for (const r of CREDIT_ROWS) {
+  for (const r of creditRows) {
     if (r.ageDays <= 7) buckets.current += r.amount
     else if (r.ageDays <= 30) buckets.d8_30 += r.amount
     else if (r.ageDays <= 60) buckets.d31_60 += r.amount
@@ -64,19 +81,21 @@ export function getCredit(): CreditSummary {
   }
   ;(Object.keys(buckets) as (keyof CreditBuckets)[]).forEach(k => (buckets[k] = round2(buckets[k])))
 
-  const overdue = CREDIT_ROWS.filter(r => r.ageDays > 30)
+  const overdue = creditRows.filter(r => r.ageDays > 30)
   return {
-    asOf: CREDIT_AS_OF,
+    asOf,
     total,
     totalNet: round2(total / (1 + VAT_RATE)),
-    invoices: CREDIT_ROWS.length,
+    invoices: creditRows.length,
     clientCount: byClient.length,
     overdueCount: overdue.length,
     overdueAmount: round2(overdue.reduce((s, r) => s + r.amount, 0)),
-    avgAge: Math.round(CREDIT_ROWS.reduce((s, r) => s + r.ageDays, 0) / CREDIT_ROWS.length),
+    avgAge: creditRows.length ? Math.round(creditRows.reduce((s, r) => s + r.ageDays, 0) / creditRows.length) : 0,
     rows, byClient, buckets,
   }
 }
+
+export function getCredit(): CreditSummary { return buildCredit(CREDIT_ROWS, CREDIT_AS_OF) }
 
 // name → outstanding amount (VAT-inclusive), keyed by the exact statement name.
 export function creditByClientName(): Map<string, number> {
