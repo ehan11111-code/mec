@@ -84,6 +84,20 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-29 — Finalize: recovered misfiled documents + intake recap.** User: most messages are
+  documentations (sent + approved) — recap what was missed and finalize. **Gap found:** when decryption
+  moved off n8n, the GPT-vision doc-type classification went with it, so scanned invoices/delivery-notes/
+  payments sent as PHOTOS (no filename) landed as `doc_type:'other'`. **Fix:** added `classifyDoc` (GPT-4o
+  vision, the DOC_PROMPT) + a **finalize pass** to the worker (`worker/lib/{ocr,process}.js`, new
+  `--finalize` flag, also folded into `--once`) that reads each cached "other" document and sets the real
+  type (and OCRs it if it's actually a statement). **Ran it:** recovered **3 misfiled payment receipts**,
+  re-cached all media (0 unrecoverable now). **Recap (181 live msgs):** 45 real documents — invoice 12 ·
+  payment 18 · delivery_note 8 · credit 4 · inventory 3; **28 approved** (37 ✅/👍 reactions, mostly
+  approvals) · 2 rejected · 3 pending; 57/57 media cached; 20 cached files correctly left `other`
+  (logos/brand sheet/ChatGPT image/nameless photos). The "missed orders" were corrections/returns/notes,
+  not new orders (handled by smart-reprocess). The finalize now runs every worker cycle, so future
+  photo-documents self-classify. Build green.
+
 - **2026-06-29 — Cockpit number-interpretation + JARVIS in Admin + Orders/Clients recency sort + reaction-approve confirmed.**
   Four asks. **(1) "Every number interpreted/proven":** new **"How these numbers are calculated"** panel on
   `/jarvis` — for each KPI it prints the **formula with the live inputs** and a plain-language meaning.
