@@ -84,6 +84,20 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-29 — Fixed the WaSender "HI JARVIS" chain (intake workflow was off) + accurate status report.**
+  User reported the WaSender workflow "not working." **Diagnosis (probed live):** the WaSender *session*
+  is healthy (`/api/status` → `connected`, outbound send `ok`), but the **`MEC · WhatsApp Intake
+  (WaSender)` n8n workflow (`NzuuId3FYrcqaAkb`) was deactivated** — so its production webhook
+  (`…/webhook/mec-wasender`) was dead and inbound "hi jarvis"/"report" got no reply. **Fix:** reactivated
+  it via the n8n API (`POST /workflows/{id}/activate` → active=true). **Also fixed a false-red in the HI
+  JARVIS report:** the automation→n8n status matcher used `Array.find` on a loose keyword, so the inactive
+  personal workflow `jarvis/auto.reminder/email+messege` matched "email" *before* the real `MEC · Email
+  Intake (Gmail)` (active) → reported 🔴. Now matches only `MEC ·`-prefixed flows by a distinctive keyword
+  (`app/api/jarvis-status/route.ts`). Build green; deployed (`b2a18ee`). **Verified end-to-end:** triggered
+  the production status endpoint → full report **delivered to owner 966500900377 via WaSender (`ok:true`)**,
+  all platforms 🟢 (Vercel READY · Supabase 149 msgs · n8n 8/27 · WaSender connected · OpenAI valid) and all
+  5 live automations 🟢.
+
 - **2026-06-28 — Forecast page (Intelligence): revenue / demand / orders / warehouse, real methods +
   visuals.** New **`/forecast`** (sidebar: Intelligence → Forecast, perm `analytics`). New
   **`lib/data/forecast.ts`** — real, explainable methods: **OLS linear regression** (+ R² + residual std
