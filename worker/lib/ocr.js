@@ -85,10 +85,28 @@ function statementKind(text) {
   return null
 }
 
+// Read a document/image (cached file) with GPT-4o vision and classify what it is — recovers invoices /
+// delivery notes / payments that were filed as "other" because they arrived as photos with no useful
+// filename. (This is the vision step that used to run inline in n8n; moved here for reliability.)
+const DOC_PROMPT = "You are reading a business document for MEC, a food distributor in Saudi Arabia. It may be a PDF or a photo/scan, Arabic or English. FIRST look for any STAMP, SIGNATURE or handwriting showing the CLIENT RECEIVED the goods (تم الاستلام, استلمت, مستلم, received, delivered, a delivery/receipt stamp or signature). RULE: if such a received mark appears ANYWHERE, even on an invoice layout, the document is a DELIVERY NOTE. If there is NO received mark: a فاتورة with prices or VAT is an invoice; a purchase order (أمر شراء) is po; a bank transfer/deposit/payment receipt is payment; a receivables/credit statement (المديونية, clients + outstanding + aging) is credit; an inventory/stock list (المخزون, products with cartons) is inventory. A photo that is NOT a business document (a logo, a brand sheet, a random photo, a screenshot of chat) is other. Reply ONLY with JSON: {doc_type (invoice|delivery_note|payment|po|credit|inventory|other), received_stamp (true|false), order_no (or null), client (or null), recipient (or null), summary (one short line)}.";
+
+async function classifyDoc(OKEY, buf, mime, filename) {
+  const isImg = (mime || '').slice(0, 6) === 'image/'
+  const dataUrl = 'data:' + (mime || (isImg ? 'image/jpeg' : 'application/pdf')) + ';base64,' + buf.toString('base64')
+  const part = isImg ? { type: 'image_url', image_url: { url: dataUrl } } : { type: 'file', file: { filename: filename || 'document.pdf', file_data: dataUrl } }
+  const { default: OpenAI } = await import('openai')
+  const client = new OpenAI({ apiKey: OKEY })
+  const c = await client.chat.completions.create({
+    model: process.env.OPENAI_MODEL || 'gpt-4o', temperature: 0, response_format: { type: 'json_object' },
+    messages: [{ role: 'user', content: [{ type: 'text', text: DOC_PROMPT }, part] }],
+  })
+  return JSON.parse(c.choices[0]?.message?.content || '{}')
+}
+
 async function extractStatement(VKEY, OKEY, kind, buf, mime, asOf) {
   const ocr = await ocrRows(VKEY, buf, mime)
   const rows = kind === 'inventory' ? parseInventory(ocr) : await gptCredit(OKEY, ocr.join('\n'))
   return { rows, asOf }
 }
 
-module.exports = { ocrRows, parseInventory, gptCredit, extractStatement, asOfFrom, statementKind, num }
+module.exports = { ocrRows, parseInventory, gptCredit, extractStatement, classifyDoc, asOfFrom, statementKind, num }

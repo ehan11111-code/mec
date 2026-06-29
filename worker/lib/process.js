@@ -2,8 +2,8 @@
 // Supabase Storage, and — if it's a المخزون/المديونية statement — OCR + extract the table straight into
 // `extracted` (no commit/push, no redeploy). This is what stops important PDFs being silently ignored.
 const { decryptRowMedia } = require('./wa')
-const { uploadMedia, patchRow } = require('./supa')
-const { extractStatement, asOfFrom, statementKind } = require('./ocr')
+const { uploadMedia, patchRow, downloadMedia } = require('./supa')
+const { extractStatement, classifyDoc, asOfFrom, statementKind } = require('./ocr')
 
 // Rows the worker should pick up: media that hasn't been cached yet.
 // (media_status null/pending, or a known statement doc_type whose extract hasn't run.)
@@ -42,4 +42,39 @@ async function processRow(row, keys) {
   }
 }
 
-module.exports = { processRow, PENDING_FILTER }
+// FINALIZE: cached document/image files still classified "other" (or none) — recover the missed ones by
+// reading them with GPT-4o vision (invoice / delivery note / payment / statement). This is the "recap the
+// ones it missed and finalize" pass.
+const FINALIZE_FILTER =
+  `media_status=eq.cached&or=(doc_type.is.null,doc_type.eq.other)` +
+  `&message_type=in.(document,image)&archived=eq.false` +
+  `&select=message_id,doc_type,media_mime,media_filename,body,received_at&order=received_at.desc&limit=40`
+
+async function finalizeRow(row, keys) {
+  const id = row.message_id
+  if (!keys.OKEY) return { id, ok: false, reason: 'no_key' }
+  const buf = await downloadMedia(id)
+  if (!buf) return { id, ok: false, reason: 'no_cached_file' }
+  let c
+  try { c = await classifyDoc(keys.OKEY, buf, row.media_mime || 'application/pdf', row.media_filename || '') }
+  catch (e) { return { id, ok: false, reason: 'classify_error' } }
+  const dt = c.doc_type && c.doc_type !== 'other' ? c.doc_type : null
+  if (!dt) { await patchRow(id, { doc_type: 'other' }); return { id, ok: true, kind: 'other', summary: c.summary || '' } }
+  const patch = { doc_type: dt }
+  if (c.client) patch.client_name = c.client
+  if (c.order_no) patch.order_no = String(c.order_no)
+  if (c.recipient) patch.recipient = c.recipient
+  if (dt === 'delivery_note' && c.received_stamp) patch.decision = 'received'
+  // If it's actually a statement, OCR-extract it now (we already have the bytes).
+  if ((dt === 'credit' || dt === 'inventory') && keys.VKEY) {
+    try {
+      const asOf = asOfFrom((row.media_filename || '') + ' ' + (row.body || ''), row.received_at)
+      const { rows } = await extractStatement(keys.VKEY, keys.OKEY, dt, buf, row.media_mime || 'application/pdf', asOf)
+      if (rows && rows.length) { patch.extracted = rows; patch.extract_status = 'done' }
+    } catch (e) { /* keep doc_type, extraction can retry */ }
+  }
+  await patchRow(id, patch)
+  return { id, ok: true, kind: dt, summary: c.summary || '', client: c.client || null }
+}
+
+module.exports = { processRow, finalizeRow, PENDING_FILTER, FINALIZE_FILTER }

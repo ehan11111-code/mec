@@ -22,12 +22,25 @@ function loadEnv() {
 loadEnv()
 
 const { getRows, ensureBucket, heartbeat, configured } = require('./lib/supa')
-const { processRow, PENDING_FILTER } = require('./lib/process')
+const { processRow, finalizeRow, PENDING_FILTER, FINALIZE_FILTER } = require('./lib/process')
 const { decryptRowMedia } = require('./lib/wa')
 
 const WORKER_ID = process.env.WORKER_ID || (process.argv.includes('--once') ? 'local' : 'cloud')
 const POLL_MS = Number(process.env.POLL_MS || 10000)
 const keys = () => ({ VKEY: process.env.GOOGLE_VISION_API_KEY, OKEY: process.env.OPENAI_API_KEY })
+
+// Recover misfiled documents: read cached "other" docs with vision and set the real doc_type.
+async function finalize() {
+  const rows = await getRows(`whatsapp_intake?${FINALIZE_FILTER}`)
+  let fixed = 0; const recap = {}
+  for (const row of rows) {
+    const res = await finalizeRow(row, keys())
+    if (res.ok && res.kind && res.kind !== 'other') { fixed++; recap[res.kind] = (recap[res.kind] || 0) + 1; process.stdout.write(`[${res.kind}]`) }
+    else process.stdout.write(res.ok ? '·' : 'x')
+  }
+  if (rows.length) console.log(`\nfinalize: ${fixed} reclassified of ${rows.length} — ${JSON.stringify(recap)}`)
+  return { fixed, seen: rows.length, recap }
+}
 
 async function pass() {
   const rows = await getRows(`whatsapp_intake?${PENDING_FILTER}`)
@@ -37,9 +50,11 @@ async function pass() {
     if (res.ok) { processed++; process.stdout.write(res.kind ? `[${res.kind}:${res.count ?? '·'}]` : '.') }
     else { failed++; process.stdout.write('x') }
   }
+  // After caching new media, finalize any cached-but-unclassified documents (recover the missed ones).
+  const f = await finalize()
   if (rows.length) console.log(`\n${new Date().toISOString()} — ${processed} ok, ${failed} failed`)
-  await heartbeat(WORKER_ID, processed, failed, `${rows.length} pending`)
-  return { processed, failed, seen: rows.length }
+  await heartbeat(WORKER_ID, processed + f.fixed, failed, `${rows.length} pending · ${f.fixed} reclassified`)
+  return { processed, failed, seen: rows.length, finalized: f.fixed }
 }
 
 // Can this host actually reach WhatsApp's CDN? Decrypts up to 3 recent media without writing anything.
@@ -55,7 +70,8 @@ async function main() {
   if (!configured()) { console.error('Missing NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY'); process.exit(1) }
   await ensureBucket()
   if (process.argv.includes('--spike')) return spike()
-  if (process.argv.includes('--once')) { const r = await pass(); console.log(`done (${r.processed}/${r.seen}).`); return }
+  if (process.argv.includes('--finalize')) { const r = await finalize(); console.log(`done — ${r.fixed} reclassified.`); return }
+  if (process.argv.includes('--once')) { const r = await pass(); console.log(`done (${r.processed}/${r.seen}, +${r.finalized} reclassified).`); return }
   console.log(`MEC extract worker '${WORKER_ID}' polling every ${POLL_MS}ms…`)
   // eslint-disable-next-line no-constant-condition
   while (true) { try { await pass() } catch (e) { console.error('pass error:', String(e).slice(0, 200)) } await new Promise(r => setTimeout(r, POLL_MS)) }
