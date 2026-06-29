@@ -1068,7 +1068,8 @@
     "executionLogSub": "What the system has been doing.",
     "interventionsRequired": "Needs your input",
     "interventionsRequiredSub": "Decisions waiting on a human.",
-    "noInterventions": "Nothing waiting."
+    "noInterventions": "Nothing waiting.",
+    "calc_confirmedPayments": "Confirmed payments (reconciled)"
   },
   "dept": {
     "eyebrow": "Department",

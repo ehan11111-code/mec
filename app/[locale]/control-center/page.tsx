@@ -29,14 +29,20 @@ export default function ControlCenterPage() {
   // Receivables = the المديونية (credit) statement. Overlay the LIVE statement extracted from WhatsApp so a
   // newer file moves the headline here too (server-truth), falling back to the built-in statement.
   const [liveCredit, setLiveCredit] = useState<CreditSummary | null>(null)
+  const [confirmed, setConfirmed] = useState(0)
   useEffect(() => {
     fetch('/api/credit', { cache: 'no-store' }).then(r => r.json())
-      .then(d => { if (d.rows?.length && d.asOf) setLiveCredit(buildCredit(d.rows, d.asOf)) }).catch(() => {})
+      .then(d => { if (d.rows?.length && d.asOf) setLiveCredit(buildCredit(d.rows, d.asOf)); setConfirmed(d.confirmedTotal || 0) }).catch(() => {})
   }, [])
   const credit = liveCredit ?? getCredit()
-  const receivables = liveCredit ? credit.total : sales.outstanding
+  const statementOutstanding = liveCredit ? credit.total : sales.outstanding
+  // Live credit line = statement − confirmed payment reconciliations (P2). Stays current between Tarek's files.
+  const receivables = Math.max(0, Math.round((statementOutstanding - confirmed) * 100) / 100)
   const revenueBreakdown = { title: tAna('kRevenue'), formula: t('calc_revenue'), money: true, total: sales.revenue, lines: months.map(m => ({ label: locale === 'ar' ? m.tAr : m.t, value: Math.round(m.v) })) }
-  const receivablesBreakdown = { title: tAna('kReceivables'), formula: t('calc_receivables'), money: true, total: credit.total, lines: credit.byClient.map(b => ({ label: b.client, value: b.amount })) }
+  const receivablesBreakdown = {
+    title: tAna('kReceivables'), formula: t('calc_receivables'), money: true, total: receivables,
+    lines: [...credit.byClient.map(b => ({ label: b.client, value: b.amount })), ...(confirmed > 0 ? [{ label: t('calc_confirmedPayments'), value: -confirmed }] : [])]
+  }
 
   return (
     <PageShell breadcrumbs={[{ label: tNav('operations') }, { label: tNav('controlCenter') }]}>

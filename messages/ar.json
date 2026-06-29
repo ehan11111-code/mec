@@ -1068,7 +1068,8 @@
     "executionLogSub": "ما الذي كان يقوم به النظام.",
     "interventionsRequired": "يحتاج تدخّلك",
     "interventionsRequiredSub": "قرارات تنتظر إنسانًا.",
-    "noInterventions": "لا شيء بالانتظار."
+    "noInterventions": "لا شيء بالانتظار.",
+    "calc_confirmedPayments": "مدفوعات مؤكدة (مسوّاة)"
   },
   "dept": {
     "eyebrow": "قسم",
