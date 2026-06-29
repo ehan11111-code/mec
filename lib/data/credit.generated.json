@@ -1,6 +1,6 @@
 {
   "asOf": "2026-06-29",
-  "source": "المديونية حتي تاريخ 29-06-2026.pdf",
+  "source": "المديونية حتي تاريخ 29-06-2026 نهاية الدوام.pdf",
   "rows": [
     {
       "date": "2026-05-16",
@@ -71,7 +71,16 @@
       "salespersonAr": "تامر",
       "salespersonEn": "Tamer",
       "client": "شركة نصيب جرين للتجارة",
-      "amount": 10235,
+      "amount": 15266.25,
+      "ageDays": 0
+    },
+    {
+      "date": "2026-06-29",
+      "invoiceNo": "403",
+      "salespersonAr": "محمود",
+      "salespersonEn": "Mahmoud",
+      "client": "شركة دجاج اسيا لخدمات الاعاشة",
+      "amount": 59800,
       "ageDays": 0
     }
   ]
