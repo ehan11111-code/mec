@@ -12,7 +12,7 @@
 // (a human still approves it — never auto-approved); data-changing corrections need high confidence to
 // auto-apply, otherwise they're queued for a one-click human review on the Data page.
 
-import { getWhatsappIntake, patchWhatsapp, type WhatsappMsg } from './supply'
+import { getWhatsappIntake, patchWhatsapp, type WhatsappMsg, type Understanding } from './supply'
 
 export type ReprocessChange = {
   targetId: string           // the row that gets patched

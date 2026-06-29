@@ -80,6 +80,27 @@ alter table public.whatsapp_intake add column if not exists client_name text;   
 alter table public.whatsapp_intake add column if not exists recipient text;           -- receiver / driver (المستلم) on a delivery note
 alter table public.whatsapp_intake add column if not exists archived boolean not null default false; -- test/cleared rows: hidden from the portal, kept in the automation audit log
 alter table public.whatsapp_intake add column if not exists extracted jsonb;     -- structured rows extracted from a credit/inventory statement (table → JSON), refreshes the portal
+-- Universal intake reliability (the extract worker): media is captured RAW and never dropped; the worker
+-- (or the local fallback) fetches+decrypts+OCRs it OUT OF BAND and writes the results back here. This is
+-- what stops important PDFs/notes being silently ignored when the inline n8n decrypt fails.
+alter table public.whatsapp_intake add column if not exists media_key text;        -- WhatsApp mediaKey (base64) so the worker can decrypt later
+alter table public.whatsapp_intake add column if not exists media_mime text;       -- mimetype of the document/image
+alter table public.whatsapp_intake add column if not exists media_filename text;    -- original file name / title (best signal of doc type)
+alter table public.whatsapp_intake add column if not exists media_status text;      -- none | pending | cached | ocr | failed  (lifecycle of the media fetch)
+alter table public.whatsapp_intake add column if not exists storage_path text;      -- path in the wa-media Supabase Storage bucket once cached
+alter table public.whatsapp_intake add column if not exists extract_status text;    -- na | pending | done | failed  (OCR/extract lifecycle for statements)
+alter table public.whatsapp_intake add column if not exists understanding jsonb;    -- JARVIS's recorded read of EVERY message (type, who, importance, action) — "keeps everything in mind"
+
+-- Worker heartbeat — the always-on extract worker (and the local fallback) write a row here each cycle so
+-- the JARVIS cockpit / status report can show it is alive and how much it has processed.
+create table if not exists public.worker_health (
+  id           text primary key,              -- worker id (e.g. 'cloud' | 'local')
+  beat_at      timestamptz default now(),
+  processed    int default 0,                 -- media items processed in the last cycle
+  failed       int default 0,
+  note         text
+);
+alter table public.worker_health enable row level security;  -- service-role only
 
 -- Error log — every reported portal/automation error (written by lib/integrations/errors.ts + n8n).
 create table if not exists public.error_log (

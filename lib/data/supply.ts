@@ -46,7 +46,25 @@ export type WhatsappMsg = {
   recipient?: string | null                // receiver / driver (المستلم) on a delivery note
   archived?: boolean | null                // test/cleared row — hidden from the portal, kept in the audit log
   extracted?: unknown                      // structured rows parsed from a credit/inventory statement
+  // Universal intake reliability — media is captured raw and processed out of band by the extract worker.
+  media_key?: string | null
+  media_mime?: string | null
+  media_filename?: string | null
+  media_status?: 'none' | 'pending' | 'cached' | 'ocr' | 'failed' | null
+  storage_path?: string | null
+  extract_status?: 'na' | 'pending' | 'done' | 'failed' | null
+  understanding?: Understanding | null     // JARVIS's recorded read of this message ("keeps everything in mind")
   raw?: unknown                            // full original webhook payload (admin debug / audit)
+}
+
+// JARVIS's interpretation of a single message — written for EVERY message so nothing is invisibly ignored.
+export type Understanding = {
+  type: 'order' | 'invoice' | 'delivery_note' | 'payment' | 'bank_transfer' | 'credit_statement' | 'inventory_statement' | 'correction' | 'inquiry' | 'complaint' | 'chatter'
+  who?: string | null
+  importance: 'high' | 'medium' | 'low'
+  action?: string | null                   // what JARVIS did or recommends
+  summary: string
+  at: string                               // ISO timestamp the understanding was recorded
 }
 
 export type EmailMsg = {

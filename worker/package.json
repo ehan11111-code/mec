@@ -1,0 +1,14 @@
+{
+  "name": "mec-extract-worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Always-on WhatsApp media fetch + OCR worker for the MEC portal (decrypt → Supabase Storage → OCR statements into the DB).",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "once": "node index.js --once",
+    "spike": "node index.js --spike"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": { "openai": "^4.67.3" }
+}
