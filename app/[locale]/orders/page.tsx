@@ -21,6 +21,7 @@ export default function OrdersPage() {
   const orders = getOrders(); const sum = ordersSummary(); const byStatus = ordersByStatus()
   const rev = revenueByMonth(); const cats = categoryMix()
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all')
+  const [sort, setSort] = useState<'newest' | 'oldest'>('newest')
   // Live incoming orders (WhatsApp) folded into the headline counts, so the totals include new orders
   // and drop the moment one is deleted from the feed below — the historical book + live, as one number.
   const [live, setLive] = useState<LiveOrderRow[] | null>(null)
@@ -28,7 +29,10 @@ export default function OrdersPage() {
   const liveCount = live?.length ?? 0
   const livePending = live?.filter(o => (o.order_status || 'pending') === 'pending').length ?? 0
 
-  const filtered = useMemo(() => filter === 'all' ? orders : orders.filter(o => o.status === filter), [filter, orders])
+  const filtered = useMemo(() => {
+    const base = filter === 'all' ? orders : orders.filter(o => o.status === filter)
+    return [...base].sort((a, b) => sort === 'newest' ? (a.date < b.date ? 1 : -1) : (a.date > b.date ? 1 : -1))
+  }, [filter, orders, sort])
   const rows = filtered.slice(0, 80)
 
   const statusBars = byStatus.map(s => ({ label: tStatus(s.status), value: s.count, accent: s.status === 'overdue' || s.status === 'under_approval' }))
@@ -64,7 +68,7 @@ export default function OrdersPage() {
       </section>
 
       <Panel bodyClassName="px-0 pb-0" title={tNav('orders')}>
-        <div className="px-5 md:px-6 py-3 flex flex-wrap gap-2 border-b border-border">
+        <div className="px-5 md:px-6 py-3 flex flex-wrap items-center gap-2 border-b border-border">
           {filters.map(f => (
             <button key={f} type="button" onClick={() => setFilter(f)}
               className={clsx('rounded-full px-3 py-1 text-xs font-medium transition-colors border',
@@ -72,6 +76,14 @@ export default function OrdersPage() {
               {f === 'all' ? t('filterAll') : tStatus(f)}
             </button>
           ))}
+          <div className="ms-auto inline-flex rounded-full border border-border bg-surface p-0.5">
+            {(['newest', 'oldest'] as const).map(sv => (
+              <button key={sv} type="button" onClick={() => setSort(sv)}
+                className={clsx('rounded-full px-3 py-1 text-xs font-medium transition-colors', sort === sv ? 'bg-accent text-white' : 'text-text-soft hover:text-text')}>
+                {t(sv === 'newest' ? 'sortNewest' : 'sortOldest')}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="overflow-x-auto scrollbar-soft">
           <table className="w-full text-sm">

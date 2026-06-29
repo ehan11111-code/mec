@@ -23,7 +23,14 @@ export default function ClientsPage() {
   const router = useRouter()
   const all = getClientStats(); const sum = crmSummary(); const byStatus = clientsByStatus(); const top = topClients(6)
   const products = useMemo(() => allProducts(), [])
-  const sorted = useMemo(() => [...all].sort((a, b) => b.totalRevenue - a.totalRevenue), [all])
+  const [sort, setSort] = useState<'value' | 'recent' | 'old'>('value')
+  const sorted = useMemo(() => {
+    const arr = [...all]
+    if (sort === 'recent') arr.sort((a, b) => (a.lastDate < b.lastDate ? 1 : a.lastDate > b.lastDate ? -1 : 0))
+    else if (sort === 'old') arr.sort((a, b) => (a.lastDate > b.lastDate ? 1 : a.lastDate < b.lastDate ? -1 : 0))
+    else arr.sort((a, b) => b.totalRevenue - a.totalRevenue)
+    return arr
+  }, [all, sort])
 
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<'all' | 'active' | 'lead' | 'inactive'>('all')
@@ -129,6 +136,11 @@ export default function ClientsPage() {
             <option value="s1">{t('fSize_s1')}</option>
             <option value="s2">{t('fSize_s2')}</option>
             <option value="s3">{t('fSize_s3')}</option>
+          </select>
+          <select value={sort} onChange={e => setSort(e.target.value as typeof sort)} className={selCls} title={t('sortBy')}>
+            <option value="value">{t('sortValue')}</option>
+            <option value="recent">{t('sortRecent')}</option>
+            <option value="old">{t('sortOld')}</option>
           </select>
           {activeFilters > 0 && (
             <button type="button" onClick={clearAll} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs text-text-soft hover:bg-surface-elev transition-colors">

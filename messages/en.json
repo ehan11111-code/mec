@@ -310,7 +310,17 @@
     "feedTitle": "What's flowing through",
     "feedSub": "Latest messages with JARVIS's read of each",
     "unread": "not read yet",
-    "extracted": "extracted"
+    "extracted": "extracted",
+    "mTitle": "How these numbers are calculated",
+    "mSub": "Every figure on this page — its formula and what it means",
+    "m_acc_f": "0.6 × reading coverage ({u}%) + 0.4 × extraction reliability ({e}%) = {score}%",
+    "m_acc_m": "It sits at {score}% mainly because only {u}% of recent messages have been read so far — not because anything is wrong. It climbs as the read pass catches up.",
+    "m_read_f": "{u} of the last {t} messages have a saved JARVIS interpretation = {pct}%. {pend} are still pending the next read pass.",
+    "m_read_m": "“Read” = JARVIS recorded what the message is and what to do with it. Runs on every new message and once daily; a manual “Run JARVIS read” catches up the rest.",
+    "m_ext_f": "{c} of {total} document/image files fetched, decrypted & cached (statements also OCR’d). {pend} pending · {fail} failed.",
+    "m_ext_m": "This counts FILES only — a different thing from “messages read”. Most messages are plain text, not files, so reading can be partial while every file that arrived is still 100% extracted. That’s why 60/175 read and 100% extraction are both true.",
+    "m_act_f": "{n} messages where something actually happened — an order queued/approved, a document cached, or a statement extracted.",
+    "m_act_m": "What JARVIS DID with the data, not just read."
   },
   "documents": {
     "eyebrow": "Compliance",
@@ -514,7 +524,11 @@
     "clear": "Clear",
     "colProducts": "Products",
     "colUnits": "Units",
-    "colOutstanding": "Outstanding"
+    "colOutstanding": "Outstanding",
+    "sortBy": "Sort by",
+    "sortValue": "Top value",
+    "sortRecent": "Most recent",
+    "sortOld": "Oldest"
   },
   "products": {
     "eyebrow": "Catalog",
@@ -669,7 +683,9 @@
     "categoryMix": "Volume by category",
     "categoryMixSub": "Quantity ordered per product line.",
     "empty": "No orders match this filter.",
-    "filterAll": "All"
+    "filterAll": "All",
+    "sortNewest": "Newest",
+    "sortOldest": "Oldest"
   },
   "latest": {
     "title": "Latest orders & proofs",

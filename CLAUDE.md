@@ -84,6 +84,18 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-29 — Cockpit number-interpretation + JARVIS in Admin + Orders/Clients recency sort + reaction-approve confirmed.**
+  Four asks. **(1) "Every number interpreted/proven":** new **"How these numbers are calculated"** panel on
+  `/jarvis` — for each KPI it prints the **formula with the live inputs** and a plain-language meaning.
+  Crucially it explains the confusing "60/175 read + 100% extraction": accuracy = 0.6×reading-coverage +
+  0.4×extraction-reliability (so 60% is from 34% read × 0.6 + 100% extracted × 0.4), and clarifies that
+  **"read" counts messages (NLP) while "extraction" counts FILES** — different populations, so both are
+  true. **(2)** Added the **JARVIS cockpit to the Admin** sidebar section too (perm `manageData`), in
+  addition to Intelligence. **(3) Orders & Clients recency sort:** Orders gets a **Newest/Oldest** toggle
+  (by date); Clients gets a **Top value / Most recent / Oldest** sort (by `lastDate`). **(4) Reaction
+  approval:** verified the n8n intake already maps **✅/✔/☑/👍/🆗 reactions → approve** (and ❌/👎 → reject)
+  and patches the order — workflow confirmed **active**, logic deployed. Build green, EN/AR parity.
+
 - **2026-06-29 — Corrected interpretation: Tarek's المخزون file is inventory MOVEMENT, not stock on hand.**
   User: "the Tarek file is the movement of inventory, not the stock on hand." Read the actual PDF end-to-end
   (`المخزون حتي تاريخ 28-06-2026.pdf`, cols **الصنف | الكمية بالكرتون | الكمية بالكجم** with per-item

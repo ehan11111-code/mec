@@ -55,6 +55,7 @@ export function SidebarNav() {
       { href: '/total-savings', label: tNav('totalSavings'), icon: Coins, perm: 'savings' }
     ] },
     { key: 'secAdmin', items: [
+      { href: '/jarvis', label: tNav('jarvis'), icon: Gauge, perm: 'manageData' },
       { href: '/automations', label: tNav('automations'), icon: Zap, perm: 'automations' },
       { href: '/admin/data', label: tNav('dataConsole'), icon: Database, perm: 'manageData' },
       { href: '/admin', label: tNav('adminConsole'), icon: ShieldAlert, perm: 'manageData' }

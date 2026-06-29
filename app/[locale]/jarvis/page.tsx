@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
-import { Activity, Brain, FileWarning, RefreshCw, CheckCircle2, AlertTriangle, Radio, Cpu, ShieldCheck } from 'lucide-react'
+import { Activity, Brain, FileWarning, RefreshCw, CheckCircle2, AlertTriangle, Radio, Cpu, ShieldCheck, Calculator } from 'lucide-react'
 import { PageShell } from '@/components/PageShell'
 import { DisplayHeading } from '@/components/DisplayHeading'
 import { Eyebrow } from '@/components/Eyebrow'
@@ -64,6 +64,33 @@ export default function JarvisCockpitPage() {
         <StatCard label={t('kExtraction')} value={s ? `${s.extractRate}%` : '—'} delta={s ? `${s.mediaCached} ${t('cached')} · ${s.mediaPending} ${t('pending')} · ${s.mediaFailed} ${t('failed')}` : ''} accent index={2} />
         <StatCard label={t('kActed')} value={s ? String(s.acted) : '—'} delta={t('kActedSub')} index={3} />
       </section>
+
+      {/* How every number is calculated — the proof behind each figure */}
+      <Panel className="mb-6" bodyClassName="px-0 pb-0" title={<span className="inline-flex items-center gap-2"><Calculator className="h-4 w-4 text-accent" strokeWidth={1.8} />{t('mTitle')}</span>} subtitle={t('mSub')}>
+        {s ? (() => {
+          const mediaTotal = s.mediaCached + s.mediaPending + s.mediaFailed
+          const metrics = [
+            { l: t('kAccuracy'), v: `${s.accuracyScore}%`, f: t('m_acc_f', { u: s.understandRate, e: s.extractRate, score: s.accuracyScore }), m: t('m_acc_m', { score: s.accuracyScore, u: s.understandRate }) },
+            { l: t('kUnderstood'), v: `${s.understood}/${s.total}`, f: t('m_read_f', { u: s.understood, t: s.total, pct: s.understandRate, pend: s.total - s.understood }), m: t('m_read_m') },
+            { l: t('kExtraction'), v: `${s.extractRate}%`, f: t('m_ext_f', { c: s.mediaCached, total: mediaTotal, pend: s.mediaPending, fail: s.mediaFailed }), m: t('m_ext_m') },
+            { l: t('kActed'), v: String(s.acted), f: t('m_act_f', { n: s.acted }), m: t('m_act_m') },
+          ]
+          return (
+            <ul className="divide-y divide-border">
+              {metrics.map((x, i) => (
+                <li key={i} className="px-5 md:px-6 py-3.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium text-text">{x.l}</span>
+                    <span className="text-sm font-semibold tabular-nums text-accent">{x.v}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-text-soft leading-snug" dir="auto"><span className="text-muted">=</span> {x.f}</p>
+                  <p className="mt-1 text-[11px] text-muted leading-snug" dir="auto">{x.m}</p>
+                </li>
+              ))}
+            </ul>
+          )
+        })() : <p className="px-5 py-8 text-center text-sm text-muted">{t('loading')}</p>}
+      </Panel>
 
       {/* Reliability panel */}
       <section className="mb-6 grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6">
