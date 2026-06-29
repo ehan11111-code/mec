@@ -1,23 +1,20 @@
-﻿# Auto-refresh the MEC credit/inventory statements from the latest WhatsApp data, then deploy if changed.
-# Runs scripts/refresh-statements.js (rewrites the two generated JSON files from Supabase). If they
-# changed, commits just those files and pushes to origin -> Vercel redeploys, so the server-rendered
-# figures (Control Center receivables, CRM) stay aligned with the live Credit/Inventory pages.
+﻿# Local fallback for the always-on extract worker. Decrypts + caches WhatsApp media and OCR-extracts the
+# credit/inventory statements STRAIGHT INTO Supabase (live, no redeploy), then syncs the generated JSON
+# baseline so the server-rendered figures stay aligned, and pushes if they changed.
 # ASCII-only + judged by git exit code (see the PowerShell .ps1 BOM gotcha).
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
-# 1. Pull the latest extracted statements into the generated JSON.
+# 1. THE RELIABLE PATH: fetch+decrypt media -> Supabase Storage, OCR statements -> whatsapp_intake.extracted.
+#    The live /api/credit + /api/inventory-count endpoints serve this instantly (no commit/push needed).
+node "worker/index.js" --once
+if ($LASTEXITCODE -ne 0) { Write-Output "worker pass failed (continuing to baseline sync)" }
+
+# 2. Baseline sync: pull the now-accurate extracted rows into the generated JSON so the server-rendered
+#    figures (any sync reads) stay aligned. Non-fatal if it hiccups.
 node "scripts/refresh-statements.js"
-if ($LASTEXITCODE -ne 0) { Write-Output "refresh failed"; exit 1 }
-
-# 1b. Cache any new WhatsApp media (PDFs/images) into Supabase Storage so the portal can serve them
-#     reliably (Vercel can't fetch WhatsApp's CDN directly). Non-fatal if it hiccups.
-node "scripts/cache-media.js"
-
-# 1c. Re-extract the credit/inventory statements ACCURATELY from the cached PDFs via Google Vision OCR
-#     (the custom-font PDFs defeat the text extractor). Overwrites the generated JSON with correct numbers.
-node "scripts/ocr-statement.js"
+if ($LASTEXITCODE -ne 0) { Write-Output "refresh failed" }
 
 # 2. Commit + push only the two generated files, and only if they actually changed.
 $files = @("lib/data/credit.generated.json", "lib/data/inventory-count.generated.json")

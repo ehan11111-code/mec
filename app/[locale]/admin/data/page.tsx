@@ -14,7 +14,7 @@ import { fmtDateTime } from '@/lib/format/datetime'
 import type { DataItem } from '@/app/api/admin/data/route'
 import type { ReprocessChange } from '@/lib/data/reprocess'
 
-type Counts = { total: number; whatsapp: number; email: number; supply: number; captured: number; notCaptured: number; possibleOrders: number }
+type Counts = { total: number; whatsapp: number; email: number; supply: number; captured: number; notCaptured: number; understood: number; possibleOrders: number }
 const SRC_ICON = { whatsapp: MessageCircle, email: Mail, supply: Radar } as const
 const SRC_TONE = { whatsapp: 'text-success', email: 'text-accent', supply: 'text-warn' } as const
 
@@ -32,7 +32,7 @@ export default function AdminDataPage() {
 
   const load = useCallback(async (manual = false) => {
     if (manual) setRefreshing(true)
-    try { const d = await fetch('/api/admin/data', { cache: 'no-store' }).then(r => r.json()); if (d.items) setData(d) } catch { setData(d => d ?? { items: [], counts: { total: 0, whatsapp: 0, email: 0, supply: 0, captured: 0, notCaptured: 0, possibleOrders: 0 } }) }
+    try { const d = await fetch('/api/admin/data', { cache: 'no-store' }).then(r => r.json()); if (d.items) setData(d) } catch { setData(d => d ?? { items: [], counts: { total: 0, whatsapp: 0, email: 0, supply: 0, captured: 0, notCaptured: 0, understood: 0, possibleOrders: 0 } }) }
     if (manual) setRefreshing(false)
   }, [])
   useEffect(() => { load(); const id = setInterval(() => load(), 30000); return () => clearInterval(id) }, [load])
@@ -170,6 +170,9 @@ export default function AdminDataPage() {
                           onClick={() => setExpanded(open ? null : it.id)} role="button">
                           {it.title && <span className="font-medium me-1.5">{it.title}</span>}{it.body}
                         </p>
+                      )}
+                      {it.understanding && (
+                        <p className="mt-1 inline-flex items-start gap-1 text-[11px] text-accent/90" dir="auto"><Sparkles className="h-3 w-3 mt-0.5 shrink-0" strokeWidth={1.9} /><span>{t('jarvisRead')}: {it.understanding}</span></p>
                       )}
                       {it.hint === 'possible_order' && (
                         <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-warn-soft text-warn px-2 py-0.5 text-[10px] font-medium"><AlertTriangle className="h-3 w-3" strokeWidth={2} />{t('possibleOrder')}</span>

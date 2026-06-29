@@ -1,4 +1,5 @@
 'use client'
+import { useEffect, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'framer-motion'
 import { Workflow } from 'lucide-react'
@@ -15,7 +16,7 @@ import { NoteCallout } from '@/components/NoteCallout'
 import { EmptyState } from '@/components/EmptyState'
 import { getFirmState } from '@/lib/mock/data'
 import { crmSummary, ordersSummary, ordersByStatus, salesSummary, salesByMonth, topClients, clientName, fmtSAR } from '@/lib/data/dataset'
-import { getCredit } from '@/lib/data/credit'
+import { getCredit, buildCredit, type CreditSummary } from '@/lib/data/credit'
 
 export default function ControlCenterPage() {
   const t = useTranslations('control'); const tNav = useTranslations('nav'); const locale = useLocale() as 'en' | 'ar'
@@ -25,8 +26,15 @@ export default function ControlCenterPage() {
   const statusBars = byStatus.map(s => ({ label: tStatus(s.status), value: s.count, accent: s.status === 'overdue' || s.status === 'payment_pending' }))
   const months = salesByMonth()
   const revLine = months.map(m => ({ t: locale === 'ar' ? m.tAr : m.t, revenue: Math.round(m.v) }))
-  // Click-to-calculate breakdowns for the money KPIs.
-  const credit = getCredit()
+  // Receivables = the المديونية (credit) statement. Overlay the LIVE statement extracted from WhatsApp so a
+  // newer file moves the headline here too (server-truth), falling back to the built-in statement.
+  const [liveCredit, setLiveCredit] = useState<CreditSummary | null>(null)
+  useEffect(() => {
+    fetch('/api/credit', { cache: 'no-store' }).then(r => r.json())
+      .then(d => { if (d.rows?.length && d.asOf) setLiveCredit(buildCredit(d.rows, d.asOf)) }).catch(() => {})
+  }, [])
+  const credit = liveCredit ?? getCredit()
+  const receivables = liveCredit ? credit.total : sales.outstanding
   const revenueBreakdown = { title: tAna('kRevenue'), formula: t('calc_revenue'), money: true, total: sales.revenue, lines: months.map(m => ({ label: locale === 'ar' ? m.tAr : m.t, value: Math.round(m.v) })) }
   const receivablesBreakdown = { title: tAna('kReceivables'), formula: t('calc_receivables'), money: true, total: credit.total, lines: credit.byClient.map(b => ({ label: b.client, value: b.amount })) }
 
@@ -47,7 +55,7 @@ export default function ControlCenterPage() {
         <StatCard label={tAna('kRevenue')} amount={sales.revenue} accent infoId="revenue" breakdown={revenueBreakdown} index={0} />
         <StatCard label={tOrd('kTotal')} value={String(ord.total)} infoId="ordersTotal" index={1} />
         <StatCard label={tCli('kTotal')} value={String(crm.total)} infoId="clientsTotal" index={2} />
-        <StatCard label={tAna('kReceivables')} amount={sales.outstanding} accent infoId="receivables" breakdown={receivablesBreakdown} index={3} />
+        <StatCard label={tAna('kReceivables')} amount={receivables} accent infoId="receivables" breakdown={receivablesBreakdown} index={3} />
       </section>
 
       <section className="mb-8 md:mb-10 grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">

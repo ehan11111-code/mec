@@ -24,6 +24,9 @@ export type DataItem = {
   title: string
   body: string
   hint: 'possible_order' | null  // relevant-looking message that wasn't captured
+  understood: boolean            // JARVIS recorded an interpretation of it
+  understanding: string | null   // JARVIS's one-line read (type · summary)
+  importance: 'high' | 'medium' | 'low' | null
 }
 
 // Does an un-captured WhatsApp message look like it actually carries an order (qty/price/quantity words)?
@@ -61,7 +64,10 @@ export async function GET(req: NextRequest) {
       captured, archived: !!m.archived,
       title: m.order_no ? `#${m.order_no}` : (m.client_name || ''),
       body,
-      hint: !captured && !isNoise(body) && ORDER_HINT.test(body) ? 'possible_order' : null
+      hint: !captured && !isNoise(body) && ORDER_HINT.test(body) ? 'possible_order' : null,
+      understood: !!m.understanding,
+      understanding: m.understanding ? `${m.understanding.type} · ${m.understanding.summary}` : null,
+      importance: m.understanding?.importance ?? null
     })
   }
 
@@ -73,7 +79,7 @@ export async function GET(req: NextRequest) {
       kind: [e.intent, e.doc_type].filter(Boolean).join(' · ') || 'other',
       captured, archived: false,
       title: e.subject || '', body: (e.summary || e.body || '').replace(/\s+/g, ' ').trim().slice(0, 400),
-      hint: null
+      hint: null, understood: false, understanding: null, importance: null
     })
   }
 
@@ -83,7 +89,8 @@ export async function GET(req: NextRequest) {
       channel: 'Supply intelligence', sender: `${sup.supplier || sup.commodity}${sup.country ? ' · ' + sup.country : ''}`,
       kind: 'forecast', captured: true, archived: false,
       title: `${sup.commodity || ''}${sup.country ? ' · ' + sup.country : ''}`,
-      body: (sup.recommendation || '').replace(/\s+/g, ' ').trim().slice(0, 400), hint: null
+      body: (sup.recommendation || '').replace(/\s+/g, ' ').trim().slice(0, 400), hint: null,
+      understood: true, understanding: null, importance: null
     })
   }
 
@@ -96,6 +103,7 @@ export async function GET(req: NextRequest) {
     supply: items.filter(i => i.source === 'supply').length,
     captured: items.filter(i => i.captured).length,
     notCaptured: items.filter(i => !i.captured).length,
+    understood: items.filter(i => i.understood).length,
     possibleOrders: items.filter(i => i.hint === 'possible_order').length
   }
   return NextResponse.json({ items, counts })

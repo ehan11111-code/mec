@@ -147,6 +147,141 @@ export async function applyChange(ch: ReprocessChange): Promise<boolean> {
   return patchWhatsapp(ch.targetId, ch.patch)
 }
 
+// ── JARVIS "reads & remembers EVERY message" ────────────────────────────────────────────────────────
+// Beyond order/correction recovery, JARVIS records an interpretation (`understanding`) for every message so
+// nothing is invisibly ignored — it is "a member of the group who sees everything". Noise (reactions, bare
+// mentions) is understood deterministically (no AI cost); everything else is read by the model. Incremental:
+// only messages that don't yet have an `understanding` are sent, so it's cheap and idempotent per message.
+
+const IMPORTANT_TYPES = new Set(['order', 'invoice', 'delivery_note', 'payment', 'bank_transfer', 'credit_statement', 'inventory_statement', 'correction', 'complaint'])
+
+function deterministicUnderstanding(m: WhatsappMsg, at: string): Understanding | null {
+  const body = (m.body || '').trim()
+  if (m.message_type === 'reaction') return { type: 'chatter', who: m.salesperson || m.push_name || null, importance: 'low', action: 'Reaction noted (may approve/reject an order).', summary: body || 'reaction', at }
+  if (isNoise(body)) return { type: 'chatter', who: m.salesperson || m.push_name || null, importance: 'low', action: null, summary: body || '(no text)', at }
+  return null
+}
+
+// Map a stored row's already-known classification to an understanding type (used as a fallback / prior).
+function priorType(m: WhatsappMsg): Understanding['type'] {
+  if (m.doc_type === 'credit') return 'credit_statement'
+  if (m.doc_type === 'inventory') return 'inventory_statement'
+  if (m.doc_type === 'invoice') return 'invoice'
+  if (m.doc_type === 'delivery_note') return 'delivery_note'
+  if (m.doc_type === 'payment') return 'payment'
+  if (m.intent === 'order') return 'order'
+  if (m.intent === 'complaint') return 'complaint'
+  if (m.intent === 'inquiry') return 'inquiry'
+  return 'chatter'
+}
+
+type UnderstandOut = { id: string; type: Understanding['type']; importance: Understanding['importance']; who?: string; action?: string; summary: string }
+
+async function classifyUnderstanding(rows: WhatsappMsg[]): Promise<UnderstandOut[]> {
+  const key = process.env.OPENAI_API_KEY
+  if (!key || rows.length === 0) return []
+  const model = process.env.OPENAI_BATCH_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini'
+  const payload = rows.map(m => ({
+    id: m.message_id, text: (m.body || '').slice(0, 500), sender: m.salesperson || m.push_name || '',
+    group: m.group_type || '', has_file: m.message_type === 'document' || m.message_type === 'image',
+    file: m.media_filename || '', current_doc_type: m.doc_type || '', current_intent: m.intent,
+  }))
+  const system = `You are JARVIS, a silent member of MEC's (Saudi food distributor) WhatsApp groups who reads EVERY message and remembers it. Money is SAR; Arabic or English.
+For EACH message return an understanding:
+- type: one of order, invoice, delivery_note, payment, bank_transfer, credit_statement (المديونية), inventory_statement (المخزون), correction, inquiry, complaint, chatter.
+  bank_transfer = a copied bank notification / transfer / deposit ("تحويل من…", "حوالة واردة", إيداع, IBAN). payment = a payment receipt/confirmation document.
+- who: the client/sender the message concerns, if any.
+- importance: high (money, stock, orders, corrections, complaints), medium (logistics/coordination that affects an order), low (greetings/thanks/chatter).
+- action: one short clause on what should happen ("queue as order", "apply to client X credit", "match to invoice", "none").
+- summary: one short line of what it says.
+Return STRICT JSON: {"items":[{"id","type","who","importance","action","summary"}]}.`
+  try {
+    const { default: OpenAI } = await import('openai')
+    const client = new OpenAI({ apiKey: key })
+    const completion = await client.chat.completions.create({
+      model, temperature: 0, max_tokens: 1800, response_format: { type: 'json_object' },
+      messages: [{ role: 'system', content: system }, { role: 'user', content: JSON.stringify({ messages: payload }) }],
+    })
+    const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}')
+    return Array.isArray(parsed.items) ? parsed.items : []
+  } catch { return [] }
+}
+
+// Record an understanding for every recent message that doesn't have one yet. Persists to whatsapp_intake.
+export async function understandIntake(limit = 60): Promise<{ understood: number; scanned: number; usedAI: boolean }> {
+  const rows = await getWhatsappIntake(limit, false)
+  const at = new Date().toISOString()
+  const todo = rows.filter(m => !m.understanding)
+  if (todo.length === 0) return { understood: 0, scanned: 0, usedAI: false }
+
+  // Split: noise gets a deterministic understanding (free); the rest go to the model.
+  const aiRows: WhatsappMsg[] = []
+  const writes: { id: string; u: Understanding }[] = []
+  for (const m of todo) {
+    const det = deterministicUnderstanding(m, at)
+    if (det) writes.push({ id: m.message_id, u: det })
+    else aiRows.push(m)
+  }
+  const out = await classifyUnderstanding(aiRows.slice(0, 40))
+  const byId = new Map(out.map(o => [o.id, o]))
+  for (const m of aiRows) {
+    const o = byId.get(m.message_id)
+    const u: Understanding = o
+      ? { type: o.type || priorType(m), who: o.who || m.client_name || m.salesperson || null, importance: o.importance || 'medium', action: o.action || null, summary: o.summary || (m.body || '').slice(0, 80), at }
+      : { type: priorType(m), who: m.client_name || m.salesperson || null, importance: IMPORTANT_TYPES.has(priorType(m)) ? 'high' : 'low', action: null, summary: (m.media_filename || m.body || '').slice(0, 80) || '(document)', at }
+    writes.push({ id: m.message_id, u })
+  }
+  let n = 0
+  for (const w of writes) { if (await patchWhatsapp(w.id, { understanding: w.u })) n++ }
+  return { understood: n, scanned: todo.length, usedAI: out.length > 0 }
+}
+
+// ── Intake reliability stats (powers the JARVIS cockpit + Data page) ─────────────────────────────────
+export type IntakeStats = {
+  total: number
+  captured: number          // became a structured record (order/approval/doc_type)
+  understood: number        // has a JARVIS understanding
+  acted: number             // an action was taken/queued (order_status, decision, extract done, cached doc)
+  highImportance: number    // understood as high-importance
+  mediaPending: number; mediaCached: number; mediaFailed: number
+  extractDone: number; extractFailed: number
+  captureRate: number; understandRate: number; extractRate: number
+  accuracyScore: number     // composite 0–100 (capture + understand + extract reliability)
+  lastMessageAt: string | null
+}
+
+const isActed = (m: WhatsappMsg) =>
+  !!m.order_status || !!m.decision || m.extract_status === 'done' || m.media_status === 'cached' || (m.intent === 'order')
+
+export async function intakeStats(limit = 200): Promise<IntakeStats> {
+  const rows = await getWhatsappIntake(limit, false)
+  const total = rows.length
+  const captured = rows.filter(m => m.intent === 'order' || m.intent === 'approval' || !!m.doc_type).length
+  const understood = rows.filter(m => !!m.understanding).length
+  const acted = rows.filter(isActed).length
+  const highImportance = rows.filter(m => m.understanding?.importance === 'high').length
+  const media = rows.filter(m => m.message_type === 'document' || m.message_type === 'image')
+  const mediaPending = media.filter(m => !m.media_status || m.media_status === 'pending').length
+  const mediaCached = media.filter(m => m.media_status === 'cached').length
+  const mediaFailed = media.filter(m => m.media_status === 'failed').length
+  const statements = rows.filter(m => m.doc_type === 'credit' || m.doc_type === 'inventory')
+  const extractDone = statements.filter(m => m.extract_status === 'done').length
+  const extractFailed = statements.filter(m => m.extract_status === 'failed').length
+  const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 100)
+  const captureRate = pct(captured, total)
+  const understandRate = pct(understood, total)
+  const mediaTotal = media.length
+  const extractRate = mediaTotal ? pct(mediaCached, mediaTotal) : 100
+  // Composite accuracy: how much of what arrived was understood, and how reliably media was processed.
+  const accuracyScore = Math.round(understandRate * 0.6 + extractRate * 0.4)
+  return {
+    total, captured, understood, acted, highImportance,
+    mediaPending, mediaCached, mediaFailed, extractDone, extractFailed,
+    captureRate, understandRate, extractRate, accuracyScore,
+    lastMessageAt: rows[0]?.received_at || null,
+  }
+}
+
 // Apply a set of changes. `mode: 'auto'` applies only auto-eligible ones; `'all'` applies every passed
 // change (used when an admin clicks Apply on a specific proposal). Returns how many were applied.
 export async function applyChanges(changes: ReprocessChange[], mode: 'auto' | 'all' = 'auto'): Promise<number> {
