@@ -1,6 +1,6 @@
 {
-  "asOf": "2026-06-27",
-  "source": "المديونية حتي تاريخ 27-06-2026.pdf",
+  "asOf": "2026-06-28",
+  "source": "المديونية حتي تاريخ 28-06-2026.pdf",
   "ocr": true,
   "rows": [
     {
@@ -10,7 +10,7 @@
       "salespersonEn": "Mahmoud",
       "client": "شركة الأغذية المتميزة التجارية",
       "amount": 96973,
-      "ageDays": 42
+      "ageDays": 43
     },
     {
       "date": "2026-05-23",
@@ -19,7 +19,7 @@
       "salespersonEn": "Mahmoud",
       "client": "شركة الأغذية المتميزة التجارية",
       "amount": 87434.5,
-      "ageDays": 35
+      "ageDays": 36
     },
     {
       "date": "2026-06-14",
@@ -28,7 +28,7 @@
       "salespersonEn": "Mahmoud",
       "client": "شركة سامح العربية للوجبات السريعة",
       "amount": 10350,
-      "ageDays": 13
+      "ageDays": 14
     },
     {
       "date": "2026-06-17",
@@ -37,7 +37,7 @@
       "salespersonEn": "Mahmoud",
       "client": "شركة سامح العربية للوجبات السريعة",
       "amount": 20700,
-      "ageDays": 10
+      "ageDays": 11
     },
     {
       "date": "2026-06-18",
@@ -46,16 +46,7 @@
       "salespersonEn": "Mahmoud",
       "client": "شركة سامح العربية للوجبات السريعة",
       "amount": 103500,
-      "ageDays": 9
-    },
-    {
-      "date": "2026-06-20",
-      "invoiceNo": "380",
-      "salespersonAr": "محمود",
-      "salespersonEn": "Mahmoud",
-      "client": "شركة مجمدات الريف التجارية",
-      "amount": 99476.5,
-      "ageDays": 7
+      "ageDays": 10
     },
     {
       "date": "2026-06-22",
@@ -64,16 +55,7 @@
       "salespersonEn": "Mahmoud",
       "client": "شركة مجمدات الريف التجارية",
       "amount": 31314.5,
-      "ageDays": 5
-    },
-    {
-      "date": "2026-06-24",
-      "invoiceNo": "391",
-      "salespersonAr": "محمود",
-      "salespersonEn": "Mahmoud",
-      "client": "شركة فخر الأطعمة التجارية",
-      "amount": 4835,
-      "ageDays": 3
+      "ageDays": 6
     },
     {
       "date": "2026-06-24",
@@ -82,7 +64,7 @@
       "salespersonEn": "Mahmoud",
       "client": "شركة دجاج اسيا لخدمات الاعاشة",
       "amount": 48472.5,
-      "ageDays": 3
+      "ageDays": 4
     },
     {
       "date": "2026-06-24",
@@ -91,7 +73,7 @@
       "salespersonEn": "Mahmoud",
       "client": "شركة جوهرة الحياة التجارية",
       "amount": 6573.3,
-      "ageDays": 3
+      "ageDays": 4
     },
     {
       "date": "2026-06-24",
@@ -100,7 +82,7 @@
       "salespersonEn": "Mahmoud",
       "client": "مؤسسة كنز المحيط للتجارة",
       "amount": 2277,
-      "ageDays": 3
+      "ageDays": 4
     },
     {
       "date": "2026-06-25",
@@ -108,8 +90,8 @@
       "salespersonAr": "محمود",
       "salespersonEn": "Mahmoud",
       "client": "شركة فخر الأطعمة التجارية",
-      "amount": 14789,
-      "ageDays": 2
+      "amount": 9624,
+      "ageDays": 3
     },
     {
       "date": "2026-06-25",
@@ -118,15 +100,24 @@
       "salespersonEn": "Tamer",
       "client": "شركة الزاهر الوطنية التجارية ( الحلقة )",
       "amount": 56953.75,
-      "ageDays": 2
+      "ageDays": 3
     },
     {
-      "date": "2026-06-27",
-      "invoiceNo": "399",
+      "date": "2026-06-28",
+      "invoiceNo": "400",
+      "salespersonAr": "محمود",
+      "salespersonEn": "Mahmoud",
+      "client": "مؤسسة ثلاجة الجودة العالمية",
+      "amount": 24495,
+      "ageDays": 0
+    },
+    {
+      "date": "2026-06-28",
+      "invoiceNo": "401",
       "salespersonAr": "تامر",
       "salespersonEn": "Tamer",
       "client": "شركة الامل التجارية",
-      "amount": 10235,
+      "amount": 12075,
       "ageDays": 0
     }
   ]
