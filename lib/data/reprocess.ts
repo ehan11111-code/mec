@@ -199,7 +199,7 @@ Return STRICT JSON: {"items":[{"id","type","who","importance","action","summary"
     const { default: OpenAI } = await import('openai')
     const client = new OpenAI({ apiKey: key })
     const completion = await client.chat.completions.create({
-      model, temperature: 0, max_tokens: 1800, response_format: { type: 'json_object' },
+      model, temperature: 0, max_tokens: 3000, response_format: { type: 'json_object' },
       messages: [{ role: 'system', content: system }, { role: 'user', content: JSON.stringify({ messages: payload }) }],
     })
     const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}')
@@ -208,7 +208,9 @@ Return STRICT JSON: {"items":[{"id","type","who","importance","action","summary"
 }
 
 // Record an understanding for every recent message that doesn't have one yet. Persists to whatsapp_intake.
-export async function understandIntake(limit = 60): Promise<{ understood: number; scanned: number; usedAI: boolean }> {
+// Reads the same window the cockpit's intakeStats() counts (200), so coverage actually reaches 100% — the
+// AI batch is capped per run, so older un-read messages are backfilled over a few runs (cheap + incremental).
+export async function understandIntake(limit = 200): Promise<{ understood: number; scanned: number; usedAI: boolean }> {
   const rows = await getWhatsappIntake(limit, false)
   const at = new Date().toISOString()
   const todo = rows.filter(m => !m.understanding)
@@ -222,7 +224,7 @@ export async function understandIntake(limit = 60): Promise<{ understood: number
     if (det) writes.push({ id: m.message_id, u: det })
     else aiRows.push(m)
   }
-  const out = await classifyUnderstanding(aiRows.slice(0, 40))
+  const out = await classifyUnderstanding(aiRows.slice(0, 50))
   const byId = new Map(out.map(o => [o.id, o]))
   for (const m of aiRows) {
     const o = byId.get(m.message_id)
