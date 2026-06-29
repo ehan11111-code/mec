@@ -84,6 +84,38 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-29 — Universal Intake & Reliability (P1): nothing ignored + JARVIS reads every message + cockpit.**
+  User: the WaSender fetch "ignores important PDFs and notes" (المخزون/المديونية, invoices, payments, bank
+  notes). **Root cause (in code):** the n8n intake decrypts media inline by fetching WhatsApp's CDN from
+  n8n Cloud — a datacenter IP WhatsApp throttles — so on failure it fell to `{intent:'other'}` and the PDF
+  was **silently dropped**; accurate OCR only ran on the user's PC and needed a commit+push to deploy; and
+  payment/bank notes were stored but never acted on. **P1 shipped (reliability first, phased):**
+  **(1) Never-drop capture** — `scripts/patch-intake-neverdrop.js` rewired `n8n/whatsapp-intake.json` to
+  STOP decrypting inline; it now stores every doc with a provisional `doc_type` + `media_status='pending'`
+  + media key/mime/filename so nothing is lost. **(2) Cloud extract worker** — new self-contained
+  **`worker/`** (Railway; `worker/lib/{wa,ocr,supa,process}.js`) fetches+decrypts media (HKDF+AES) → Supabase
+  Storage, OCRs المخزون/المديونية via Google Vision → writes `extracted` **straight to Supabase (no
+  redeploy)**; `--spike` self-tests CDN reachability, `--once` is the local fallback (wired into
+  `scripts/refresh-statements.ps1`). **Spike verified 3/3 media fetched+decrypted from this host.**
+  **(3) JARVIS reads EVERY message** — `lib/data/reprocess.ts` gains `understandIntake()` (records a typed
+  `understanding` per message — type/who/importance/action — noise handled free, rest via gpt-4o-mini) +
+  `intakeStats()`; wired into the reprocess auto path (real-time + daily). **(4) Server-truth** — Control
+  Center receivables now overlays the live `/api/credit`. **(5) JARVIS Cockpit** (`/jarvis`, Intelligence) —
+  new `app/[locale]/jarvis/page.tsx` + `/api/jarvis/cockpit`: accuracy score (formula shown), captured/read/
+  acted %, extraction success, intake+worker health, JARVIS interpretation, and the live "what's flowing
+  through" feed with JARVIS's read of each. **(6) Watchdog** `/api/ingest/health` reactivates the intake
+  workflow if it goes OFF + WhatsApps the owner. Data page now shows "JARVIS read: …" per message. Schema:
+  `whatsapp_intake` gains media_status/media_key/media_mime/media_filename/storage_path/extract_status/
+  understanding; new `worker_health` table. Build green, EN/AR parity.
+  - **User actions to go fully live (ordered):** (a) **run `supabase/schema.sql`** (adds the columns —
+    REQUIRED before deploying the new n8n workflow, else inserts fail); (b) then deploy the new intake
+    (`node scripts/n8n-deploy.js whatsapp-intake`); (c) deploy the worker to **Railway** (root dir `worker/`,
+    the 4 env vars, `node index.js`) — run `node index.js --spike` there first; the local scheduled task is
+    the guaranteed fallback. **Cloud-worker risk:** Railway IPs may be CDN-throttled like Vercel — the spike
+    test is the gate; local fallback covers it either way.
+  - **Next (P2/P3):** payment/bank-note → credit-line reconciliation (propose→confirm); on-hand proof/history
+    page (every Tarek المخزون PDF over time) + JARVIS Count with its math + cited proofs.
+
 - **2026-06-29 — Fixed the WaSender "HI JARVIS" chain (intake workflow was off) + accurate status report.**
   User reported the WaSender workflow "not working." **Diagnosis (probed live):** the WaSender *session*
   is healthy (`/api/status` → `connected`, outbound send `ok`), but the **`MEC · WhatsApp Intake
