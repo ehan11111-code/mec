@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
 import { motion } from 'framer-motion'
-import { ShieldCheck, ClipboardList, ShoppingCart, X, Calculator } from 'lucide-react'
+import { ShieldCheck, ClipboardList, ShoppingCart, X, Calculator, History } from 'lucide-react'
+import { Link } from '@/i18n/navigation'
 import { fmtNum, type InventorySku } from '@/lib/data/dataset'
 import { InfoTooltip } from './InfoTooltip'
 
@@ -92,6 +93,9 @@ export function OnHandMetric({ reconciled, physical, excluded, asOf, skus, count
           <Calculator className="h-3.5 w-3.5 text-accent/50 group-hover:text-accent transition-colors print:hidden" strokeWidth={1.8} />
         </button>
         <div className={clsx('text-xs leading-snug', overCapacity ? 'text-accent' : 'text-muted')}><span className={clsx('font-medium', overCapacity ? 'text-accent' : 'text-text-soft')}>{t(`onhand_${mode}`)}</span> · {cur.sub}</div>
+        <Link href="/inventory/on-hand" className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-accent/80 hover:text-accent transition-colors print:hidden">
+          <History className="h-3 w-3" strokeWidth={1.8} />{t('onhandHistLink')}
+        </Link>
       </motion.div>
 
       {open && (

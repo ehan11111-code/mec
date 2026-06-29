@@ -84,6 +84,29 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-29 — P2 + P3: payment→credit reconciliation (propose→confirm) + on-hand proof/history page.**
+  Built on the P1 reliability base. **P1 verified live first:** deployed the never-drop intake
+  (`NzuuId3FYrcqaAkb`), ran the worker → it extracted the **inventory (8 items) + credit (13 rows)**
+  statements straight into Supabase; `/api/credit` (SAR 510,742, as-of 28 Jun) + `/api/inventory-count`
+  (8,258 cartons) now serve live with no redeploy; worker heartbeat shows in `/api/ingest/health`; a
+  read-everything pass recorded **understanding for 60 messages**. **P2 — credit reconciliation:** new
+  `lib/data/reconcile-credit.ts` reads payment/bank-transfer notes, extracts the amount, fuzzy-matches the
+  client to the live statement, and **proposes** a reduced credit line; `/api/credit/reconcile` (finance/
+  manageData-gated) GET=proposals+confirmed+effective, POST=confirm → writes a `credit_adjustments` row
+  (human-in-the-loop, never silent). New **`/credit/reconcile`** page: each payment with its proof note
+  (Open PDF), matched client, current→proposed line, confidence, Confirm; confirmed list; receivables =
+  statement − Σ confirmed. Linked from the Credit header. **P3 — on-hand proof:** new
+  **`/inventory/on-hand`** page (`/api/inventory-count/history` + `getInventoryStatements`): a timeline of
+  **every Tarek المخزون PDF** — date, total cartons, % of capacity, expandable item list, **Open PDF as
+  proof**, and a count-over-time sparkline. Tarek's count stays the truth; the on-hand box now links here
+  ("Tarek's count — history & proof"); JARVIS Count (reconciled/available, with its math) stays beside it
+  on the Inventory page. Schema adds `credit_adjustments`. Build green (new routes: /jarvis,
+  /inventory/on-hand, /credit/reconcile + 3 APIs), EN/AR parity.
+  - **User action:** re-run `supabase/schema.sql` once more (adds `credit_adjustments`) so confirming a
+    payment persists; the reconcile/proof pages already render without it.
+  - **Next:** wire effective receivables (statement − confirmed) into Control Center; richer payment
+    amount/client extraction (GPT) if free-text notes need it; JARVIS Count receipts/dispatch deltas.
+
 - **2026-06-29 — Universal Intake & Reliability (P1): nothing ignored + JARVIS reads every message + cockpit.**
   User: the WaSender fetch "ignores important PDFs and notes" (المخزون/المديونية, invoices, payments, bank
   notes). **Root cause (in code):** the n8n intake decrypts media inline by fetching WhatsApp's CDN from

@@ -128,6 +128,14 @@ export async function getWhatsappDocs(docType: string, limit = 300) {
   return liveOnly(rows)
 }
 
+// Every WhatsApp inventory (المخزون) statement Tarek has sent, newest first — powers the on-hand proof /
+// history page (each PDF + its date + the count over time, openable as proof).
+export async function getInventoryStatements(limit = 24) {
+  return read<{ message_id: string; body: string; received_at: string; extracted: unknown; media_status?: string | null; doc_type?: string | null }>(
+    `whatsapp_intake?doc_type=eq.inventory&archived=eq.false&select=message_id,body,received_at,extracted,media_status&order=received_at.desc&limit=${limit}`
+  )
+}
+
 // The latest WhatsApp credit/inventory statement with its extracted table — powers the live Credit &
 // Inventory pages so a newer المديونية/المخزون file refreshes the portal without a redeploy. Returns null
 // when none has arrived yet (the page falls back to its built-in statement).

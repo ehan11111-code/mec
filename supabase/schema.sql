@@ -102,6 +102,22 @@ create table if not exists public.worker_health (
 );
 alter table public.worker_health enable row level security;  -- service-role only
 
+-- Credit adjustments — payments / bank-transfer notes applied against the المديونية statement between
+-- Tarek's PDFs. PROPOSE → the person in charge CONFIRMS (never silent). Receivables = statement − confirmed
+-- adjustments, so the credit line stays current. source_message_id ties each to its proof (the WhatsApp note).
+create table if not exists public.credit_adjustments (
+  id                 bigint generated always as identity primary key,
+  client             text,
+  amount             numeric not null,            -- positive = a payment that REDUCES outstanding
+  source_message_id  text,                        -- the whatsapp_intake payment note (proof)
+  note               text,
+  confirmed_by       text,                        -- username who confirmed it
+  confirmed_at       timestamptz default now(),
+  created_at         timestamptz default now()
+);
+create index if not exists credit_adjustments_src_idx on public.credit_adjustments (source_message_id);
+alter table public.credit_adjustments enable row level security;  -- service-role only
+
 -- Error log — every reported portal/automation error (written by lib/integrations/errors.ts + n8n).
 create table if not exists public.error_log (
   id          bigint generated always as identity primary key,
