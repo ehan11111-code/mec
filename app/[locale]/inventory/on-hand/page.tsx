@@ -15,7 +15,6 @@ import { fmtNum } from '@/lib/data/dataset'
 import { fmtDate } from '@/lib/format/datetime'
 
 type Statement = { message_id: string; asOf: string; received_at: string; total: number; items: { item: string; cartons: number }[]; hasFile: boolean }
-const CAPACITY = 6000
 
 export default function OnHandHistoryPage() {
   const tNav = useTranslations('nav'); const t = useTranslations('inventory'); const locale = useLocale() as 'en' | 'ar'
@@ -40,8 +39,8 @@ export default function OnHandHistoryPage() {
       </header>
 
       <section className="mb-7 grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
-        <StatCard label={t('onhandHistLatest')} value={latest ? `${fmtNum(latest.total)}` : '—'} accent delta={latest ? fmtDate(latest.asOf, locale) : ''} index={0} />
-        <StatCard label={t('onhandHistCap')} value={latest ? `${Math.round((latest.total / CAPACITY) * 100)}%` : '—'} delta={t('onhandHistCapSub', { cap: fmtNum(CAPACITY) })} index={1} />
+        <StatCard label={t('onhandHistLatest')} value={latest ? `${fmtNum(latest.total)}` : '—'} accent delta={t('onhandHistTrendSub')} index={0} />
+        <StatCard label={t('onhandHistAsOf')} value={latest ? fmtDate(latest.asOf, locale) : '—'} index={1} />
         <StatCard label={t('onhandHistCount')} value={statements ? String(statements.length) : '—'} delta={t('onhandHistCountSub')} index={2} />
         <StatCard label={t('onhandHistItems')} value={latest ? String(latest.items.length) : '—'} delta={t('onhandHistItemsSub')} index={3} accent />
       </section>
@@ -64,7 +63,6 @@ export default function OnHandHistoryPage() {
           <ul className="divide-y divide-border">
             {statements.map((s, i) => {
               const isOpen = open === s.message_id
-              const pct = Math.round((s.total / CAPACITY) * 100)
               return (
                 <li key={s.message_id} className="px-5 md:px-6 py-3.5">
                   <div className="flex items-center gap-3">
@@ -72,7 +70,7 @@ export default function OnHandHistoryPage() {
                       <ChevronDown className={clsx('h-4 w-4 text-muted shrink-0 transition-transform', isOpen && 'rotate-180')} strokeWidth={1.8} />
                       <div className="min-w-0">
                         <div className="text-sm font-medium text-text">{fmtDate(s.asOf, locale)}{i === 0 && <span className="ms-2 text-[10px] rounded-full bg-accent-soft text-accent px-1.5 py-0.5">{t('onhandHistNewest')}</span>}</div>
-                        <div className="text-[11px] text-muted">{t('onhandHistItemsN', { n: s.items.length })} · {pct}% {t('onhandHistOfCap')}</div>
+                        <div className="text-[11px] text-muted">{t('onhandHistItemsN', { n: s.items.length })}</div>
                       </div>
                     </button>
                     <span className="shrink-0 text-sm font-semibold tabular-nums text-accent">{fmtNum(s.total)}</span>

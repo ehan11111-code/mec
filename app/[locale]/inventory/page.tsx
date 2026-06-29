@@ -103,7 +103,8 @@ export default function InventoryPage() {
         <NoteCallout className="mt-4" tone="warn" title={t('noteTitle')}>{t('note', { excluded: ws.unreconciled })}</NoteCallout>
       </Panel>
 
-      {/* Physical count from Tarek (المخزون) vs the ledger on-hand */}
+      {/* Tarek's المخزون file = inventory MOVEMENT (cartons moved per item up to a date), not stock on hand.
+          Shown with the ledger on-hand as a reference column only — the difference is not a discrepancy. */}
       <Panel className="mb-6" bodyClassName="px-0 pb-0" subtitle={t('countSub', { date: fmtCountDate(cnt.asOf), n: cnt.rows.length })}
         title={<span className="inline-flex items-center gap-2">{t('countTitle')}{isLiveCount && <span className="inline-flex items-center gap-1 rounded-full bg-success-soft text-success px-2 py-0.5 text-[10px] font-medium"><Wifi className="h-2.5 w-2.5" strokeWidth={2} />{t('liveBadge')}</span>}</span>}>
         <div className="overflow-x-auto">
@@ -120,7 +121,7 @@ export default function InventoryPage() {
                   <td className="px-5 md:px-6 py-2.5 font-medium text-text">{r.item}{r.matched && r.matched !== r.item && <span className="block text-[10px] text-muted">≈ {r.matched}</span>}</td>
                   <td className="px-3 py-2.5 text-end tabular-nums text-text">{fmtNum(r.cartons)}</td>
                   <td className="px-3 py-2.5 text-end tabular-nums text-text-soft">{r.ledgerOnHand != null ? fmtNum(r.ledgerOnHand) : <span className="text-muted">{t('countNoMatch')}</span>}</td>
-                  <td className={clsx('px-5 md:px-6 py-2.5 text-end tabular-nums font-medium', r.variance == null ? 'text-muted' : Math.abs(r.variance) > Math.max(50, r.cartons * 0.15) ? 'text-accent' : 'text-success')}>
+                  <td className="px-5 md:px-6 py-2.5 text-end tabular-nums text-muted">
                     {r.variance == null ? '—' : `${r.variance > 0 ? '+' : ''}${fmtNum(r.variance)}`}
                   </td>
                 </tr>
@@ -226,11 +227,10 @@ export default function InventoryPage() {
       </Panel>
 
       {(() => {
-        const bigVar = cnt.rows.filter(r => r.variance != null && Math.abs(r.variance) > Math.max(50, r.cartons * 0.15))
-        const worst = [...bigVar].sort((a, b) => Math.abs(b.variance!) - Math.abs(a.variance!))[0]
+        // Tarek's المخزون is MOVEMENT, not stock — so a "variance" vs ledger on-hand is not a discrepancy
+        // and is no longer flagged as an issue. Ledger-integrity notes (unreconciled / reorder) still apply.
         const noMatch = cnt.rows.filter(r => !r.matched).length
         const notes: JarvisNote[] = []
-        if (worst) notes.push({ tone: 'issue', title: t('n_var_t', { n: bigVar.length, item: worst.item, v: (worst.variance! > 0 ? '+' : '') + fmtNum(worst.variance!) }), body: t('n_var_b') })
         if (ws.unreconciled > 0) notes.push({ tone: 'issue', title: t('n_unrec_t', { n: ws.unreconciled }), body: t('n_unrec_b') })
         if (noMatch > 0) notes.push({ tone: 'tip', title: t('n_nomatch_t', { n: noMatch }), body: t('n_nomatch_b') })
         if (ws.reorder > 0) notes.push({ tone: 'tip', title: t('n_reorder_t', { n: ws.reorder }), body: t('n_reorder_b') })

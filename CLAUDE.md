@@ -84,6 +84,20 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-06-29 — Corrected interpretation: Tarek's المخزون file is inventory MOVEMENT, not stock on hand.**
+  User: "the Tarek file is the movement of inventory, not the stock on hand." Read the actual PDF end-to-end
+  (`المخزون حتي تاريخ 28-06-2026.pdf`, cols **الصنف | الكمية بالكرتون | الكمية بالكجم** with per-item
+  **الإجمالي** rows) — it lists **cartons MOVED per item up to a date (throughput)**, which is exactly why
+  the ~8,258 total exceeds the 6,000 capacity. **Reinterpreted across the portal:** on-hand is now clearly
+  the **JARVIS reconciled** ledger figure (net in−out, ~3,483); Tarek's file is relabeled **inventory
+  movement** everywhere — the OnHandMetric "tarek" tab ("Movement (Tarek's file)", muted not red, capacity
+  note reframed as expected-for-throughput), the count-vs-ledger section ("Inventory movement (المخزون) —
+  Tarek's file", "Moved (cartons)", "vs on-hand (ref)", honest note that the difference is reference-only
+  not a discrepancy), and the proof page (now **"Inventory movement — Tarek's files"**, capacity% framing
+  dropped). Removed the misleading variance "issue" JARVIS-note and its error-coloring (movement vs on-hand
+  isn't a variance). Updated the `onHand` (i) definition + `INV_UPDATED` source line. Labels-only / no
+  schema change. Build green, EN/AR parity (34 inventory keys reworded each side).
+
 - **2026-06-29 — P2 + P3: payment→credit reconciliation (propose→confirm) + on-hand proof/history page.**
   Built on the P1 reliability base. **P1 verified live first:** deployed the never-drop intake
   (`NzuuId3FYrcqaAkb`), ran the worker → it extracted the **inventory (8 items) + credit (13 rows)**
