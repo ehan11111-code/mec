@@ -84,11 +84,20 @@ async function buildReport(): Promise<string> {
   const [supa, n8n, wa, oai, vercel] = await Promise.all([checkSupabase(), checkN8n(), checkWaSender(), checkOpenAI(), checkVercel()])
   const platforms: Check[] = [vercel, supa, n8n.check, wa, oai]
 
-  // automations: cross the registry's live ones with the actual n8n active state
+  // automations: cross the registry's live ones with the actual n8n active state.
+  // Match ONLY the real "MEC ·" workflows by a distinctive keyword — otherwise a personal workflow that
+  // happens to share a word (e.g. "jarvis/auto.reminder/email+messege") can be matched first and report a
+  // false red. Each live automation maps to one unambiguous keyword present in its MEC workflow name.
+  const AUTO_KEY: Record<string, string> = {
+    'supply-intel': 'supply', 'whatsapp-intake': 'whatsapp', 'smart-reprocess': 'reprocess',
+    'contact-inquiry': 'contact', 'email-intake': 'email'
+  }
+  const mecFlows = n8n.flows.filter(f => /^mec\b|·/i.test(f.name) || f.name.toLowerCase().startsWith('mec'))
   const liveAuto = automations.filter(a => a.status === 'live')
   const autoLines = liveAuto.map(a => {
-    const match = n8n.flows.find(f => f.name.toLowerCase().includes(a.id.replace(/-/g, ' ').split(' ')[0]) || f.name.toLowerCase().includes('whatsapp') && a.id === 'whatsapp-intake')
-    const active = match ? match.active : true
+    const kw = AUTO_KEY[a.id]
+    const match = kw ? mecFlows.find(f => f.name.toLowerCase().includes(kw)) : undefined
+    const active = match ? match.active : (n8n.flows.length ? false : true)
     return `${dot(active)} ${a.name.en}`
   })
 
