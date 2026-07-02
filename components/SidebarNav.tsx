@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, usePathname } from '@/i18n/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { clsx } from 'clsx'
-import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap, Radar, MessageCircle, ClipboardCheck, Inbox, Package, ShieldAlert, Activity, Boxes, FileCheck2, Wallet, Database, TrendingUp, Gauge, FilePlus2, Percent } from 'lucide-react'
+import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap, Radar, MessageCircle, ClipboardCheck, Inbox, Package, ShieldAlert, Activity, Boxes, FileCheck2, Wallet, Database, TrendingUp, Gauge, FilePlus2, Percent, Truck, Banknote } from 'lucide-react'
 import { BrandLogo } from './BrandLogo'
 import { departmentSeeds } from '@/lib/mock/catalog'
 import { getFirmState } from '@/lib/mock/data'
@@ -44,12 +44,14 @@ export function SidebarNav() {
       { href: '/margins', label: tNav('targetMargins'), icon: Percent, perm: 'pricing' }
     ] },
     { key: 'secWarehouse', items: [
-      { href: '/inventory', label: tNav('inventory'), icon: Boxes, perm: 'orders' }
+      { href: '/inventory', label: tNav('inventory'), icon: Boxes, perm: 'orders' },
+      { href: '/orders/dispatch', label: tNav('dispatch'), icon: Truck, perm: 'logistics' }
     ] },
     { key: 'secProcurement', items: [
       { href: '/supply-intelligence', label: tNav('supplyIntel'), icon: Radar, perm: 'supply' }
     ] },
     { key: 'secFinance', items: [
+      { href: '/cashflow', label: tNav('cashflow'), icon: Banknote, perm: 'finance' },
       { href: '/credit', label: tNav('credit'), icon: Wallet, perm: 'finance' },
       { href: '/documents', label: tNav('documents'), icon: FileCheck2, perm: 'documents', children: [
         { href: '/documents/invoices', label: tNav('invoices') },
