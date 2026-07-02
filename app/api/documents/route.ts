@@ -10,6 +10,7 @@ type DocType = (typeof REQUIRED)[number]
 export type DocMessage = {
   message_id: string; doc_type: string; filename: string; body: string
   media_url: string; message_type: string; sender: string; received_at: string
+  minutesAfterOrder: number | null   // how long after the order this document arrived
 }
 export type OrderDocStatus = {
   message_id: string; orderNo: string | null; client: string | null; sender: string; phone: string

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifySession, SESSION_COOKIE } from '@/lib/auth/server'
 import { permissionsFor } from '@/lib/auth/users'
-import { analyzeIntake, applyChange, applyChanges, understandIntake, type ReprocessChange } from '@/lib/data/reprocess'
+import { analyzeIntake, applyChange, applyChanges, understandIntake, reapplyDecisions, type ReprocessChange } from '@/lib/data/reprocess'
 import { reportError } from '@/lib/integrations/errors'
 
 export const runtime = 'nodejs'
@@ -56,7 +56,9 @@ export async function POST(req: NextRequest) {
     // Also record JARVIS's understanding of every (still-uninterpreted) message — runs on the per-message
     // real-time hook and the daily cron, so nothing is invisibly ignored.
     const understood = await understandIntake().catch(() => ({ understood: 0 }))
-    return NextResponse.json({ ok: true, applied, pending: pending.length, total: changes.length, understood: understood.understood })
+    // Re-apply approve/reject/adjust decisions so reactions/replies aren't lost (self-heal).
+    const healed = await reapplyDecisions().catch(() => ({ fixed: 0 }))
+    return NextResponse.json({ ok: true, applied, pending: pending.length, total: changes.length, understood: understood.understood, decisionsHealed: healed.fixed })
   } catch (e) {
     reportError('api/admin/reprocess', e, 'smart reprocess apply').catch(() => {})
     return NextResponse.json({ error: 'apply_failed', detail: String(e instanceof Error ? e.message : e) }, { status: 502 })

@@ -117,7 +117,9 @@ export async function analyzeIntake(limit = 80): Promise<{ changes: ReprocessCha
       changes.push({
         targetId: msg.message_id, triggerId: msg.message_id, kind: 'promote_order', confidence: d.confidence,
         reason: d.reason || 'Looks like an order that was filed as other.',
-        patch: { intent: 'order', products, order_status: 'pending', ...(d.client_name ? { client_name: d.client_name } : {}), ...(d.order_no ? { order_no: d.order_no } : {}) },
+        // Preserve any decision already applied (e.g. an approve/reject reaction) — promoting a missed order
+        // must NOT clobber an approval back to pending.
+        patch: { intent: 'order', products, order_status: msg.order_status || 'pending', ...(d.client_name ? { client_name: d.client_name } : {}), ...(d.order_no ? { order_no: d.order_no } : {}) },
         before: `other · "${(msg.body || '').slice(0, 60)}"`,
         after: `order (pending) · ${summariseProducts(products)}${d.client_name ? ` · ${d.client_name}` : ''}`,
         auto: d.confidence >= 0.7        // promotions are safe: they land in the approvals queue for a human
@@ -145,6 +147,27 @@ export async function analyzeIntake(limit = 80): Promise<{ changes: ReprocessCha
 
 export async function applyChange(ch: ReprocessChange): Promise<boolean> {
   return patchWhatsapp(ch.targetId, ch.patch)
+}
+
+// Self-heal: make every order reflect the LATEST approve/reject/adjust decision that targeted it (from a
+// reply OR a ✅/👍 reaction). Fixes cases where a decision was clobbered (e.g. a later promotion reset the
+// status) or arrived while the order row wasn't yet an order. Idempotent — only patches when out of sync.
+export async function reapplyDecisions(limit = 400): Promise<{ fixed: number }> {
+  const rows = await getWhatsappIntake(limit, false)
+  const orders = new Map(rows.filter(r => r.intent === 'order').map(r => [r.message_id, r]))
+  const decisions = rows.filter(r => r.decision && r.quoted_message_id && orders.has(r.quoted_message_id))
+    .sort((a, b) => (a.received_at < b.received_at ? -1 : 1))   // oldest→newest, so the latest decision wins
+  const want = new Map<string, string>()
+  for (const d of decisions) {
+    const s = d.decision === 'approve' ? 'approved' : d.decision === 'reject' ? 'rejected' : 'pending'
+    want.set(d.quoted_message_id as string, s)
+  }
+  let fixed = 0
+  for (const [oid, status] of want) {
+    const o = orders.get(oid)
+    if (o && (o.order_status || 'pending') !== status) { if (await patchWhatsapp(oid, { order_status: status })) fixed++ }
+  }
+  return { fixed }
 }
 
 // ── JARVIS "reads & remembers EVERY message" ────────────────────────────────────────────────────────
