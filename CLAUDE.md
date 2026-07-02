@@ -69,8 +69,16 @@ whole surface; later phases replace mock with real systems (Supabase, n8n, Whats
 - [ ] **Phase 7 — Optimization & Learning:** outcome tracking, risk-score learning, debug dashboard.
 
 **Guardrails (brief §16):** don't overbuild; build phase by phase; keep AI recommendations
-explainable; never auto-approve orders; keep secrets out of the frontend; audit-log anything
-important; never trust AI extraction without a confidence score + human review.
+explainable; ~~never auto-approve orders~~ **auto-approve orders only when margin-gated** (see below);
+keep secrets out of the frontend; audit-log anything important; never trust AI extraction without a
+confidence score + human review.
+
+> **Auto-approval (revised 2026-07-02, per `PORTAL_AUDIT_AND_ROADMAP.md`; implemented in Phase D1):** an
+> order may auto-approve **only** when its price meets the product's **typed target margin** AND stock is
+> available. Below target but above the category hard-floor (meat 3% / chicken 5% / veg 6% / potatoes 10%)
+> → warn the salesman → human-approval queue on confirm. Below the floor → human-only, never auto-sent.
+> Every decision is audit-logged and explainable (show the margin math). Until D1 ships, orders remain
+> human-approved.
 
 ## 6. Self-development protocol
 
@@ -83,6 +91,33 @@ next ledger item → re-build → update the ledger below → commit + push. See
 ## Progress
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
+
+- **2026-07-02 — Full audit & development roadmap delivered (report-first round; no code changes).**
+  User made a 7-part request to take the portal to "professional, global-grade, flawless" — now including a
+  **full end-to-end Order-to-Cash (O2C) operational system** as the centerpiece (salesman order → PO on the
+  company template → margin-gated approval → ZATCA-compliant invoice → warehouse/dispatch → logistics →
+  analytics per salesman/client → ROP/expiry → cashflow), plus: fix the invoice↔delivery-note misalignment,
+  refactor the data into linked single-source modules, reorganize pages into 4 sections (Sales /
+  Warehousing+Logistics / Suppliers+Procurement / Financials+Cashflows+Credit), a tool-using JARVIS,
+  an interactive CRM, and the gradual move off WhatsApp. **Decisions (via AskUserQuestion):** report-first
+  sequencing; JARVIS = tool-using agent (live data); migration = gradual dual-run; ZATCA = demo-grade
+  invoice now (correct template/QR/UBL fields) + pluggable provider adapter (Wafeq/Mezan/Zoho/Qoyod) later;
+  approval = **target-margin + hard-floor** gate. **Root causes re-verified in code before writing:**
+  documents bug = `app/api/documents/route.ts` overwrites each doc's own client/products with the
+  temporally-nearest order's (L39-44,61-67) while `/api/wa-docs` shows the doc's own fields (L49-60) → the
+  two views disagree; `dataset.ts` is a 3,400-line hub with `tokens`/`jaccard`/client-resolution/
+  min-margin duplicated 2-3×; JARVIS = regex matcher + one 900-token gpt-4o call, no tools/live-data/memory
+  (`lib/jarvis/engine.ts`, `app/api/jarvis/route.ts`); `SidebarNav` scatters Credit/Documents/Inventory and
+  lists `/jarvis` twice. **Deliverable:** new **`PORTAL_AUDIT_AND_ROADMAP.md`** (8 sections, all 7 asks
+  mapped with file/line evidence + phased fixes; O2C lifecycle in §6; build roadmap Phases A–F; assets
+  needed from MEC in §9). No production code changed this round (report-first). Build unaffected.
+  - **Guardrail update (this report supersedes §5's "never auto-approve"):** auto-approval is now permitted
+    **only** margin-gated — price ≥ the product's typed target margin AND stock available → auto-approve +
+    auto-invoice; below target but ≥ category floor (meat 3%/chicken 5%/veg 6%/potatoes 10%) → warn salesman
+    → human queue on confirm; below floor → human-only, never auto-sent. Every decision audit-logged and
+    explainable. To be implemented in Phase D1.
+  - **Next:** await approval, then **Phase A** — documents-bug fix + `lib/data/core/match.ts` extraction +
+    begin single-source modules (behavior-preserving) + sidebar reorg into the 4 sections.
 
 - **2026-07-02 — Fixed reaction-approval clobber (الأمل order) + approval/document timing everywhere.**
   User: the الأمل الحلقه order (30 كرتون بوبي فيل) was 👍-approved but showed pending — why + show WHEN it
