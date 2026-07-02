@@ -92,6 +92,24 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-07-02 — Phase D3 (dispatch/logistics) + D5 (cashflow) — the O2C spine now runs order → invoice → dispatch → cash.**
+  **D3 Warehouse & dispatch:** new **`/api/orders/dispatch`** (perm logistics/warehouse — Abdullah's role)
+  records driver (name/ID/plate), delivery address and status on the order via **read-merge-write into
+  `raw.dispatch`** (preserves `raw.margin`); status `delivered` also sets `decision='received'` (feeds the
+  receipt/documents view). New **`/orders/dispatch`** page (Warehousing & Logistics): approved orders in
+  Ready / Dispatched / Delivered tabs, inline **driver + address capture**, mark dispatched → delivered, and
+  one-click **delivery note**. On-hand needs no separate deduction — an approved order already reduces
+  available stock in the products reconciliation, and a dispatched/delivered order stays approved, so it
+  doesn't double-count. **D5 Cashflow:** new **`/cashflow`** page (Financials): expected **inflows**
+  (receivables from the المديونية statement, VAT-inc) with an **aging chart** (0–7 / 8–30 / 31–60 / 60+),
+  realized collected, **outflows** (supplier payables = Σ unpaid procurement), and the **projected net
+  position** — honest that payables show only what the source captured and the books stay the record. Nav:
+  Dispatch under Warehousing, Cashflow under Financials. Build green (76 routes), EN/AR parity.
+  - **O2C spine now:** order entry → margin gate → target margins → PO/ZATCA invoice → dispatch (driver +
+    delivery + receipt) → live analytics → cashflow. Remaining polish: richer per-client live overlay on the
+    CRM; real logistics notification to Abdullah (in-portal only today); wiring dispatched deltas into the
+    inventory truth.
+
 - **2026-07-02 — Phase D: Live order analytics (portal orders → per-salesperson / per-client / revenue) — completes the 3-item O2C batch.**
   Third of the batch the user asked for (target-margin editor → PO+invoice → analytics). New
   **`lib/data/live-orders.ts`** (server) aggregates live orders from `whatsapp_intake` — portal (O2C) orders
