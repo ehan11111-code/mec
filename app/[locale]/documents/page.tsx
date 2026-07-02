@@ -13,8 +13,9 @@ import { EmptyState } from '@/components/EmptyState'
 import { fmtDuration } from '@/lib/format/datetime'
 
 type DocType = 'invoice' | 'delivery_note' | 'payment'
-type DocMessage = { message_id: string; doc_type: string; filename: string; body: string; media_url: string; message_type: string; sender: string; received_at: string; minutesAfterOrder: number | null }
-type Row = { message_id: string; orderNo: string | null; client: string | null; sender: string; phone: string; recipient: string | null; units: number; received_at: string; body: string; order_status: string; products: { name: string; qty?: number | null; unit?: string | null }[]; received: DocType[]; missing: DocType[]; complete: boolean; docMsgs: DocMessage[] }
+type Prod = { name: string; qty?: number | null; unit?: string | null }
+type DocMessage = { message_id: string; doc_type: string; filename: string; body: string; media_url: string; message_type: string; sender: string; received_at: string; minutesAfterOrder: number | null; client: string | null; products: Prod[]; link: 'order_no' | 'client_product' | 'time_only' | 'conflict'; mismatch: boolean }
+type Row = { message_id: string; orderNo: string | null; client: string | null; sender: string; phone: string; recipient: string | null; units: number; received_at: string; body: string; order_status: string; products: Prod[]; received: DocType[]; missing: DocType[]; complete: boolean; mismatchCount: number; docMsgs: DocMessage[] }
 const DOCS: ('po' | DocType)[] = ['po', 'invoice', 'delivery_note', 'payment']
 type Opened = { kind: 'po'; row: Row } | { kind: DocType; row: Row; doc: DocMessage }
 
@@ -39,6 +40,7 @@ export default function DocumentsPage() {
 
   const list = rows ?? []
   const withMissing = useMemo(() => list.filter(r => r.missing.length > 0), [list])
+  const mismatchTotal = useMemo(() => list.reduce((s, r) => s + (r.mismatchCount || 0), 0), [list])
   const shown = view === 'missing' ? withMissing : list
   const fmt = (s: string) => { try { return new Date(s).toLocaleString(locale === 'ar' ? 'ar-SA' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' }) } catch { return '—' } }
   const has = (r: Row, d: 'po' | DocType) => d === 'po' ? true : r.received.includes(d)
@@ -64,6 +66,7 @@ export default function DocumentsPage() {
       </section>
 
       <NoteCallout className="mb-6" title={t('noteTitle')}>{t('note')}</NoteCallout>
+      {mismatchTotal > 0 && <NoteCallout className="mb-6" tone="warn" title={t('mismatchTitle')}>{t('mismatchBody', { n: mismatchTotal })}</NoteCallout>}
 
       <Panel bodyClassName="px-0 pb-0" title={t('checklist')}>
         <div className="px-5 md:px-6 py-3 flex flex-wrap gap-2 border-b border-border">
@@ -109,14 +112,20 @@ export default function DocumentsPage() {
                           <span>{fmt(r.received_at)}</span>
                         </div>
                       </td>
-                      {DOCS.map(d => (
-                        <td key={d} className="px-3 py-3 text-center">
-                          {has(r, d)
-                            ? <button type="button" onClick={() => openDoc(r, d)} title={t('viewDoc')}
-                                className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-success-soft text-success hover:ring-2 hover:ring-success/40 transition-shadow cursor-pointer"><Check className="h-3.5 w-3.5" strokeWidth={2.4} /></button>
-                            : <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-accent-soft text-accent"><X className="h-3.5 w-3.5" strokeWidth={2.4} /></span>}
-                        </td>
-                      ))}
+                      {DOCS.map(d => {
+                        const mm = d !== 'po' ? r.docMsgs.find(m => m.doc_type === d && m.mismatch) : undefined
+                        return (
+                          <td key={d} className="px-3 py-3 text-center">
+                            {has(r, d)
+                              ? <button type="button" onClick={() => openDoc(r, d)} title={t('viewDoc')}
+                                  className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-success-soft text-success hover:ring-2 hover:ring-success/40 transition-shadow cursor-pointer"><Check className="h-3.5 w-3.5" strokeWidth={2.4} /></button>
+                              : mm
+                                ? <button type="button" onClick={() => openDoc(r, d)} title={t('mismatchBadge')}
+                                    className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-warn-soft text-warn hover:ring-2 hover:ring-warn/40 transition-shadow cursor-pointer"><AlertTriangle className="h-3.5 w-3.5" strokeWidth={2.2} /></button>
+                                : <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-accent-soft text-accent"><X className="h-3.5 w-3.5" strokeWidth={2.4} /></span>}
+                          </td>
+                        )
+                      })}
                       <td className="px-5 md:px-6 py-3 text-end">
                         {r.complete
                           ? <span className="inline-flex items-center gap-1 rounded-full bg-success-soft text-success px-2.5 py-0.5 text-[11px] font-medium"><FileCheck2 className="h-3 w-3" strokeWidth={2} />{t('complete')}</span>
@@ -174,6 +183,27 @@ export default function DocumentsPage() {
                       {opened.doc.minutesAfterOrder != null && <p className="text-[11px] text-accent mt-0.5 font-medium">{t('docAfterOrder', { dur: fmtDuration(opened.doc.minutesAfterOrder, locale) })}</p>}
                     </div>
                   </div>
+                  {opened.doc.mismatch && (
+                    <div className="flex items-start gap-2 rounded-soft bg-warn-soft text-warn px-3 py-2 text-[11px] leading-snug">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" strokeWidth={2} />
+                      <span>{t('mismatchHint')}</span>
+                    </div>
+                  )}
+                  {/* The document's OWN client + items — compared with the order's, so a wrong match is visible. */}
+                  <div className="rounded-soft border border-border px-3 py-2 text-[11px] space-y-1">
+                    <p className="text-muted">{t('docClientLabel')}: <span className="text-text font-medium" dir="auto">{opened.doc.client || '—'}</span></p>
+                    <p className="text-muted">{t('orderClientLabel')}: <span className="text-text" dir="auto">{opened.row.client || opened.row.sender}</span></p>
+                  </div>
+                  {opened.doc.products.length > 0 && (
+                    <ul className="rounded-soft border border-border divide-y divide-border">
+                      {opened.doc.products.map((p, i) => (
+                        <li key={i} className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
+                          <span className="text-text" dir="auto">{p.name}</span>
+                          <span className="text-text-soft tabular-nums">{p.qty ?? ''}{p.unit ? ` ${p.unit}` : ''}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   {opened.doc.media_url
                     ? <a href={`/api/wa-file?id=${encodeURIComponent(opened.doc.message_id)}`} target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 rounded-full bg-accent text-white px-4 py-2 text-xs font-medium hover:opacity-90 transition-opacity">

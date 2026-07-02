@@ -360,7 +360,13 @@
     "empty": "No orders yet.",
     "emptyHint": "Orders arrive via WhatsApp; their documents are tracked here.",
     "source": "Supabase · whatsapp_intake",
-    "docAfterOrder": "Arrived {dur} after the order"
+    "docAfterOrder": "Arrived {dur} after the order",
+    "mismatchBadge": "This document doesn't match the order — open to check",
+    "mismatchHint": "This document's client or items don't match the order it's filed under. It may belong to a different order — please verify before treating it as complete.",
+    "mismatchTitle": "Documents that don't match their order",
+    "mismatchBody": "{n} document(s) name a different client or items than the order they were matched to. They're flagged (amber) and not counted as received until verified.",
+    "docClientLabel": "Document client",
+    "orderClientLabel": "Order client"
   },
   "forecast": {
     "eyebrow": "Intelligence · Forecasting",
