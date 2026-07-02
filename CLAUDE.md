@@ -84,6 +84,20 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-07-02 — Products-page on-hand reconciled (after orders + Tarek moved-out) + status check fixes.**
+  User: on the PRODUCTS page only, reconcile on-hand after open orders and after items Tarek's المخزون
+  file shows as moved out. New **`/api/products/onhand`**: per product, reconciled = ledger on-hand −
+  units on open orders (pending/approved) − cartons in the latest المخزون movement file, matched by the
+  shared token-jaccard (0.5; exported `tokens`/`jaccard` from dataset). Overlaid on the Products **list**
+  (on-hand column shows the reconciled value with a † + tooltip of the math) and the product **detail**
+  warehouse panel (with a "ledger − ordered − moved out" line). Products page ONLY — Inventory/OnHandMetric
+  untouched. **Verified live: 43/99 products reconcile down** (e.g. بوبي فيل 3,908 − 30 − 1,330 = 2,548).
+  Also during a status check: fixed the worker false-failing text payment notes (filter on message_type,
+  not doc_type) and caught JARVIS read coverage back to **321/321 = 100%**. Build green, EN/AR parity.
+  - **Status snapshot (2026-07-02):** 320→321 live msgs · 79 documents (26 payment/24 invoice/12 credit/
+    10 delivery/7 inventory) · 65 approved (85 ✅/👍 reactions) · 92/92 media cached · receivables statement
+    SAR 759,771 (as of 01 Jul) with 0 confirmed reconciliations yet (26 payment notes await confirming).
+
 - **2026-06-29 — Finalize: recovered misfiled documents + intake recap.** User: most messages are
   documentations (sent + approved) — recap what was missed and finalize. **Gap found:** when decryption
   moved off n8n, the GPT-vision doc-type classification went with it, so scanned invoices/delivery-notes/
