@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, usePathname } from '@/i18n/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { clsx } from 'clsx'
-import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap, Radar, MessageCircle, ClipboardCheck, Inbox, Package, ShieldAlert, Activity, Boxes, FileCheck2, Wallet, Database, TrendingUp, Gauge, FilePlus2 } from 'lucide-react'
+import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap, Radar, MessageCircle, ClipboardCheck, Inbox, Package, ShieldAlert, Activity, Boxes, FileCheck2, Wallet, Database, TrendingUp, Gauge, FilePlus2, Percent } from 'lucide-react'
 import { BrandLogo } from './BrandLogo'
 import { departmentSeeds } from '@/lib/mock/catalog'
 import { getFirmState } from '@/lib/mock/data'
@@ -39,7 +39,8 @@ export function SidebarNav() {
       { href: '/orders', label: tNav('orders'), icon: ShoppingCart, perm: 'orders' },
       { href: '/approvals', label: tNav('approvals'), icon: ClipboardCheck, perm: 'approvals' },
       { href: '/clients', label: tNav('clients'), icon: Users, perm: 'clients' },
-      { href: '/products', label: tNav('products'), icon: Package, perm: 'orders' }
+      { href: '/products', label: tNav('products'), icon: Package, perm: 'orders' },
+      { href: '/margins', label: tNav('targetMargins'), icon: Percent, perm: 'pricing' }
     ] },
     { key: 'secWarehouse', items: [
       { href: '/inventory', label: tNav('inventory'), icon: Boxes, perm: 'orders' }

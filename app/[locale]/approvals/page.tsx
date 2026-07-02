@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
-import { ClipboardCheck, Check, X, Loader2, MessageCircle, RefreshCw, Trash2 } from 'lucide-react'
+import { ClipboardCheck, Check, X, Loader2, MessageCircle, RefreshCw, Trash2, FileText } from 'lucide-react'
+import { Link } from '@/i18n/navigation'
 import { PageShell } from '@/components/PageShell'
 import { DisplayHeading } from '@/components/DisplayHeading'
 import { Eyebrow } from '@/components/Eyebrow'
@@ -123,6 +124,10 @@ export default function ApprovalsPage() {
                 <div className="shrink-0 flex items-center gap-1.5">
                   <span className={clsx('inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-medium capitalize',
                     st(o) === 'approved' ? 'bg-success-soft text-success' : st(o) === 'rejected' ? 'bg-bg-soft text-muted' : 'bg-warn-soft text-warn')}>{t(`tab_${st(o)}`)}</span>
+                  <Link href={`/orders/${o.message_id}/document`} title={t('document')} aria-label={t('document')}
+                    className="inline-flex items-center justify-center h-6 w-6 rounded-full text-muted hover:text-accent hover:bg-accent-soft transition-colors">
+                    <FileText className="h-3.5 w-3.5" strokeWidth={1.9} />
+                  </Link>
                   {can('manageData') && (
                     <button type="button" disabled={busy === o.message_id} onClick={() => remove(o.message_id)} title={t('delete')} aria-label={t('delete')}
                       className="inline-flex items-center justify-center h-6 w-6 rounded-full text-muted hover:text-accent hover:bg-accent-soft transition-colors disabled:opacity-50">

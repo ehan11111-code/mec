@@ -109,11 +109,21 @@ next ledger item → re-build → update the ledger below → commit + push. See
   (auto-approve is now margin-gated + audited). Build green (68 routes), EN/AR parity.
   - **Pragmatic note:** the portal order reuses `whatsapp_intake` (one pipeline, instant integration); a
     dedicated `orders`/`order_lines` schema comes when D3/D5 need the richer fields (delivery address,
-    driver, invoice link). Per-product **target-margin editor** (finance/commercial set targets above the
-    floor — the "typable per-product margin" the user asked for) is the next sub-step; the engine already
-    accepts an overrides map.
-  - **Next:** target-margin editor (persist per-product targets) → PO on the company template (JARVIS-powered
-    footer) → D2 ZATCA-shaped invoice + QR (seller identity from invoice #409; provider stub).
+    driver, invoice link).
+  - **Target-margin editor SHIPPED (the "typable per-product margin"):** new **`pricing`** permission
+    (commercial + finance + ceo + admin); Supabase **`product_margins`** table + server store
+    `lib/data/margins-store.ts`; **`/api/margins`** (GET readable by order-creators for the preview, POST
+    `pricing`-gated, rejects a target below the category floor); new **`/margins`** page (Sales → Target
+    margins) — per product: cost, realized margin, floor, and an editable **target** (save / reset-to-floor,
+    "custom" badge). The gate now reads these overrides on BOTH the New Order live preview and the server
+    `/api/orders/create` (fetched via `getTargetMargins()`), so target-margin changes drive auto-approval
+    everywhere. Also fixed a latent bug: `findUser().name` is a `Bi` object, so the created order now stores
+    `name.ar` as the salesperson. Build green (70 routes), EN/AR parity.
+  - **User action:** re-run `supabase/schema.sql` once (adds `product_margins`) so saved targets persist;
+    the editor + gate work with the floor defaults meanwhile.
+  - **Next (batching, not deployed yet — user chose to batch):** PO on the company template (JARVIS-powered
+    footer) → D2 ZATCA-shaped invoice + QR (seller identity from invoice #409; provider stub) → wire portal
+    orders into the per-salesman / per-client analytics.
 
 - **2026-07-02 — Phase A started: documents-bug FIXED + sidebar reorganized into 4 sections + O2C requirements locked.**
   Building the roadmap (`PORTAL_AUDIT_AND_ROADMAP.md`). **(A.1) Documents bug — the invoice/delivery-note

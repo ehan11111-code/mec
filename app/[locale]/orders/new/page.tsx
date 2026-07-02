@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
 import { ShoppingBag, Plus, Trash2, Check, AlertTriangle, Ban, HelpCircle, Loader2, X } from 'lucide-react'
@@ -26,7 +26,13 @@ export default function NewOrderPage() {
 
   const [clientName, setClientName] = useState('')
   const [lines, setLines] = useState<Line[]>([{ item: '', sell: '', qty: '' }])
+  const [overrides, setOverrides] = useState<Record<string, number>>({})
   const [busy, setBusy] = useState(false)
+
+  // Per-product target margins (set by finance/commercial) so the live preview matches the server verdict.
+  useEffect(() => {
+    fetch('/api/margins', { cache: 'no-store' }).then(r => r.json()).then(d => { if (d.overrides) setOverrides(d.overrides) }).catch(() => {})
+  }, [])
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [result, setResult] = useState<{ autoApproved: boolean; orderId: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -36,7 +42,7 @@ export default function NewOrderPage() {
     const p = prodByItem.get(l.item)
     return { item: l.item, category: p?.category || 'Beef', sell: Number(l.sell), qty: Number(l.qty), cost: p?.unitCost ?? null, onHand: p?.onHand ?? null, confidence: p?.confidence ?? 'none' }
   }), [lines, prodByItem])
-  const evaluation = useMemo(() => evaluateOrder(inputs), [inputs])
+  const evaluation = useMemo(() => evaluateOrder(inputs, overrides), [inputs, overrides])
   const evalByItem = useMemo(() => new Map(evaluation.lines.map(e => [e.item, e])), [evaluation])
   // A no-cost (review) or below-floor (block) line still submits — it just routes to a human. Only an
   // empty client / no items disables submit.
@@ -85,8 +91,9 @@ export default function NewOrderPage() {
               <h3 className="text-lg font-semibold text-text">{result.autoApproved ? t('doneAuto') : t('doneQueued')}</h3>
               <p className="text-sm text-text-soft mt-1 max-w-md">{result.autoApproved ? t('doneAutoSub') : t('doneQueuedSub')}</p>
             </div>
-            <div className="flex items-center gap-2">
-              <Link href="/approvals" className="inline-flex items-center gap-1.5 rounded-full bg-accent text-white px-4 py-2 text-xs font-medium hover:opacity-90 transition-opacity">{t('viewApprovals')}</Link>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Link href={`/orders/${result.orderId}/document`} className="inline-flex items-center gap-1.5 rounded-full bg-accent text-white px-4 py-2 text-xs font-medium hover:opacity-90 transition-opacity">{t('viewInvoice')}</Link>
+              <Link href="/approvals" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-xs font-medium text-text-soft hover:bg-surface-elev transition-colors">{t('viewApprovals')}</Link>
               <button type="button" onClick={reset} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-xs font-medium text-text-soft hover:bg-surface-elev transition-colors">{t('another')}</button>
             </div>
           </div>

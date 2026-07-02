@@ -188,6 +188,17 @@ create table if not exists public.contact_inquiries (
 );
 alter table public.contact_inquiries enable row level security;  -- service-role only
 
+-- Per-product target margins (the "typable per-product margin"). Set by the commercial + finance managers
+-- via the portal (/api/margins, permission 'pricing'); read by the O2C margin gate (lib/o2c/margin.ts) as
+-- an override on top of the category floor. Written server-side (service-role).
+create table if not exists public.product_margins (
+  item          text primary key,
+  target_margin numeric not null,        -- target gross-margin % (kept at/above the category floor)
+  updated_by    text,
+  updated_at    timestamptz default now()
+);
+alter table public.product_margins enable row level security;  -- service-role only
+
 -- Row Level Security ---------------------------------------------------------
 -- supply_intel: portal reads it with the anon key.
 alter table public.supply_intel enable row level security;
