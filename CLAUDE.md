@@ -92,6 +92,42 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-07-02 — Phase D: Live order analytics (portal orders → per-salesperson / per-client / revenue) — completes the 3-item O2C batch.**
+  Third of the batch the user asked for (target-margin editor → PO+invoice → analytics). New
+  **`lib/data/live-orders.ts`** (server) aggregates live orders from `whatsapp_intake` — portal (O2C) orders
+  carry a priced margin eval (`raw.margin.total`, pre-VAT) so revenue rolls up by **salesperson** and
+  **client**; WhatsApp orders without prices count toward order VOLUME only. New **`/api/orders/live`**.
+  New **`components/LiveOrdersAnalytics.tsx`** + page **`/orders/live`** (Sales → Live order analytics):
+  KPIs (live orders, live revenue, auto-approved, awaiting approval), **revenue-by-salesperson** bar
+  (reuses `BarChartPanel`), **status donut**, **top clients (live)**, and a **recent-orders** feed (portal
+  orders flagged ⚡). Auto-refresh 20s. **Honest boundary preserved:** this is a LIVE overlay — the imported
+  spreadsheets stay the historical accounting record (§2 live-vs-static); revenue here is priced portal
+  orders only, labelled pre-VAT. Build green (72 routes), EN/AR parity.
+  - **O2C batch status:** stages 1 (order entry) + 3 (margin gate) + 4 (ZATCA invoice, demo) + partial 7
+    (analytics) shipped. Still to build for the full spine: **D3** warehouse/dispatch + delivery routing to
+    Abdullah + on-hand deduction; **D5** cashflow; richer per-client live overlay on the CRM.
+  - **Deploy (batched, not yet pushed):** D1 + margin editor + D2 + analytics. Needs on push: `package.json`
+    (qrcode.react) + re-run `supabase/schema.sql` (product_margins).
+
+- **2026-07-02 — Phase D2: PO + ZATCA-shaped invoice + delivery note (QR, JARVIS-powered footer, printable).**
+  Every portal order can now produce its documents on MEC's real template. New **`lib/o2c/zatca.ts`** —
+  the seller identity extracted from invoice #409 (شركة طاهي الشرق الأوسط · VAT 314172890300003 · CR
+  7051245491 · Jeddah address), a **ZATCA Phase-1 QR** builder (TLV base64: seller name, VAT, timestamp,
+  total, VAT total), and a line/VAT/total builder (15%; sell = pre-VAT unit price, matching #409). New
+  **`/api/orders/[id]`** returns the document data — seller, buyer (matched from the client record; buyer
+  VAT shown only when the CR is 15 digits), priced lines from the order's stored margin eval, totals, and
+  the QR payload. New **`components/o2c/O2CDocument.tsx`** renders a white A4-style sheet (RTL, mimics #409):
+  seller header + brand + QR (invoice only), buyer block, line table, totals, signatures (invoice: العميل/
+  المستودع/الحسابات · PO: اعتماد المدير التجاري · delivery: السائق/أمين المخزن/المراجع), and the required
+  **"JARVIS powered" footer** with the JARVIS mark on ALL documents. New **`/orders/[id]/document`** page —
+  a kind toggle (Invoice / Purchase order / Delivery note) + **Print / Save PDF** (reuses the existing print
+  CSS that hides the shell). Openable from the **New Order** result ("View invoice / PO") and every
+  **Approvals** card (doc icon). ZATCA is **demo-grade** — correct shape + scannable QR; live clearance
+  needs the provider adapter + MEC's API key (still blank). Added dependency **`qrcode.react`**. Build green
+  (route `/orders/[id]/document` + `/api/orders/[id]`), EN/AR parity.
+  - **Deploy note:** `package.json` gained `qrcode.react` — the next push must include it (Vercel installs).
+  - **Next (the 3rd of the batch):** wire portal orders into the per-salesman / per-client analytics + revenue.
+
 - **2026-07-02 — Phase A DEPLOYED (`20f6db3`) + Phase D1: New Order flow with the margin gate (auto-approve/warn/queue).**
   Pushed Phase A to origin → Vercel (documents fix + 4-section reorg). Then built the first O2C increment —
   the heart of the order-to-cash flow the user detailed. **Margin-gate engine** (`lib/o2c/margin.ts`, pure):

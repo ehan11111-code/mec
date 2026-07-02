@@ -37,6 +37,7 @@ export function SidebarNav() {
     { key: 'secSales', items: [
       { href: '/orders/new', label: tNav('newOrder'), icon: FilePlus2, perm: 'orders' },
       { href: '/orders', label: tNav('orders'), icon: ShoppingCart, perm: 'orders' },
+      { href: '/orders/live', label: tNav('liveOrders'), icon: BarChart3, perm: 'orders' },
       { href: '/approvals', label: tNav('approvals'), icon: ClipboardCheck, perm: 'approvals' },
       { href: '/clients', label: tNav('clients'), icon: Users, perm: 'clients' },
       { href: '/products', label: tNav('products'), icon: Package, perm: 'orders' },
