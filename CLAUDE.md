@@ -84,6 +84,19 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-07-02 — Fixed reaction-approval clobber (الأمل order) + approval/document timing everywhere.**
+  User: the الأمل الحلقه order (30 كرتون بوبي فيل) was 👍-approved but showed pending — why + show WHEN it
+  was approved + show, per order/document, how long (min→hrs) approval/documentation took. **Root cause
+  (traced in live data):** the order arrived in the "unknown" group as `other`; the 👍 reaction (06:45,
+  3 min later) correctly set it `approved`; then **smart-reprocess promotion reset order_status to
+  `pending`**, clobbering it. **Fix:** promotion now preserves the existing status; new
+  `reapplyDecisions()` re-applies the latest ✅/👍/reply decision per order (wired into the reprocess auto
+  pass → self-healing). Ran it → the order is now **approved · 3m · via 👍 reaction** (verified live).
+  **Timing:** `/api/approvals` returns `decidedAt` + `minutesToDecision` + `decisionVia`; `/api/documents`
+  returns `minutesAfterOrder` per doc; new `fmtDuration()` in datetime.ts. Shown on the **approvals cards**
+  ("✓ approved · 3m after the order · via 👍 reaction · <time>") and the **documents** view ("arrived Xh
+  after the order"). Build green, EN/AR parity.
+
 - **2026-07-02 — Products-page on-hand reconciled (after orders + Tarek moved-out) + status check fixes.**
   User: on the PRODUCTS page only, reconcile on-hand after open orders and after items Tarek's المخزون
   file shows as moved out. New **`/api/products/onhand`**: per product, reconciled = ledger on-hand −
