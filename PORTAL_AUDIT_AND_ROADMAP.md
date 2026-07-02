@@ -272,14 +272,17 @@ on-hand**), enter quantities. Creates `orders` + `order_lines` rows. This is the
 WhatsApp to place an order.
 
 **2) PO on the company template.**
-Render a branded **Purchase Order** from MEC's template, save it to Storage, attach it to the order, and
-route to the person-in-charge; the documentation is saved against the order.
-*Asset needed from MEC: the PO template (branding, fields, layout).*
+There is **no PO template yet** — I'll design one from MEC's **invoice branding/styling** (extracted from
+`PO AND DOCS TEMPLATES/فاتورة شركة فخر الاطعمة رقم 409.pdf`). It's routed to the **commercial manager**
+(the person-in-charge) and saved against the order. **Every JARVIS-generated document carries a
+"JARVIS powered" footer with the JARVIS logo** (invoice, PO, delivery note — all of them).
 
 **3) Margin gate (target + hard floor).**
-Each product has a **typed target margin** set by **finance/commercial** (role-gated — not the salesman, so
-it can't be gamed), stored in `product_margins`; the existing category **hard floors** (meat 3% / chicken 5%
-/ veg 6% / potatoes 10%, from `minMarginFor`) remain absolute. On submit, per line:
+The **sell price comes from the salesman, per order** — that's the moment the gate accepts or rejects the
+price. **Cost comes from the procurement sheets/team** (they record what each product was bought for). The
+**target margin defaults to the existing category floor** (meat 3% / chicken 5% / veg 6% / potatoes 10%,
+from `minMarginFor`); **both the commercial and finance managers** can raise a per-product target above the
+floor (role-gated — never the salesman). The floor stays absolute. On submit, per line:
 
 | Condition | Outcome |
 |-----------|---------|
@@ -295,8 +298,13 @@ explainable auto-approval — recorded in `CLAUDE.md` §5.*
 On approval, auto-generate the invoice with the fields ZATCA Phase 2 requires — **UBL 2.1** structure,
 seller/buyer VAT numbers, line items, 15% VAT, UUID/hash placeholders, and the **ZATCA QR code** (TLV:
 seller name, VAT number, timestamp, invoice total, VAT total → base64) — rendered on the company template.
-A **pluggable `lib/invoicing/provider.ts`** interface with a `StubProvider` today and adapters for a
-ZATCA-accredited provider later. **Going live = implement one adapter + credentials**, no rework of the flow.
+**MEC's real invoice already carries this** (the #409 template has a top-left "E-invoicing service" QR + an
+"External Link" QR), so I replicate that exact layout — including the seller identity extracted from it:
+**شركة طاهي الشرق الأوسط (Middle East Chef)**, VAT **314172890300003**, CR **7051245491**, Jeddah 23436,
+Al-Salama 6715, Sari sub-street 4186, phone 0533194000. Buyer block (name, VAT, CR, address, client no.,
+city) comes from the client record. A **pluggable `lib/invoicing/provider.ts`** interface with a
+`StubProvider` today and a real adapter later. **The ZATCA API key stays blank for now (MEC will provide
+it later)** — going live = drop in the key + one adapter, no rework of the flow.
 
 > **Compliance reality:** MEC's ~SAR 31M turnover puts it well past the ZATCA Phase 2 threshold, so *real*
 > issuance legally requires cleared e-invoices (real-time **clearance** for B2B, **reporting** for B2C)
@@ -306,13 +314,17 @@ ZATCA-accredited provider later. **Going live = implement one adapter + credenti
 
 **5) Warehouse & dispatch.**
 On approval/invoice, create a **dispatch/picking** record, **deduct live on-hand** (JARVIS Count /
-`inventory.module.ts`), and generate a **delivery note** on the template. The dispatch knows products +
-client + address, and **notifies the Logistics person-in-charge** (role routing + in-portal notification;
-WhatsApp/email during the dual-run).
+`inventory.module.ts`), and generate a **delivery note** — using MEC's real page-2 layout: same branding,
+**no prices**, item/unit/qty, and signature lines for **السائق (driver) / أمين المخزن (warehouse keeper) /
+المراجع (reviewer)**. The order form captures the **delivery address** and the **driver** (name + ID + car
+plate number — optional — *or* attach the driver's ID card). Warehouse is a **third-party** MEC rents
+6,000-carton space from (note: the "carton" unit can mean a count or a weight — 10 kg / 18 kg / other — to
+be pinned down per SKU later). **Notifies the logistics manager, Abdullah** (role routing + in-portal
+notification; WhatsApp/email during the dual-run).
 
 **6) Logistics.**
-Dispatch/driver status, delivery confirmation (reuse the existing `received` proof concept; e-sign later),
-delivery-note proof stored against the order.
+Dispatch/driver status, **client delivery confirmation** via the **تم الاستلام / received** stamp-signature
+(reuse the existing `received` proof concept; e-sign later), delivery-note proof stored against the order.
 
 **7) Analytics loop.**
 The live order feeds `sales.module.ts` + `orders.module.ts` → **graphs per salesman, per client, orders,
@@ -344,6 +356,27 @@ bucket + an `employee_intake` table that mirrors `whatsapp_intake`, so JARVIS qu
 
 **Tools/platforms:** Supabase (DB + Storage), the existing worker (OCR/vision), Google Vision, n8n
 (feeder during transition), a ZATCA provider (later), optional e-sign for delivery receipts.
+
+**Onboarding:** **all staff become portal users — especially every salesman** (each salesman gets an
+account; orders they place carry them as the salesperson, exactly as the invoice's `المندوب` field works
+today).
+
+### Confirmed inputs (2026-07-02) — the rules the O2C build follows
+- **Margins:** target defaults to the existing category floors; commercial **and** finance can raise a
+  per-product target above the floor; salesmen cannot.
+- **Sell price:** entered by the salesman per order (the gate checks it). **Cost:** from procurement.
+- **Approver / person-in-charge:** the **commercial manager**. **Logistics manager:** **Abdullah**.
+  **Warehouse:** third-party rented 6,000-carton space (unit definition — count vs kg — TBD per SKU).
+- **Credit terms:** default **~7 days**, or a **down/full payment**; **exceptions up to ~2 weeks require
+  both the commercial and finance managers' approval** (ties to the same exception-approval flow as the
+  margin gate). Feeds Cashflow (§6.9) and the CRM credit line (§4).
+- **Client active/inactive:** a client with **no order in ~3 months** is flagged **Inactive** (used on the
+  CRM header, §4).
+- **Documents:** invoice = the #409 layout (with the existing ZATCA QRs); delivery note = the page-2 layout
+  (no prices; driver/warehouse-keeper/reviewer + client `تم الاستلام`); PO = new, built from the invoice
+  branding. **All three carry the "JARVIS powered" + logo footer.**
+- **Still pending from MEC (non-blocking; demo works without):** the ZATCA API key (kept blank for now),
+  and the exact warehouse "carton" unit definition.
 
 ---
 
@@ -395,17 +428,33 @@ commit + push → verify live.
 
 ---
 
-## 9. Assets needed from MEC (to build the later phases)
+## 9. Requirements — status (confirmed 2026-07-02)
 
-Nothing is required for this report or for Phase A. To build the O2C spine we will need:
+All the requirements I asked for have been answered. Nothing blocks Phase A; the O2C phases (D/E) now have
+everything they need except two non-blocking items.
 
-1. **Company PO + invoice template** (branding, fields, layout) — for stages 2 and 4 of §6.
-2. **Seller registration details** — legal name, **VAT registration number**, address — required for the
-   ZATCA QR/invoice fields.
-3. **ZATCA path decision + credentials** — which accredited provider (Wafeq / Mezan / Zoho Books KSA /
-   Qoyod) or MEC's existing ERP, and its API credentials — to replace the stub with a live adapter.
-4. **Per-product target margins** (or a starting policy) — who sets them and initial values.
-5. **Warehouse & logistics owners** — which user/role receives dispatch/logistics notifications.
+| # | Requirement | Status |
+|---|-------------|--------|
+| Margins | Target defaults to category floor; commercial **+** finance raise per-product targets | ✅ |
+| Sell price / cost | Price from salesman per order; cost from procurement | ✅ |
+| Approver | Commercial manager | ✅ |
+| Logistics owner | Abdullah | ✅ |
+| Warehouse | Third-party, 6,000-carton rented space | ✅ (unit def. TBD) |
+| Credit terms | ~7 days / down payment / up to ~2 weeks by commercial+finance exception | ✅ |
+| Active/Inactive | No order in ~3 months → Inactive | ✅ |
+| Seller identity | Extracted from invoice #409 (name, VAT, CR, address, phone) | ✅ |
+| Invoice template | #409 layout + existing ZATCA QRs | ✅ |
+| Delivery-note template | Page-2 layout (no prices; driver/keeper/reviewer + `تم الاستلام`) | ✅ |
+| PO template | None yet → I build one from the invoice branding | ✅ |
+| Document branding | Every JARVIS document gets a "JARVIS powered" + logo footer | ✅ |
+| Order form | Captures delivery address + driver (name/ID/plate optional, or ID-card attach) | ✅ |
+| Onboarding | All staff — especially every salesman — become users | ✅ |
+| **ZATCA API key** | **Pending — MEC will provide later; kept blank (stub works meanwhile)** | ⏳ |
+| **Warehouse unit** | **Pending — "carton" = count or kg (10/18/…)? pin down per SKU later** | ⏳ |
+
+**Assets in the repo:** `PO AND DOCS TEMPLATES/فاتورة شركة فخر الاطعمة رقم 409.pdf` (invoice + delivery-note
+templates + seller identity). Still to obtain: the **JARVIS logo asset** for the document footer (if not
+already in `components/BrandLogo`), and eventually the ZATCA API key.
 
 ---
 
