@@ -92,6 +92,32 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-07-02 — Phase A started: documents-bug FIXED + sidebar reorganized into 4 sections + O2C requirements locked.**
+  Building the roadmap (`PORTAL_AUDIT_AND_ROADMAP.md`). **(A.1) Documents bug — the invoice/delivery-note
+  misalignment — fixed at the root:** `app/api/documents/route.ts` used to discard each document's own
+  `client_name`/`products` and stamp it with the *temporally-nearest* order's fields, so a doc showed the
+  wrong client/items. Now each document **keeps its own client + products**, and links to an order only when
+  **validated** (matching `order_no`, or a shared client/product via the new **`lib/data/core/match.ts`**
+  canonical matcher); a doc that names a different client/items is attached but **flagged as a mismatch**
+  (`link`/`mismatch` fields) — not counted as received, shown in amber. The documents page modal now shows
+  **document client vs order client**, the doc's own items, and a mismatch warning; a page banner counts
+  mismatches. **(A.3) Sidebar reorg** (`components/SidebarNav.tsx`) into the requested 4 sections —
+  **Sales · Warehousing & Logistics · Suppliers & Procurement · Financials & Credit** (+ Overview /
+  Intelligence / Workspace / Admin / Help); Credit moved out of Sales, Documents out of Intelligence,
+  Inventory out of Overview, and the **duplicate `/jarvis`** removed (now once, under Overview). New nav
+  section keys in EN/AR. The thin Warehouse/Procurement sections fill out as the O2C pages arrive.
+  **(A.2) Matcher consolidation — assessed, not force-merged:** the "3 duplicate matchers" are actually
+  **domain-tuned** (products strip `كجم/كرتون`; inventory-count strips origins `هندي/برازيلي` + needs
+  overlap≥2; clients strip company suffixes), so merging them blindly would shift margins/inventory/credit
+  numbers — a behavior change the `/refactor` skill forbids smuggling into a refactor. `core/match.ts` is
+  the established seam (used by A.1); the per-domain merge lands with numeric before/after verification when
+  the O2C/CRM phases build on it. **Requirements locked:** captured every confirmed O2C answer (seller
+  identity from invoice #409 — شركة طاهي الشرق الأوسط, VAT 314172890300003, CR 7051245491; margins=floors,
+  commercial+finance raise targets; commercial manager approves; Abdullah=logistics; 3rd-party 6,000-carton
+  warehouse; credit ~7d/down/2wk-by-exception; inactive at 3mo; JARVIS-powered doc footer; all salesmen
+  onboarded) into the roadmap §6/§9 + memory `o2c-requirements`. Build green (66 routes), EN/AR parity.
+  Not yet committed/pushed (awaiting go-ahead).
+
 - **2026-07-02 — Full audit & development roadmap delivered (report-first round; no code changes).**
   User made a 7-part request to take the portal to "professional, global-grade, flawless" — now including a
   **full end-to-end Order-to-Cash (O2C) operational system** as the centerpiece (salesman order → PO on the

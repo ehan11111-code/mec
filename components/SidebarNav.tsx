@@ -24,30 +24,40 @@ export function SidebarNav() {
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
+  // Sidebar grouped into the four consolidated sections (PORTAL_AUDIT_AND_ROADMAP.md §3): Sales,
+  // Warehousing & Logistics, Suppliers & Procurement, Financials & Credit — plus Overview, Intelligence,
+  // Workspace, Admin, Help. JARVIS now lives once (Overview); the Warehouse/Procurement/Finance sections
+  // grow as the O2C pages (New Order, Dispatch, Cashflow, Procurement) are built.
   const sections: Section[] = [
     { key: 'secOverview', items: [
       { href: '/control-center', label: tNav('controlCenter'), icon: LayoutDashboard, perm: 'dashboard' },
       { href: '/operations', label: tNav('opsHouse'), icon: Activity, perm: 'dashboard' },
-      { href: '/inventory', label: tNav('inventory'), icon: Boxes, perm: 'orders' }
+      { href: '/jarvis', label: tNav('jarvis'), icon: Gauge, perm: 'analytics' }
     ] },
     { key: 'secSales', items: [
       { href: '/orders', label: tNav('orders'), icon: ShoppingCart, perm: 'orders' },
       { href: '/approvals', label: tNav('approvals'), icon: ClipboardCheck, perm: 'approvals' },
       { href: '/clients', label: tNav('clients'), icon: Users, perm: 'clients' },
-      { href: '/products', label: tNav('products'), icon: Package, perm: 'orders' },
-      { href: '/credit', label: tNav('credit'), icon: Wallet, perm: 'finance' }
+      { href: '/products', label: tNav('products'), icon: Package, perm: 'orders' }
     ] },
-    { key: 'secIntel', items: [
-      { href: '/jarvis', label: tNav('jarvis'), icon: Gauge, perm: 'analytics' },
-      { href: '/analytics', label: tNav('analytics'), icon: BarChart3, perm: 'analytics' },
-      { href: '/forecast', label: tNav('forecast'), icon: TrendingUp, perm: 'analytics' },
-      { href: '/supply-intelligence', label: tNav('supplyIntel'), icon: Radar, perm: 'supply' },
-      { href: '/whatsapp', label: tNav('whatsapp'), icon: MessageCircle, perm: 'whatsapp' },
+    { key: 'secWarehouse', items: [
+      { href: '/inventory', label: tNav('inventory'), icon: Boxes, perm: 'orders' }
+    ] },
+    { key: 'secProcurement', items: [
+      { href: '/supply-intelligence', label: tNav('supplyIntel'), icon: Radar, perm: 'supply' }
+    ] },
+    { key: 'secFinance', items: [
+      { href: '/credit', label: tNav('credit'), icon: Wallet, perm: 'finance' },
       { href: '/documents', label: tNav('documents'), icon: FileCheck2, perm: 'documents', children: [
         { href: '/documents/invoices', label: tNav('invoices') },
         { href: '/documents/payments', label: tNav('payments') },
         { href: '/documents/delivery-notes', label: tNav('deliveryNotes') }
       ] }
+    ] },
+    { key: 'secIntel', items: [
+      { href: '/analytics', label: tNav('analytics'), icon: BarChart3, perm: 'analytics' },
+      { href: '/forecast', label: tNav('forecast'), icon: TrendingUp, perm: 'analytics' },
+      { href: '/whatsapp', label: tNav('whatsapp'), icon: MessageCircle, perm: 'whatsapp' }
     ] },
     { key: 'secWorkspace', items: [
       { href: '/messages', label: tNav('messages'), icon: Inbox, perm: 'messages' },
@@ -55,7 +65,6 @@ export function SidebarNav() {
       { href: '/total-savings', label: tNav('totalSavings'), icon: Coins, perm: 'savings' }
     ] },
     { key: 'secAdmin', items: [
-      { href: '/jarvis', label: tNav('jarvis'), icon: Gauge, perm: 'manageData' },
       { href: '/automations', label: tNav('automations'), icon: Zap, perm: 'automations' },
       { href: '/admin/data', label: tNav('dataConsole'), icon: Database, perm: 'manageData' },
       { href: '/admin', label: tNav('adminConsole'), icon: ShieldAlert, perm: 'manageData' }
