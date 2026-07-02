@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, usePathname } from '@/i18n/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { clsx } from 'clsx'
-import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap, Radar, MessageCircle, ClipboardCheck, Inbox, Package, ShieldAlert, Activity, Boxes, FileCheck2, Wallet, Database, TrendingUp, Gauge } from 'lucide-react'
+import { LayoutDashboard, Network, GraduationCap, Mail, ChevronDown, Bell, Coins, ShoppingCart, Users, BarChart3, Zap, Radar, MessageCircle, ClipboardCheck, Inbox, Package, ShieldAlert, Activity, Boxes, FileCheck2, Wallet, Database, TrendingUp, Gauge, FilePlus2 } from 'lucide-react'
 import { BrandLogo } from './BrandLogo'
 import { departmentSeeds } from '@/lib/mock/catalog'
 import { getFirmState } from '@/lib/mock/data'
@@ -35,6 +35,7 @@ export function SidebarNav() {
       { href: '/jarvis', label: tNav('jarvis'), icon: Gauge, perm: 'analytics' }
     ] },
     { key: 'secSales', items: [
+      { href: '/orders/new', label: tNav('newOrder'), icon: FilePlus2, perm: 'orders' },
       { href: '/orders', label: tNav('orders'), icon: ShoppingCart, perm: 'orders' },
       { href: '/approvals', label: tNav('approvals'), icon: ClipboardCheck, perm: 'approvals' },
       { href: '/clients', label: tNav('clients'), icon: Users, perm: 'clients' },

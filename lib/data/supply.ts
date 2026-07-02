@@ -168,6 +168,22 @@ export async function setOrderStatus(messageId: string, status: 'approved' | 're
   } catch { return false }
 }
 
+// Server-side: insert a new row into whatsapp_intake. Used by the portal's O2C New Order flow to file a
+// salesman-created order straight into the same pipeline WhatsApp orders use (so it appears in Approvals /
+// Orders / Documents). Returns true on success.
+export async function insertWhatsapp(row: Record<string, unknown>): Promise<boolean> {
+  const c = cfg()
+  if (!c) return false
+  try {
+    const r = await fetch(`${c.url}/rest/v1/whatsapp_intake`, {
+      method: 'POST',
+      headers: { apikey: c.key, Authorization: `Bearer ${c.key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify(row), cache: 'no-store'
+    })
+    return r.ok
+  } catch { return false }
+}
+
 // Server-side: patch arbitrary fields on a single WhatsApp row. Used by the smart-reprocess engine to
 // promote a missed order (intent/products) or apply a correction (client_name/products/decision).
 // Returns true on success.

@@ -92,6 +92,29 @@ next ledger item → re-build → update the ledger below → commit + push. See
 
 > The `/mec-build` skill updates this section every run. Newest entry on top.
 
+- **2026-07-02 — Phase A DEPLOYED (`20f6db3`) + Phase D1: New Order flow with the margin gate (auto-approve/warn/queue).**
+  Pushed Phase A to origin → Vercel (documents fix + 4-section reorg). Then built the first O2C increment —
+  the heart of the order-to-cash flow the user detailed. **Margin-gate engine** (`lib/o2c/margin.ts`, pure):
+  per line, gross margin vs the product's **target** (default = category floor `minMarginFor`; finance/
+  commercial can raise it per product later) and vs the hard **floor** → **auto** (≥ target + stock) /
+  **warn** (below target or stock unconfirmed) / **block** (< floor, manager-only) / **review** (no matched
+  cost). **New Order page** `app/[locale]/orders/new` (Sales → New order): pick client, add product lines
+  (each shows live cost + on-hand + floor + target from `getProductList()`), enter sell price + qty, see a
+  **live per-line verdict** and an order-level decision; a below-target order shows an "are you sure?"
+  confirm before it queues. **`/api/orders/create`** re-evaluates the gate **server-side from live product
+  data** (never trusts the client), then files the order into `whatsapp_intake` (intent=order,
+  group_type=portal, `order_status` = approved when all-auto else pending, margin audit in `raw.margin`) so
+  it flows into **Approvals / Orders / Documents** exactly like a WhatsApp order. New `insertWhatsapp()` in
+  supply.ts. This realizes O2C stages 1 (order entry) + 3 (margin gate) and revises guardrail §5 in practice
+  (auto-approve is now margin-gated + audited). Build green (68 routes), EN/AR parity.
+  - **Pragmatic note:** the portal order reuses `whatsapp_intake` (one pipeline, instant integration); a
+    dedicated `orders`/`order_lines` schema comes when D3/D5 need the richer fields (delivery address,
+    driver, invoice link). Per-product **target-margin editor** (finance/commercial set targets above the
+    floor — the "typable per-product margin" the user asked for) is the next sub-step; the engine already
+    accepts an overrides map.
+  - **Next:** target-margin editor (persist per-product targets) → PO on the company template (JARVIS-powered
+    footer) → D2 ZATCA-shaped invoice + QR (seller identity from invoice #409; provider stub).
+
 - **2026-07-02 — Phase A started: documents-bug FIXED + sidebar reorganized into 4 sections + O2C requirements locked.**
   Building the roadmap (`PORTAL_AUDIT_AND_ROADMAP.md`). **(A.1) Documents bug — the invoice/delivery-note
   misalignment — fixed at the root:** `app/api/documents/route.ts` used to discard each document's own

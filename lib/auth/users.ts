@@ -7,6 +7,7 @@ export type Permission =
   | 'warehouse' | 'logistics' | 'finance' | 'supply' | 'whatsapp'
   | 'documents' | 'departments' | 'savings' | 'academy' | 'contact'
   | 'messages' | 'notifications' | 'automations' | 'admin' | 'manageData'
+  | 'pricing'   // set per-product target margins (commercial + finance managers)
 
 export type Role = 'admin' | 'ceo' | 'commercial' | 'warehouse' | 'finance' | 'sales'
 
@@ -24,11 +25,11 @@ export type RosterUser = {
 const BASE: Permission[] = ['messages', 'notifications', 'academy', 'contact', 'departments', 'documents']
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-  admin: ['dashboard', 'analytics', 'clients', 'orders', 'approvals', 'warehouse', 'logistics', 'finance', 'supply', 'whatsapp', 'documents', 'departments', 'savings', 'academy', 'contact', 'messages', 'notifications', 'automations', 'admin', 'manageData'],
-  ceo: [...BASE, 'dashboard', 'analytics', 'clients', 'orders', 'approvals', 'warehouse', 'logistics', 'finance', 'supply', 'whatsapp', 'savings', 'manageData'],
-  commercial: [...BASE, 'dashboard', 'analytics', 'clients', 'orders', 'approvals', 'supply', 'whatsapp', 'savings'],
+  admin: ['dashboard', 'analytics', 'clients', 'orders', 'approvals', 'warehouse', 'logistics', 'finance', 'supply', 'whatsapp', 'documents', 'departments', 'savings', 'academy', 'contact', 'messages', 'notifications', 'automations', 'admin', 'manageData', 'pricing'],
+  ceo: [...BASE, 'dashboard', 'analytics', 'clients', 'orders', 'approvals', 'warehouse', 'logistics', 'finance', 'supply', 'whatsapp', 'savings', 'manageData', 'pricing'],
+  commercial: [...BASE, 'dashboard', 'analytics', 'clients', 'orders', 'approvals', 'supply', 'whatsapp', 'savings', 'pricing'],
   warehouse: [...BASE, 'dashboard', 'orders', 'warehouse', 'logistics', 'supply'],
-  finance: [...BASE, 'dashboard', 'analytics', 'clients', 'orders', 'approvals', 'finance', 'savings'],
+  finance: [...BASE, 'dashboard', 'analytics', 'clients', 'orders', 'approvals', 'finance', 'savings', 'pricing'],
   sales: [...BASE, 'dashboard', 'clients', 'orders', 'approvals', 'whatsapp']
 }
 
