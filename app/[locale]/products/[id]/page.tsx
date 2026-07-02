@@ -31,8 +31,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [tab, setTab] = useState<'overview' | 'alerts'>('overview')
   const [win, setWin] = useState<Win>(0)
   const [intel, setIntel] = useState<any[] | null>(null)
+  // On-hand reconciled after open orders + Tarek's المخزون moved-out (Products page only).
+  const [recon, setRecon] = useState<{ base: number; committed: number; movedOut: number; reconciled: number } | null>(null)
 
   useEffect(() => { if (tab === 'alerts' && intel === null) fetch('/api/supply-intel').then(r => r.json()).then(d => setIntel(Array.isArray(d) ? d : [])).catch(() => setIntel([])) }, [tab, intel])
+  useEffect(() => { fetch('/api/products/onhand', { cache: 'no-store' }).then(r => r.json()).then(d => setRecon(d.onhand?.[item] || null)).catch(() => {}) }, [item])
 
   // hooks must run before any early return
   const monthly = useMemo(() => { const m = detail?.monthly ?? []; return win === 0 ? m : m.slice(-win) }, [detail, win])
@@ -104,8 +107,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <Panel className="mb-6" title={<span className="inline-flex items-center gap-2"><Boxes className="h-4 w-4 text-accent" strokeWidth={1.8} />{t('whTitle')}</span>}>
               <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
                 <div>
-                  <div className="text-2xl font-display font-semibold tabular-nums text-text">{fmtNum(detail.warehouse.onHand)} <span className="text-sm font-normal text-muted">{t('cartons')}</span></div>
+                  <div className="text-2xl font-display font-semibold tabular-nums text-text">{fmtNum(recon ? recon.reconciled : detail.warehouse.onHand)} <span className="text-sm font-normal text-muted">{t('cartons')}</span></div>
                   <div className="text-xs text-muted">{t('whOnHand')}</div>
+                  {recon && (recon.committed > 0 || recon.movedOut > 0) && (
+                    <div className="text-[11px] text-accent mt-0.5">{t('whReconLine', { base: fmtNum(recon.base), ordered: fmtNum(recon.committed), moved: fmtNum(recon.movedOut) })}</div>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={clsx('inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium',

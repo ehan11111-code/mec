@@ -553,7 +553,8 @@
     "colMargin": "Margin",
     "onHandUnrec": "Unreconciled — ledger doesn't balance for this SKU",
     "empty": "No products match.",
-    "showing": "Showing {n} of {total}"
+    "showing": "Showing {n} of {total}",
+    "onHandRecon": "Ledger {base} − {ordered} on open orders − {moved} moved out (Tarek) = reconciled on-hand"
   },
   "productDetail": {
     "eyebrow": "Product",
@@ -598,7 +599,8 @@
     "whExpiry": "{days}d to expiry",
     "whExpired": "Expired",
     "whExpiryNa": "Expiry n/a",
-    "inOut": "in {in} / out {out}"
+    "inOut": "in {in} / out {out}",
+    "whReconLine": "Ledger {base} − {ordered} ordered − {moved} moved out (Tarek)"
   },
   "clientDetail": {
     "back": "Back to clients",

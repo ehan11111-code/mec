@@ -553,7 +553,8 @@
     "colMargin": "الهامش",
     "onHandUnrec": "غير مُسوّى — الدفتر غير متوازن لهذا الصنف",
     "empty": "لا منتجات مطابقة.",
-    "showing": "عرض {n} من {total}"
+    "showing": "عرض {n} من {total}",
+    "onHandRecon": "السجل {base} − {ordered} على طلبات مفتوحة − {moved} خرجت (طارق) = المتوفر المُسوّى"
   },
   "productDetail": {
     "eyebrow": "منتج",
@@ -598,7 +599,8 @@
     "whExpiry": "{days}ي حتى الانتهاء",
     "whExpired": "منتهٍ",
     "whExpiryNa": "الصلاحية غير متاحة",
-    "inOut": "وارد {in} / صادر {out}"
+    "inOut": "وارد {in} / صادر {out}",
+    "whReconLine": "السجل {base} − {ordered} مطلوبة − {moved} خرجت (طارق)"
   },
   "clientDetail": {
     "back": "العودة إلى العملاء",

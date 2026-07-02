@@ -228,11 +228,11 @@ export function marginByCategory(): { key: string; ar: string; en: string; avgSe
 }
 
 // ── per-PRODUCT actual gross profit (each product's own sell price vs its matched purchase cost) ──
-function tokens(s: string): string[] {
+export function tokens(s: string): string[] {
   return String(s || '').replace(/[0-9.]+/g, ' ').replace(/[^؀-ۿ\s]/g, ' ')
     .split(/\s+/).filter(w => w.length > 1 && !['كجم', 'وزن', 'كرتون', 'بوكس'].includes(w))
 }
-function jaccard(a: string[], b: string[]): number {
+export function jaccard(a: string[], b: string[]): number {
   const A = new Set(a), B = new Set(b); let i = 0; for (const x of A) if (B.has(x)) i++
   return i / (A.size + B.size - i || 1)
 }

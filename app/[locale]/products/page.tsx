@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
 import { Search, Package, ChevronRight } from 'lucide-react'
@@ -19,6 +19,10 @@ export default function ProductsPage() {
   const all = getProductList(); const ps = profitSummary()
   const cats = useMemo(() => [...new Set(all.map(p => p.category))], [all])
   const [q, setQ] = useState(''); const [cat, setCat] = useState('')
+  // On-hand reconciled after open orders + Tarek's المخزون moved-out (live overlay, Products page only).
+  type Recon = { base: number; committed: number; movedOut: number; reconciled: number; reconciledFlag: boolean }
+  const [recon, setRecon] = useState<Record<string, Recon> | null>(null)
+  useEffect(() => { fetch('/api/products/onhand', { cache: 'no-store' }).then(r => r.json()).then(d => setRecon(d.onhand || null)).catch(() => {}) }, [])
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase()
     return all.filter(p => (!s || p.item.toLowerCase().includes(s)) && (!cat || p.category === cat))
@@ -87,7 +91,15 @@ export default function ProductsPage() {
                   <td className="px-4 py-3 text-end tabular-nums text-text-soft hidden lg:table-cell">{p.unitCost ? fmtSAR(p.unitCost) : '—'}</td>
                   <td className="px-4 py-3 text-end tabular-nums hidden md:table-cell">
                     {p.onHand == null ? <span className="text-muted">—</span>
-                      : <span className={clsx(p.whReconciled ? 'text-text-soft' : 'text-warn')} title={p.whReconciled ? undefined : t('onHandUnrec')}>{fmtNum(p.onHand)}{!p.whReconciled && '*'}</span>}
+                      : (() => {
+                          const rc = recon?.[p.item]
+                          const val = rc ? rc.reconciled : p.onHand
+                          const adjusted = rc && (rc.committed > 0 || rc.movedOut > 0)
+                          const title = rc && adjusted
+                            ? t('onHandRecon', { base: fmtNum(rc.base), ordered: fmtNum(rc.committed), moved: fmtNum(rc.movedOut) })
+                            : (p.whReconciled ? undefined : t('onHandUnrec'))
+                          return <span className={clsx(!p.whReconciled ? 'text-warn' : adjusted ? 'text-accent' : 'text-text-soft')} title={title}>{fmtNum(val)}{!p.whReconciled && '*'}{adjusted && '†'}</span>
+                        })()}
                   </td>
                   <td className="px-4 py-3 text-end tabular-nums text-text">{fmtSAR(p.revenue)}</td>
                   <td className={clsx('px-5 md:px-6 py-3 text-end tabular-nums font-medium', marginTone(p.marginPct, p.belowMin))}>{p.marginPct == null ? '—' : `${p.marginPct}%`}</td>
