@@ -10,16 +10,18 @@ import { Panel } from '@/components/Panel'
 import { StatCard } from '@/components/StatCard'
 import { EmptyState } from '@/components/EmptyState'
 import { useCurrentUser } from '@/lib/auth/useCurrentUser'
-import { fmtDateTime } from '@/lib/format/datetime'
+import { fmtDateTime, fmtDuration } from '@/lib/format/datetime'
 import type { WhatsappMsg } from '@/lib/data/supply'
 
 type Status = 'pending' | 'approved' | 'rejected'
+// The approvals API enriches each order with when/how it was decided and how long that took.
+type OrderRow = WhatsappMsg & { decidedAt?: string | null; minutesToDecision?: number | null; decisionVia?: 'reaction' | 'reply' | null; decisionKind?: string | null }
 const st = (o: WhatsappMsg): Status => (o.order_status as Status) || 'pending'
 
 export default function ApprovalsPage() {
   const t = useTranslations('approvals'); const tNav = useTranslations('nav'); const locale = useLocale() as 'en' | 'ar'
   const { can } = useCurrentUser()
-  const [orders, setOrders] = useState<WhatsappMsg[] | null>(null)
+  const [orders, setOrders] = useState<OrderRow[] | null>(null)
   const [tab, setTab] = useState<Status>('pending')
   const [busy, setBusy] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
@@ -142,6 +144,14 @@ export default function ApprovalsPage() {
               ) : <p className="mt-3 text-xs text-muted italic">{t('noProducts')}</p>}
 
               <p className="mt-3 text-[11px] text-muted leading-snug border-s-2 border-border ps-2.5">{o.body}</p>
+
+              {st(o) !== 'pending' && o.decidedAt && (
+                <p className={clsx('mt-2 text-[11px] font-medium inline-flex items-center gap-1.5', st(o) === 'approved' ? 'text-success' : 'text-muted')}>
+                  {st(o) === 'approved' ? <Check className="h-3 w-3" strokeWidth={2.4} /> : <X className="h-3 w-3" strokeWidth={2.4} />}
+                  {t(`tab_${st(o)}`)} · {t('tookAfter', { dur: fmtDuration(o.minutesToDecision ?? null, locale) })}
+                  {o.decisionVia ? ` · ${t(o.decisionVia === 'reaction' ? 'viaReaction' : 'viaReply')}` : ''} · {fmt(o.decidedAt)}
+                </p>
+              )}
 
               {st(o) === 'pending' && (
                 <div className="mt-4 flex items-center gap-2 border-t border-border pt-3">

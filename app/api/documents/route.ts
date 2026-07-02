@@ -55,7 +55,8 @@ export async function GET() {
     const dn = matched.find(d => d.doc_type === 'delivery_note')
     const docMsgs: DocMessage[] = matched.map(d => ({
       message_id: d.message_id, doc_type: d.doc_type as string, filename: d.body || '', body: d.body || '',
-      media_url: (d as any).media_url || '', message_type: d.message_type, sender: d.salesperson || d.push_name || d.phone, received_at: d.received_at
+      media_url: (d as any).media_url || '', message_type: d.message_type, sender: d.salesperson || d.push_name || d.phone, received_at: d.received_at,
+      minutesAfterOrder: Math.max(0, Math.round((Date.parse(d.received_at) - Date.parse(o.received_at)) / 60000))
     }))
     return {
       message_id: o.message_id, orderNo: o.order_no || null, client: o.client_name || null,

@@ -39,6 +39,20 @@ export function fmtStampUTC(iso?: string | null): string {
   return new Date(iso).toISOString().replace('T', ' ').slice(0, 16) + ' UTC'
 }
 
+// "3m / 2h 10m / 1d 4h" — a DURATION (elapsed span) from a minute count. For "how long it took" figures
+// (time-to-approval, time-to-document). Returns '—' for null/negative.
+export function fmtDuration(minutes: number | null | undefined, l: Loc): string {
+  if (minutes == null || minutes < 0 || !isFinite(minutes)) return '—'
+  const ar = l === 'ar'
+  const m = Math.round(minutes)
+  if (m < 1) return ar ? 'أقل من دقيقة' : '<1m'
+  if (m < 60) return ar ? `${m} د` : `${m}m`
+  const h = Math.floor(m / 60), rm = m % 60
+  if (h < 24) return ar ? `${h} س${rm ? ` ${rm} د` : ''}` : `${h}h${rm ? ` ${rm}m` : ''}`
+  const d = Math.floor(h / 24), rh = h % 24
+  return ar ? `${d} ي${rh ? ` ${rh} س` : ''}` : `${d}d${rh ? ` ${rh}h` : ''}`
+}
+
 // "just now / 5m ago / 3h ago / 2d ago" — relative hint. Pass `now` (a stable ms value from state) to
 // avoid SSR/hydration mismatch; defaults to Date.now() for post-mount client use.
 export function fmtAgo(iso: string | null | undefined, l: Loc, now = Date.now()): string {

@@ -221,7 +221,10 @@
     "empty_rejected": "No rejected orders",
     "emptyHint": "New WhatsApp orders appear here automatically, parsed into line items, ready to approve.",
     "source": "Source: WhatsApp (WaSender) → JARVIS classification → Supabase whatsapp_intake",
-    "note": "Orders are captured and parsed automatically; nothing is auto-approved — a human approves or rejects every order. Run supabase/schema.sql once to enable approve/reject persistence."
+    "note": "Orders are captured and parsed automatically; nothing is auto-approved — a human approves or rejects every order. Run supabase/schema.sql once to enable approve/reject persistence.",
+    "tookAfter": "{dur} after the order",
+    "viaReaction": "via 👍 reaction",
+    "viaReply": "via reply"
   },
   "automations": {
     "eyebrow": "Automation engine",
@@ -356,7 +359,8 @@
     "noMissing": "All orders have their documents.",
     "empty": "No orders yet.",
     "emptyHint": "Orders arrive via WhatsApp; their documents are tracked here.",
-    "source": "Supabase · whatsapp_intake"
+    "source": "Supabase · whatsapp_intake",
+    "docAfterOrder": "Arrived {dur} after the order"
   },
   "forecast": {
     "eyebrow": "Intelligence · Forecasting",

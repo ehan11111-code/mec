@@ -10,9 +10,10 @@ import { Panel } from '@/components/Panel'
 import { StatCard } from '@/components/StatCard'
 import { NoteCallout } from '@/components/NoteCallout'
 import { EmptyState } from '@/components/EmptyState'
+import { fmtDuration } from '@/lib/format/datetime'
 
 type DocType = 'invoice' | 'delivery_note' | 'payment'
-type DocMessage = { message_id: string; doc_type: string; filename: string; body: string; media_url: string; message_type: string; sender: string; received_at: string }
+type DocMessage = { message_id: string; doc_type: string; filename: string; body: string; media_url: string; message_type: string; sender: string; received_at: string; minutesAfterOrder: number | null }
 type Row = { message_id: string; orderNo: string | null; client: string | null; sender: string; phone: string; recipient: string | null; units: number; received_at: string; body: string; order_status: string; products: { name: string; qty?: number | null; unit?: string | null }[]; received: DocType[]; missing: DocType[]; complete: boolean; docMsgs: DocMessage[] }
 const DOCS: ('po' | DocType)[] = ['po', 'invoice', 'delivery_note', 'payment']
 type Opened = { kind: 'po'; row: Row } | { kind: DocType; row: Row; doc: DocMessage }
@@ -170,6 +171,7 @@ export default function DocumentsPage() {
                     <div className="min-w-0">
                       <p className="text-text font-medium break-words">{opened.doc.filename || t(`doc_${opened.kind}`)}</p>
                       <p className="text-[11px] text-muted mt-0.5">{t('docFrom', { name: opened.doc.sender })} · {fmt(opened.doc.received_at)}</p>
+                      {opened.doc.minutesAfterOrder != null && <p className="text-[11px] text-accent mt-0.5 font-medium">{t('docAfterOrder', { dur: fmtDuration(opened.doc.minutesAfterOrder, locale) })}</p>}
                     </div>
                   </div>
                   {opened.doc.media_url
