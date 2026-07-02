@@ -5,11 +5,12 @@ const { decryptRowMedia } = require('./wa')
 const { uploadMedia, patchRow, downloadMedia } = require('./supa')
 const { extractStatement, classifyDoc, asOfFrom, statementKind } = require('./ocr')
 
-// Rows the worker should pick up: media that hasn't been cached yet.
-// (media_status null/pending, or a known statement doc_type whose extract hasn't run.)
+// Rows the worker should pick up: ACTUAL media (a document/image message) that hasn't been cached yet.
+// NOTE: filter on message_type only — NOT doc_type — so text payment/bank-transfer notes (doc_type=payment
+// but no attachment) aren't repeatedly tried and marked failed.
 const PENDING_FILTER =
   `or=(media_status.is.null,media_status.eq.pending,media_status.eq.failed)` +
-  `&or=(message_type.in.(document,image),doc_type.in.(invoice,delivery_note,payment,credit,inventory))` +
+  `&message_type=in.(document,image)` +
   `&archived=eq.false&select=message_id,raw,doc_type,body,media_filename,received_at&order=received_at.desc&limit=25`
 
 async function processRow(row, keys) {
